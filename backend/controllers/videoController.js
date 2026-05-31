@@ -2,7 +2,11 @@ const fs = require('fs/promises');
 const fsSync = require('fs');
 const path = require('path');
 const multer = require('multer');
-const AdminMovie = require('../models/AdminMovie');
+const {
+  selectOne,
+  insertOne,
+  updateRows
+} = require('../services/supabaseRepository');
 const { generateHlsPackage, getManifestPath, getAssetPath, transformPlaylist, HLS_QUALITIES } = require('../services/hlsService');
 
 const uploadStorage = multer.diskStorage({
@@ -42,26 +46,26 @@ const parseGenres = (value) =>
     .map((name, index) => ({ id: index + 1, name }));
 
 const sanitizeMovie = (movie) => ({
-  id: movie._id,
-  tmdbId: movie.tmdbId,
+  id: movie.id,
+  tmdbId: movie.tmdb_id,
   title: movie.title,
   overview: movie.overview,
   poster: movie.poster,
   backdrop: movie.backdrop,
-  releaseDate: movie.releaseDate,
+  releaseDate: movie.release_date,
   runtime: movie.runtime,
   genres: movie.genres,
-  videoSource: movie.videoSource,
+  videoSource: movie.video_source,
   featured: movie.featured,
   status: movie.status,
-  processingStatus: movie.processingStatus,
-  sourceFile: movie.sourceFile,
-  hlsDirectory: movie.hlsDirectory,
-  hlsManifest: movie.hlsManifest,
-  hlsQualities: movie.hlsQualities,
-  createdBy: movie.createdBy,
-  createdAt: movie.createdAt,
-  updatedAt: movie.updatedAt
+  processingStatus: movie.processing_status,
+  sourceFile: movie.source_file,
+  hlsDirectory: movie.hls_directory,
+  hlsManifest: movie.hls_manifest,
+  hlsQualities: movie.hls_qualities,
+  createdBy: movie.created_by,
+  createdAt: movie.created_at,
+  updatedAt: movie.updated_at
 });
 
 const uploadVideo = async (req, res, next) => {
@@ -87,55 +91,70 @@ const uploadVideo = async (req, res, next) => {
       return res.status(400).json({ message: 'tmdbId y title son obligatorios' });
     }
 
-    let movie = await AdminMovie.findOne({ tmdbId: Number(tmdbId) });
+    let movie = await selectOne('movies', {
+      filters: [{ type: 'eq', column: 'tmdb_id', value: Number(tmdbId) }]
+    });
+
     if (!movie) {
-      movie = await AdminMovie.create({
-        tmdbId: Number(tmdbId),
+      movie = await insertOne('movies', {
+        tmdb_id: Number(tmdbId),
         title,
         overview,
         poster,
         backdrop,
-        releaseDate,
+        release_date: releaseDate,
         runtime: Number(runtime || 0),
         genres: parseGenres(genres),
         featured: Boolean(featured),
         status,
-        createdBy: req.user.id,
-        processingStatus: 'processing'
+        created_by: req.user.id,
+        processing_status: 'processing'
       });
     } else {
-      movie.title = title;
-      movie.overview = overview;
-      movie.poster = poster;
-      movie.backdrop = backdrop;
-      movie.releaseDate = releaseDate;
-      movie.runtime = Number(runtime || 0);
-      movie.genres = parseGenres(genres);
-      movie.featured = Boolean(featured);
-      movie.status = status;
-      movie.processingStatus = 'processing';
-      movie.createdBy = req.user.id;
-      await movie.save();
+      const [updatedMovie] = await updateRows(
+        'movies',
+        [{ type: 'eq', column: 'id', value: movie.id }],
+        {
+          tmdb_id: Number(tmdbId),
+          title,
+          overview,
+          poster,
+          backdrop,
+          release_date: releaseDate,
+          runtime: Number(runtime || 0),
+          genres: parseGenres(genres),
+          featured: Boolean(featured),
+          status,
+          processing_status: 'processing',
+          created_by: req.user.id
+        }
+      );
+      movie = updatedMovie;
     }
 
     const packageData = await generateHlsPackage({
-      movieKey: movie.tmdbId,
+      movieKey: movie.tmdb_id,
       inputPath: req.file.path
     });
 
-    movie.sourceFile = packageData.sourceFile;
-    movie.hlsDirectory = packageData.hlsDirectory;
-    movie.hlsManifest = packageData.hlsManifest;
-    movie.hlsQualities = packageData.hlsQualities;
-    movie.processingStatus = 'ready';
-    movie.videoSource = packageData.sourceFile;
-    await movie.save();
+    const [processedMovie] = await updateRows(
+      'movies',
+      [{ type: 'eq', column: 'id', value: movie.id }],
+      {
+        source_file: packageData.sourceFile,
+        hls_directory: packageData.hlsDirectory,
+        hls_manifest: packageData.hlsManifest,
+        hls_qualities: packageData.hlsQualities,
+        processing_status: 'ready',
+        video_source: packageData.sourceFile
+      }
+    );
 
     await fs.unlink(req.file.path).catch(() => {});
 
     return res.status(201).json({
       message: 'Video procesado a HLS correctamente',
-      movie: sanitizeMovie(movie),
+      movie: sanitizeMovie(processedMovie),
       qualities: HLS_QUALITIES
     });
   } catch (error) {
@@ -150,24 +169,26 @@ const uploadVideo = async (req, res, next) => {
 const getStreamInfo = async (req, res, next) => {
   try {
     const tmdbId = Number(req.params.tmdbId);
-    const movie = await AdminMovie.findOne({ tmdbId });
+    const movie = await selectOne('movies', {
+      filters: [{ type: 'eq', column: 'tmdb_id', value: tmdbId }]
+    });
 
-    if (!movie || movie.processingStatus !== 'ready') {
+    if (!movie || movie.processing_status !== 'ready') {
       return res.status(404).json({ message: 'El stream todavía no está listo' });
     }
 
     const token = typeof req.query.token === 'string' ? req.query.token : '';
     const manifestUrl = `/api/videos/${tmdbId}/master.m3u8${token ? `?token=${encodeURIComponent(token)}` : ''}`;
-    const fallbackMp4 = movie.videoSource ? `/api/videos/${tmdbId}/file/${encodeURIComponent(path.basename(movie.videoSource))}${token ? `?token=${encodeURIComponent(token)}` : ''}` : '';
+    const fallbackMp4 = movie.video_source ? `/api/videos/${tmdbId}/file/${encodeURIComponent(path.basename(movie.video_source))}${token ? `?token=${encodeURIComponent(token)}` : ''}` : '';
 
     return res.json({
       message: 'Stream listo',
       tmdbId,
       title: movie.title,
-      processingStatus: movie.processingStatus,
+      processingStatus: movie.processing_status,
       manifestUrl,
       fallbackMp4,
-      qualities: movie.hlsQualities || []
+      qualities: movie.hls_qualities || []
     });
   } catch (error) {
     return next(error);

@@ -1,5 +1,9 @@
-const UserPreferences = require('../models/UserPreferences');
-const Profile = require('../models/Profile');
+const {
+  supabase,
+  selectOne,
+  upsertOne,
+  deleteRows
+} = require('./supabaseRepository');
 
 const TMDB_API_KEY = process.env.TMDB_API_KEY || 'b24af203b14e23f8c91844baae37cfab';
 const TMDB_BASE_URL = 'https://api.themoviedb.org/3';
@@ -98,8 +102,39 @@ const moveToFront = (items, value, limit = 20) => {
   return nextItems.slice(0, limit);
 };
 
+const emptyPreferences = {
+  favorite_movie_ids: [],
+  watch_history: [],
+  continue_watching: [],
+  recent_movie_ids: [],
+  genre_scores: [],
+  actor_scores: [],
+  director_scores: [],
+  last_interaction_at: null
+};
+
+const normalizePreferenceRow = (row) => ({
+  id: row.id,
+  user_id: row.user_id,
+  profile_id: row.profile_id,
+  favoriteMovieIds: Array.isArray(row.favorite_movie_ids) ? row.favorite_movie_ids.map(Number) : [],
+  watchHistory: Array.isArray(row.watch_history) ? row.watch_history : [],
+  continueWatching: Array.isArray(row.continue_watching) ? row.continue_watching : [],
+  recentMovieIds: Array.isArray(row.recent_movie_ids) ? row.recent_movie_ids.map(Number) : [],
+  genreScores: Array.isArray(row.genre_scores) ? row.genre_scores : [],
+  actorScores: Array.isArray(row.actor_scores) ? row.actor_scores : [],
+  directorScores: Array.isArray(row.director_scores) ? row.director_scores : [],
+  lastInteractionAt: row.last_interaction_at || null
+});
+
 const getProfileOrThrow = async (userId, profileId) => {
-  const profile = await Profile.findOne({ _id: profileId, user: userId });
+  const profile = await selectOne('profiles', {
+    filters: [
+      { type: 'eq', column: 'id', value: profileId },
+      { type: 'eq', column: 'user_id', value: userId }
+    ]
+  });
+
   if (!profile) {
     const error = new Error('Perfil no encontrado');
     error.statusCode = 404;
@@ -110,15 +145,28 @@ const getProfileOrThrow = async (userId, profileId) => {
 };
 
 const getOrCreatePreferences = async (userId, profileId) => {
-  let preferences = await UserPreferences.findOne({ user: userId, profile: profileId });
-  if (!preferences) {
-    preferences = await UserPreferences.create({
-      user: userId,
-      profile: profileId
-    });
+  const existing = await selectOne('user_preferences', {
+    filters: [
+      { type: 'eq', column: 'user_id', value: userId },
+      { type: 'eq', column: 'profile_id', value: profileId }
+    ]
+  });
+
+  if (existing) {
+    return normalizePreferenceRow(existing);
   }
 
-  return preferences;
+  const created = await upsertOne(
+    'user_preferences',
+    {
+      user_id: userId,
+      profile_id: profileId,
+      ...emptyPreferences
+    },
+    { onConflict: 'user_id,profile_id' }
+  );
+
+  return normalizePreferenceRow(created);
 };
 
 const resolveMovieDetails = async (movieId, moviePayload = {}, options = {}) => {
@@ -192,7 +240,7 @@ const upsertWatchEntry = (entries, movie, payload, source = 'watch') => {
     currentTime: Math.max(0, Number(payload.currentTime || 0)),
     duration: Math.max(0, Number(payload.duration || movie.runtime || 0)),
     runtime: Math.max(0, Number(movie.runtime || payload.runtime || 0)),
-    lastViewed: new Date(),
+    lastViewed: new Date().toISOString(),
     source
   };
 
@@ -205,6 +253,101 @@ const removeWatchEntry = (entries, movieId) =>
   entries.filter((entry) => Number(entry.movieId) !== Number(movieId));
 
 const ensureRecentMovieId = (items, movieId) => moveToFront(items, movieId, 20);
+
+const persistPreferenceRow = async (userId, profileId, preferences) =>
+  upsertOne(
+    'user_preferences',
+    {
+      user_id: userId,
+      profile_id: profileId,
+      favorite_movie_ids: preferences.favoriteMovieIds || [],
+      watch_history: preferences.watchHistory || [],
+      continue_watching: preferences.continueWatching || [],
+      recent_movie_ids: preferences.recentMovieIds || [],
+      genre_scores: sortScoreCollection(preferences.genreScores || [], 20),
+      actor_scores: sortScoreCollection(preferences.actorScores || [], 20),
+      director_scores: sortScoreCollection(preferences.directorScores || [], 20),
+      last_interaction_at: new Date().toISOString()
+    },
+    { onConflict: 'user_id,profile_id' }
+  );
+
+const syncFavoriteRow = async (userId, profileId, movie, action = 'added') => {
+  if (action === 'removed') {
+    await deleteRows('favorites', [
+      { type: 'eq', column: 'user_id', value: userId },
+      { type: 'eq', column: 'profile_id', value: profileId },
+      { type: 'eq', column: 'movie_id', value: Number(movie.id) }
+    ]);
+    return;
+  }
+
+  await upsertOne(
+    'favorites',
+    {
+      user_id: userId,
+      profile_id: profileId,
+      movie_id: Number(movie.id),
+      title: movie.title || '',
+      poster: movie.poster_path || movie.poster || '',
+      backdrop: movie.backdrop_path || movie.backdrop || '',
+      genres: normalizeGenres(movie.genres),
+      updated_at: new Date().toISOString()
+    },
+    { onConflict: 'profile_id,movie_id' }
+  );
+};
+
+const syncWatchHistoryRow = async (userId, profileId, movie, payload) => {
+  await upsertOne(
+    'watch_history',
+    {
+      user_id: userId,
+      profile_id: profileId,
+      movie_id: Number(movie.id),
+      title: movie.title || payload.title || '',
+      poster: movie.poster_path || movie.poster || '',
+      backdrop: movie.backdrop_path || movie.backdrop || '',
+      genres: normalizeGenres(movie.genres),
+      progress: Math.max(0, Math.min(100, Number(payload.progress || 0))),
+      current_time: Math.max(0, Number(payload.currentTime || 0)),
+      duration: Math.max(0, Number(payload.duration || movie.runtime || 0)),
+      runtime: Math.max(0, Number(movie.runtime || payload.runtime || 0)),
+      last_viewed: new Date().toISOString(),
+      source: String(payload.type || 'watch')
+    },
+    { onConflict: 'profile_id,movie_id' }
+  );
+};
+
+const syncRecommendationRows = async (userId, profileId, recommendations) => {
+  await deleteRows('recommendations', [
+    { type: 'eq', column: 'user_id', value: userId },
+    { type: 'eq', column: 'profile_id', value: profileId }
+  ]);
+
+  if (!Array.isArray(recommendations) || recommendations.length === 0) {
+    return;
+  }
+
+  const payload = recommendations.map((movie) => ({
+    user_id: userId,
+    profile_id: profileId,
+    movie_id: Number(movie.id),
+    title: movie.title || '',
+    poster: movie.poster || '',
+    backdrop: movie.backdrop || '',
+    genres: movie.genres || [],
+    reason: movie.reason || 'Te podría gustar',
+    source: Array.isArray(movie.sources) ? movie.sources.join(', ') : movie.source || '',
+    score: Number(movie.score || 0)
+  }));
+
+  const { error } = await supabase.from('recommendations').insert(payload);
+  if (error) {
+    throw error;
+  }
+};
 
 const recordEvent = async ({ userId, profileId, payload }) => {
   await getProfileOrThrow(userId, profileId);
@@ -224,7 +367,7 @@ const recordEvent = async ({ userId, profileId, payload }) => {
     fetchCredits: type !== 'watch'
   });
   preferences.recentMovieIds = ensureRecentMovieId(preferences.recentMovieIds, movieId);
-  preferences.lastInteractionAt = new Date();
+  preferences.lastInteractionAt = new Date().toISOString();
 
   if (type === 'favorite') {
     if (action === 'removed' || action === 'remove' || action === 'delete') {
@@ -234,6 +377,7 @@ const recordEvent = async ({ userId, profileId, payload }) => {
     }
     applyGenreSignals(preferences, movie.genres, action === 'removed' ? 0.8 : 1.8);
     applyCrewSignals(preferences, movie.credits, action === 'removed' ? 0.5 : 1.2);
+    await syncFavoriteRow(userId, profileId, movie, action);
   }
 
   if (type === 'view' || type === 'watch' || type === 'continue') {
@@ -248,13 +392,14 @@ const recordEvent = async ({ userId, profileId, payload }) => {
     preferences.watchHistory = upsertWatchEntry(preferences.watchHistory, movie, payload, 'watch');
     applyGenreSignals(preferences, movie.genres, progress >= 60 ? 2.2 : 1.2);
     applyCrewSignals(preferences, movie.credits, progress >= 60 ? 1.4 : 0.8);
+    await syncWatchHistoryRow(userId, profileId, movie, payload);
   }
 
   if (type === 'genre' && Array.isArray(payload.genres)) {
     applyGenreSignals(preferences, normalizeGenres(payload.genres), 1.3);
   }
 
-  await preferences.save();
+  await persistPreferenceRow(userId, profileId, preferences);
 
   return preferences;
 };
@@ -433,6 +578,7 @@ const getRecommendationsForProfile = async ({ userId, profileId, limit = 12 }) =
     }));
 
   if (topMovies.length >= limit) {
+    await syncRecommendationRows(userId, profileId, topMovies);
     return {
       profileId,
       count: topMovies.length,
@@ -465,10 +611,13 @@ const getRecommendationsForProfile = async ({ userId, profileId, limit = 12 }) =
       score: Number(movie.score.toFixed(2))
     }));
 
+  const recommendations = [...topMovies, ...fillerMovies].slice(0, limit);
+  await syncRecommendationRows(userId, profileId, recommendations);
+
   return {
     profileId,
-    count: topMovies.length + fillerMovies.length,
-    recommendations: [...topMovies, ...fillerMovies].slice(0, limit)
+    count: recommendations.length,
+    recommendations
   };
 };
 

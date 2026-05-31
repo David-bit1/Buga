@@ -1,5 +1,11 @@
-const mongoose = require('mongoose');
-const Profile = require('../models/Profile');
+const {
+  selectMany,
+  selectOne,
+  countRows,
+  insertOne,
+  updateRows,
+  deleteRows
+} = require('../services/supabaseRepository');
 
 const MAX_PROFILES_PER_USER = Number(process.env.MAX_PROFILES_PER_USER || 5);
 
@@ -13,33 +19,36 @@ const DEFAULT_AVATARS = [
 ];
 
 const sanitizeProfile = (profile) => ({
-  id: profile._id,
-  user: profile.user,
+  id: profile.id,
+  user: profile.user_id,
   name: profile.name,
   avatar: profile.avatar,
-  themeColor: profile.themeColor,
-  isKids: profile.isKids,
-  isDefault: profile.isDefault,
-  createdAt: profile.createdAt,
-  updatedAt: profile.updatedAt
+  themeColor: profile.theme_color,
+  isKids: Boolean(profile.is_kids),
+  isDefault: Boolean(profile.is_default),
+  createdAt: profile.created_at,
+  updatedAt: profile.updated_at
 });
 
 const getDefaultAvatar = (index = 0) => DEFAULT_AVATARS[index % DEFAULT_AVATARS.length];
 
 const ensureInitialProfile = async (userId) => {
-  const existingProfiles = await Profile.countDocuments({ user: userId });
+  const existingProfiles = await countRows('profiles', [
+    { type: 'eq', column: 'user_id', value: userId }
+  ]);
 
   if (existingProfiles > 0) {
     return null;
   }
 
   const avatar = getDefaultAvatar(0);
-  return Profile.create({
-    user: userId,
+  return insertOne('profiles', {
+    user_id: userId,
     name: 'Perfil 1',
     avatar: avatar.key,
-    themeColor: avatar.themeColor,
-    isDefault: true
+    theme_color: avatar.themeColor,
+    is_kids: false,
+    is_default: true
   });
 };
 
@@ -49,7 +58,10 @@ const getProfiles = async (req, res, next) => {
 
     await ensureInitialProfile(userId);
 
-    const profiles = await Profile.find({ user: userId }).sort({ createdAt: 1 });
+    const profiles = await selectMany('profiles', {
+      filters: [{ type: 'eq', column: 'user_id', value: userId }],
+      order: { column: 'created_at', ascending: true }
+    });
 
     return res.json({
       limit: MAX_PROFILES_PER_USER,
@@ -70,15 +82,20 @@ const createProfile = async (req, res, next) => {
       return res.status(400).json({ message: 'El nombre del perfil es obligatorio' });
     }
 
-    const profileCount = await Profile.countDocuments({ user: userId });
+    const profileCount = await countRows('profiles', [
+      { type: 'eq', column: 'user_id', value: userId }
+    ]);
+
     if (profileCount >= MAX_PROFILES_PER_USER) {
       return res.status(403).json({ message: 'Llegaste al límite de perfiles permitidos' });
     }
 
     const normalizedName = String(name).trim();
-    const duplicate = await Profile.findOne({
-      user: userId,
-      name: new RegExp(`^${normalizedName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i')
+    const duplicate = await selectOne('profiles', {
+      filters: [
+        { type: 'eq', column: 'user_id', value: userId },
+        { type: 'ilike', column: 'name', value: normalizedName }
+      ]
     });
 
     if (duplicate) {
@@ -86,13 +103,13 @@ const createProfile = async (req, res, next) => {
     }
 
     const selectedAvatar = DEFAULT_AVATARS.find((item) => item.key === avatar) || getDefaultAvatar(profileCount);
-    const profile = await Profile.create({
-      user: userId,
+    const profile = await insertOne('profiles', {
+      user_id: userId,
       name: normalizedName,
       avatar: selectedAvatar.key,
-      themeColor: themeColor || selectedAvatar.themeColor,
-      isKids: Boolean(isKids),
-      isDefault: profileCount === 0
+      theme_color: themeColor || selectedAvatar.themeColor,
+      is_kids: Boolean(isKids),
+      is_default: profileCount === 0
     });
 
     return res.status(201).json({
@@ -110,40 +127,51 @@ const updateProfile = async (req, res, next) => {
     const { profileId } = req.params;
     const { name, avatar, themeColor, isKids } = req.body;
 
-    if (!mongoose.Types.ObjectId.isValid(profileId)) {
-      return res.status(400).json({ message: 'Perfil inválido' });
-    }
+    const profile = await selectOne('profiles', {
+      filters: [
+        { type: 'eq', column: 'id', value: profileId },
+        { type: 'eq', column: 'user_id', value: userId }
+      ]
+    });
 
-    const profile = await Profile.findOne({ _id: profileId, user: userId });
     if (!profile) {
       return res.status(404).json({ message: 'Perfil no encontrado' });
     }
 
+    const payload = {};
+
     if (name) {
-      profile.name = String(name).trim();
+      payload.name = String(name).trim();
     }
 
     if (avatar) {
       const selectedAvatar = DEFAULT_AVATARS.find((item) => item.key === avatar);
       if (selectedAvatar) {
-        profile.avatar = selectedAvatar.key;
-        profile.themeColor = themeColor || selectedAvatar.themeColor;
+        payload.avatar = selectedAvatar.key;
+        payload.theme_color = themeColor || selectedAvatar.themeColor;
       }
     }
 
     if (typeof themeColor === 'string' && themeColor.trim()) {
-      profile.themeColor = themeColor.trim();
+      payload.theme_color = themeColor.trim();
     }
 
     if (typeof isKids === 'boolean') {
-      profile.isKids = isKids;
+      payload.is_kids = isKids;
     }
 
-    await profile.save();
+    const [updatedProfile] = await updateRows(
+      'profiles',
+      [
+        { type: 'eq', column: 'id', value: profileId },
+        { type: 'eq', column: 'user_id', value: userId }
+      ],
+      payload
+    );
 
     return res.json({
       message: 'Perfil actualizado correctamente',
-      profile: sanitizeProfile(profile)
+      profile: sanitizeProfile(updatedProfile)
     });
   } catch (error) {
     return next(error);
@@ -155,24 +183,39 @@ const deleteProfile = async (req, res, next) => {
     const { id: userId } = req.user;
     const { profileId } = req.params;
 
-    if (!mongoose.Types.ObjectId.isValid(profileId)) {
-      return res.status(400).json({ message: 'Perfil inválido' });
-    }
+    const profile = await selectOne('profiles', {
+      filters: [
+        { type: 'eq', column: 'id', value: profileId },
+        { type: 'eq', column: 'user_id', value: userId }
+      ]
+    });
 
-    const profile = await Profile.findOne({ _id: profileId, user: userId });
     if (!profile) {
       return res.status(404).json({ message: 'Perfil no encontrado' });
     }
 
-    if (profile.isDefault) {
-      const fallbackProfile = await Profile.findOne({ user: userId, _id: { $ne: profileId } }).sort({ createdAt: 1 });
+    if (profile.is_default) {
+      const fallbackProfile = await selectOne('profiles', {
+        filters: [
+          { type: 'eq', column: 'user_id', value: userId },
+          { type: 'neq', column: 'id', value: profileId }
+        ],
+        order: { column: 'created_at', ascending: true }
+      });
+
       if (fallbackProfile) {
-        fallbackProfile.isDefault = true;
-        await fallbackProfile.save();
+        await updateRows(
+          'profiles',
+          [{ type: 'eq', column: 'id', value: fallbackProfile.id }],
+          { is_default: true }
+        );
       }
     }
 
-    await profile.deleteOne();
+    await deleteRows('profiles', [
+      { type: 'eq', column: 'id', value: profileId },
+      { type: 'eq', column: 'user_id', value: userId }
+    ]);
 
     return res.json({ message: 'Perfil eliminado correctamente' });
   } catch (error) {

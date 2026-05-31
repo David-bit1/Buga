@@ -1,22 +1,36 @@
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
-const User = require('../models/User');
-const Profile = require('../models/Profile');
+const {
+  selectOne,
+  insertOne
+} = require('../services/supabaseRepository');
+
+const DEFAULT_AVATAR = { key: 'neon', themeColor: '#8a4dff' };
 
 const createToken = (user) =>
   jwt.sign(
-    { id: user._id, name: user.name, email: user.email, role: user.role || 'user' },
+    { id: user.id, name: user.name, email: user.email, role: user.role || 'user' },
     process.env.JWT_SECRET,
     { expiresIn: '7d' }
   );
 
 const sanitizeUser = (user) => ({
-  id: user._id,
+  id: user.id,
   name: user.name,
   email: user.email,
   role: user.role || 'user',
-  createdAt: user.createdAt
+  createdAt: user.created_at || user.createdAt
 });
+
+const createDefaultProfile = async (userId) =>
+  insertOne('profiles', {
+    user_id: userId,
+    name: 'Perfil 1',
+    avatar: DEFAULT_AVATAR.key,
+    theme_color: DEFAULT_AVATAR.themeColor,
+    is_kids: false,
+    is_default: true
+  });
 
 const register = async (req, res, next) => {
   try {
@@ -26,7 +40,11 @@ const register = async (req, res, next) => {
       return res.status(400).json({ message: 'Completa todos los campos' });
     }
 
-    const existingUser = await User.findOne({ email: email.toLowerCase() });
+    const normalizedEmail = String(email).trim().toLowerCase();
+    const existingUser = await selectOne('users', {
+      filters: [{ type: 'eq', column: 'email', value: normalizedEmail }]
+    });
+
     if (existingUser) {
       return res.status(409).json({ message: 'Ya existe una cuenta con ese email' });
     }
@@ -34,24 +52,18 @@ const register = async (req, res, next) => {
     const hashedPassword = await bcrypt.hash(password, 12);
     const adminEmails = String(process.env.ADMIN_EMAILS || '')
       .split(',')
-      .map((email) => email.trim().toLowerCase())
+      .map((item) => item.trim().toLowerCase())
       .filter(Boolean);
-    const role = adminEmails.includes(email.toLowerCase()) ? 'admin' : 'user';
-    const user = await User.create({
-      name,
-      email,
-      password: hashedPassword,
+    const role = adminEmails.includes(normalizedEmail) ? 'admin' : 'user';
+
+    const user = await insertOne('users', {
+      name: String(name).trim(),
+      email: normalizedEmail,
+      password_hash: hashedPassword,
       role
     });
 
-    const avatar = 'neon';
-    await Profile.create({
-      user: user._id,
-      name: 'Perfil 1',
-      avatar,
-      themeColor: '#8a4dff',
-      isDefault: true
-    });
+    await createDefaultProfile(user.id);
 
     const token = createToken(user);
     return res.status(201).json({
@@ -72,12 +84,16 @@ const login = async (req, res, next) => {
       return res.status(400).json({ message: 'Completa email y contraseña' });
     }
 
-    const user = await User.findOne({ email: email.toLowerCase() }).select('+password');
+    const normalizedEmail = String(email).trim().toLowerCase();
+    const user = await selectOne('users', {
+      filters: [{ type: 'eq', column: 'email', value: normalizedEmail }]
+    });
+
     if (!user) {
       return res.status(401).json({ message: 'Credenciales inválidas' });
     }
 
-    const isPasswordValid = await bcrypt.compare(password, user.password);
+    const isPasswordValid = await bcrypt.compare(password, user.password_hash || '');
     if (!isPasswordValid) {
       return res.status(401).json({ message: 'Credenciales inválidas' });
     }
@@ -95,7 +111,10 @@ const login = async (req, res, next) => {
 
 const me = async (req, res, next) => {
   try {
-    const user = await User.findById(req.user.id);
+    const user = await selectOne('users', {
+      filters: [{ type: 'eq', column: 'id', value: req.user.id }]
+    });
+
     if (!user) {
       return res.status(404).json({ message: 'Usuario no encontrado' });
     }

@@ -1,10 +1,12 @@
-const mongoose = require('mongoose');
-const User = require('../models/User');
-const Profile = require('../models/Profile');
-const AdminMovie = require('../models/AdminMovie');
-const Genre = require('../models/Genre');
-const AdminSetting = require('../models/AdminSetting');
-const UserPreferences = require('../models/UserPreferences');
+const {
+  selectMany,
+  selectOne,
+  countRows,
+  insertOne,
+  updateRows,
+  deleteRows,
+  upsertOne
+} = require('../services/supabaseRepository');
 
 const slugify = (value) =>
   String(value || '')
@@ -16,65 +18,73 @@ const slugify = (value) =>
     .replace(/^-+|-+$/g, '');
 
 const sanitizeMovie = (movie) => ({
-  id: movie._id,
-  tmdbId: movie.tmdbId,
+  id: movie.id,
+  tmdbId: movie.tmdb_id,
   title: movie.title,
   overview: movie.overview,
   poster: movie.poster,
   backdrop: movie.backdrop,
-  releaseDate: movie.releaseDate,
+  releaseDate: movie.release_date,
   runtime: movie.runtime,
-  genres: movie.genres,
-  videoSource: movie.videoSource,
-  featured: movie.featured,
+  genres: movie.genres || [],
+  videoSource: movie.video_source,
+  featured: Boolean(movie.featured),
   status: movie.status,
-  createdBy: movie.createdBy,
-  createdAt: movie.createdAt,
-  updatedAt: movie.updatedAt
+  processingStatus: movie.processing_status,
+  sourceFile: movie.source_file,
+  hlsDirectory: movie.hls_directory,
+  hlsManifest: movie.hls_manifest,
+  hlsQualities: movie.hls_qualities || [],
+  createdBy: movie.created_by,
+  createdAt: movie.created_at,
+  updatedAt: movie.updated_at
 });
 
 const sanitizeGenre = (genre) => ({
-  id: genre._id,
-  tmdbId: genre.tmdbId,
+  id: genre.id,
+  tmdbId: genre.tmdb_id,
   name: genre.name,
   slug: genre.slug,
   color: genre.color,
   description: genre.description,
-  active: genre.active,
-  createdAt: genre.createdAt,
-  updatedAt: genre.updatedAt
+  active: Boolean(genre.active),
+  createdAt: genre.created_at,
+  updatedAt: genre.updated_at
 });
 
 const sanitizeUser = (user) => ({
-  id: user._id,
+  id: user.id,
   name: user.name,
   email: user.email,
   role: user.role || 'user',
-  createdAt: user.createdAt,
-  updatedAt: user.updatedAt
+  createdAt: user.created_at,
+  updatedAt: user.updated_at
 });
 
 const ensureAdminSetting = async (key, fallback = {}) => {
-  let setting = await AdminSetting.findOne({ key });
-  if (!setting) {
-    setting = await AdminSetting.create({ key, value: fallback });
+  const existing = await selectOne('admin_settings', {
+    filters: [{ type: 'eq', column: 'key', value: key }]
+  });
+
+  if (existing) {
+    return existing;
   }
 
-  return setting;
+  return insertOne('admin_settings', { key, value: fallback });
 };
 
 const getDashboard = async (_req, res, next) => {
   try {
     const [userCount, adminCount, profileCount, movieCount, genreCount, preferenceCount, recentUsers, recentMovies] =
       await Promise.all([
-        User.countDocuments(),
-        User.countDocuments({ role: 'admin' }),
-        Profile.countDocuments(),
-        AdminMovie.countDocuments(),
-        Genre.countDocuments(),
-        UserPreferences.countDocuments(),
-        User.find().sort({ createdAt: -1 }).limit(5),
-        AdminMovie.find().sort({ createdAt: -1 }).limit(5)
+        countRows('users'),
+        countRows('users', [{ type: 'eq', column: 'role', value: 'admin' }]),
+        countRows('profiles'),
+        countRows('movies'),
+        countRows('genres'),
+        countRows('user_preferences'),
+        selectMany('users', { order: { column: 'created_at', ascending: false }, limit: 5 }),
+        selectMany('movies', { order: { column: 'created_at', ascending: false }, limit: 5 })
       ]);
 
     const settings = await Promise.all([
@@ -102,7 +112,7 @@ const getDashboard = async (_req, res, next) => {
 
 const listMovies = async (_req, res, next) => {
   try {
-    const movies = await AdminMovie.find().sort({ createdAt: -1 });
+    const movies = await selectMany('movies', { order: { column: 'created_at', ascending: false } });
     return res.json({ movies: movies.map(sanitizeMovie) });
   } catch (error) {
     return next(error);
@@ -129,19 +139,19 @@ const createMovie = async (req, res, next) => {
       return res.status(400).json({ message: 'tmdbId y título son obligatorios' });
     }
 
-    const movie = await AdminMovie.create({
-      tmdbId: Number(tmdbId),
+    const movie = await insertOne('movies', {
+      tmdb_id: Number(tmdbId),
       title,
       overview,
       poster,
       backdrop,
-      releaseDate,
+      release_date: releaseDate,
       runtime: Number(runtime || 0),
       genres: Array.isArray(genres) ? genres : [],
-      videoSource,
+      video_source: videoSource,
       featured: Boolean(featured),
       status,
-      createdBy: req.user.id
+      created_by: req.user.id
     });
 
     return res.status(201).json({
@@ -149,7 +159,7 @@ const createMovie = async (req, res, next) => {
       movie: sanitizeMovie(movie)
     });
   } catch (error) {
-    if (error.code === 11000) {
+    if (String(error.code || '').includes('23505') || String(error.message || '').includes('duplicate')) {
       return res.status(409).json({ message: 'Ya existe una película con ese TMDB ID' });
     }
     return next(error);
@@ -159,30 +169,40 @@ const createMovie = async (req, res, next) => {
 const updateMovie = async (req, res, next) => {
   try {
     const { movieId } = req.params;
-    if (!mongoose.Types.ObjectId.isValid(movieId)) {
-      return res.status(400).json({ message: 'Película inválida' });
-    }
+    const movie = await selectOne('movies', {
+      filters: [{ type: 'eq', column: 'id', value: movieId }]
+    });
 
-    const movie = await AdminMovie.findById(movieId);
     if (!movie) {
       return res.status(404).json({ message: 'Película no encontrada' });
     }
 
-    const fields = ['tmdbId', 'title', 'overview', 'poster', 'backdrop', 'releaseDate', 'runtime', 'videoSource', 'featured', 'status'];
+    const payload = {};
+    const fields = ['tmdbId', 'title', 'overview', 'poster', 'backdrop', 'releaseDate', 'runtime', 'videoSource', 'featured', 'status', 'processingStatus', 'sourceFile', 'hlsDirectory', 'hlsManifest'];
     fields.forEach((field) => {
       if (req.body[field] !== undefined) {
-        movie[field] = field === 'runtime' || field === 'tmdbId' ? Number(req.body[field]) : req.body[field];
+        const map = {
+          tmdbId: 'tmdb_id',
+          releaseDate: 'release_date',
+          videoSource: 'video_source',
+          processingStatus: 'processing_status',
+          sourceFile: 'source_file',
+          hlsDirectory: 'hls_directory',
+          hlsManifest: 'hls_manifest'
+        };
+        const target = map[field] || field;
+        payload[target] = field === 'runtime' || field === 'tmdbId' ? Number(req.body[field]) : req.body[field];
       }
     });
 
     if (Array.isArray(req.body.genres)) {
-      movie.genres = req.body.genres;
+      payload.genres = req.body.genres;
     }
 
-    await movie.save();
+    const [updatedMovie] = await updateRows('movies', [{ type: 'eq', column: 'id', value: movieId }], payload);
     return res.json({
       message: 'Película actualizada correctamente',
-      movie: sanitizeMovie(movie)
+      movie: sanitizeMovie(updatedMovie)
     });
   } catch (error) {
     return next(error);
@@ -192,12 +212,9 @@ const updateMovie = async (req, res, next) => {
 const deleteMovie = async (req, res, next) => {
   try {
     const { movieId } = req.params;
-    if (!mongoose.Types.ObjectId.isValid(movieId)) {
-      return res.status(400).json({ message: 'Película inválida' });
-    }
+    const deleted = await deleteRows('movies', [{ type: 'eq', column: 'id', value: movieId }]);
 
-    const movie = await AdminMovie.findByIdAndDelete(movieId);
-    if (!movie) {
+    if (!deleted.length) {
       return res.status(404).json({ message: 'Película no encontrada' });
     }
 
@@ -209,7 +226,7 @@ const deleteMovie = async (req, res, next) => {
 
 const listGenres = async (_req, res, next) => {
   try {
-    const genres = await Genre.find().sort({ createdAt: -1 });
+    const genres = await selectMany('genres', { order: { column: 'created_at', ascending: false } });
     return res.json({ genres: genres.map(sanitizeGenre) });
   } catch (error) {
     return next(error);
@@ -225,8 +242,8 @@ const createGenre = async (req, res, next) => {
     }
 
     const slug = slugify(name);
-    const genre = await Genre.create({
-      tmdbId: tmdbId ? Number(tmdbId) : null,
+    const genre = await insertOne('genres', {
+      tmdb_id: tmdbId ? Number(tmdbId) : null,
       name,
       slug,
       color,
@@ -239,7 +256,7 @@ const createGenre = async (req, res, next) => {
       genre: sanitizeGenre(genre)
     });
   } catch (error) {
-    if (error.code === 11000) {
+    if (String(error.code || '').includes('23505') || String(error.message || '').includes('duplicate')) {
       return res.status(409).json({ message: 'Ya existe un género con ese slug' });
     }
     return next(error);
@@ -249,32 +266,32 @@ const createGenre = async (req, res, next) => {
 const updateGenre = async (req, res, next) => {
   try {
     const { genreId } = req.params;
-    if (!mongoose.Types.ObjectId.isValid(genreId)) {
-      return res.status(400).json({ message: 'Género inválido' });
-    }
+    const genre = await selectOne('genres', {
+      filters: [{ type: 'eq', column: 'id', value: genreId }]
+    });
 
-    const genre = await Genre.findById(genreId);
     if (!genre) {
       return res.status(404).json({ message: 'Género no encontrado' });
     }
 
+    const payload = {};
     if (req.body.name) {
-      genre.name = req.body.name;
-      genre.slug = slugify(req.body.name);
+      payload.name = req.body.name;
+      payload.slug = slugify(req.body.name);
     }
 
     if (req.body.tmdbId !== undefined) {
-      genre.tmdbId = req.body.tmdbId ? Number(req.body.tmdbId) : null;
+      payload.tmdb_id = req.body.tmdbId ? Number(req.body.tmdbId) : null;
     }
 
-    if (req.body.color) genre.color = req.body.color;
-    if (req.body.description !== undefined) genre.description = req.body.description;
-    if (typeof req.body.active === 'boolean') genre.active = req.body.active;
+    if (req.body.color) payload.color = req.body.color;
+    if (req.body.description !== undefined) payload.description = req.body.description;
+    if (typeof req.body.active === 'boolean') payload.active = req.body.active;
 
-    await genre.save();
+    const [updatedGenre] = await updateRows('genres', [{ type: 'eq', column: 'id', value: genreId }], payload);
     return res.json({
       message: 'Género actualizado correctamente',
-      genre: sanitizeGenre(genre)
+      genre: sanitizeGenre(updatedGenre)
     });
   } catch (error) {
     return next(error);
@@ -284,12 +301,9 @@ const updateGenre = async (req, res, next) => {
 const deleteGenre = async (req, res, next) => {
   try {
     const { genreId } = req.params;
-    if (!mongoose.Types.ObjectId.isValid(genreId)) {
-      return res.status(400).json({ message: 'Género inválido' });
-    }
+    const deleted = await deleteRows('genres', [{ type: 'eq', column: 'id', value: genreId }]);
 
-    const genre = await Genre.findByIdAndDelete(genreId);
-    if (!genre) {
+    if (!deleted.length) {
       return res.status(404).json({ message: 'Género no encontrado' });
     }
 
@@ -301,7 +315,7 @@ const deleteGenre = async (req, res, next) => {
 
 const listUsers = async (_req, res, next) => {
   try {
-    const users = await User.find().sort({ createdAt: -1 });
+    const users = await selectMany('users', { order: { column: 'created_at', ascending: false } });
     return res.json({ users: users.map(sanitizeUser) });
   } catch (error) {
     return next(error);
@@ -311,22 +325,22 @@ const listUsers = async (_req, res, next) => {
 const updateUser = async (req, res, next) => {
   try {
     const { userId } = req.params;
-    if (!mongoose.Types.ObjectId.isValid(userId)) {
-      return res.status(400).json({ message: 'Usuario inválido' });
-    }
+    const user = await selectOne('users', {
+      filters: [{ type: 'eq', column: 'id', value: userId }]
+    });
 
-    const user = await User.findById(userId);
     if (!user) {
       return res.status(404).json({ message: 'Usuario no encontrado' });
     }
 
-    if (req.body.name) user.name = req.body.name;
-    if (req.body.role && ['user', 'admin'].includes(req.body.role)) user.role = req.body.role;
+    const payload = {};
+    if (req.body.name) payload.name = req.body.name;
+    if (req.body.role && ['user', 'admin'].includes(req.body.role)) payload.role = req.body.role;
 
-    await user.save();
+    const [updatedUser] = await updateRows('users', [{ type: 'eq', column: 'id', value: userId }], payload);
     return res.json({
       message: 'Usuario actualizado correctamente',
-      user: sanitizeUser(user)
+      user: sanitizeUser(updatedUser)
     });
   } catch (error) {
     return next(error);
@@ -336,23 +350,15 @@ const updateUser = async (req, res, next) => {
 const deleteUser = async (req, res, next) => {
   try {
     const { userId } = req.params;
-    if (!mongoose.Types.ObjectId.isValid(userId)) {
-      return res.status(400).json({ message: 'Usuario inválido' });
-    }
 
     if (String(userId) === String(req.user.id)) {
       return res.status(400).json({ message: 'No puedes eliminar tu propio usuario desde el panel' });
     }
 
-    const user = await User.findByIdAndDelete(userId);
-    if (!user) {
+    const deleted = await deleteRows('users', [{ type: 'eq', column: 'id', value: userId }]);
+    if (!deleted.length) {
       return res.status(404).json({ message: 'Usuario no encontrado' });
     }
-
-    await Promise.all([
-      Profile.deleteMany({ user: userId }),
-      UserPreferences.deleteMany({ user: userId })
-    ]);
 
     return res.json({ message: 'Usuario eliminado correctamente' });
   } catch (error) {
@@ -382,13 +388,21 @@ const updateSettings = async (req, res, next) => {
     const ui = await ensureAdminSetting('ui', { theme: 'morado-negro', accent: '#8a4dff' });
 
     if (payload.catalog && typeof payload.catalog === 'object') {
-      catalog.value = { ...catalog.value, ...payload.catalog };
-      await catalog.save();
+      const [updatedCatalog] = await updateRows(
+        'admin_settings',
+        [{ type: 'eq', column: 'key', value: 'catalog' }],
+        { value: { ...catalog.value, ...payload.catalog } }
+      );
+      catalog.value = updatedCatalog.value;
     }
 
     if (payload.ui && typeof payload.ui === 'object') {
-      ui.value = { ...ui.value, ...payload.ui };
-      await ui.save();
+      const [updatedUi] = await updateRows(
+        'admin_settings',
+        [{ type: 'eq', column: 'key', value: 'ui' }],
+        { value: { ...ui.value, ...payload.ui } }
+      );
+      ui.value = updatedUi.value;
     }
 
     return res.json({

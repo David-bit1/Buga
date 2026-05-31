@@ -1,11 +1,11 @@
 # Buga
 
-Plataforma de streaming premium con frontend estático y backend separado.
+Plataforma de streaming premium con frontend estático, backend separado y base de datos en Supabase.
 
 ## Estructura
 
 - `frontend/`: interfaz pública, páginas y recursos estáticos.
-- `backend/`: API REST, autenticación, perfiles, recomendaciones, administración y HLS.
+- `backend/`: API REST, autenticación JWT, perfiles, recomendaciones, administración, HLS y Supabase.
 - `docs/`: documentación técnica y de despliegue.
 
 ## Desarrollo
@@ -17,4 +17,13 @@ Plataforma de streaming premium con frontend estático y backend separado.
 
 - Despliega `frontend/` en Vercel.
 - Despliega `backend/` en un servicio Node independiente.
-- Las peticiones a `/api` asumen mismo origen o un proxy hacia el backend.
+- El frontend necesita apuntar al backend de Render mediante `/api` proxy o una base URL compartida.
+
+## Variables de entorno del backend
+
+- `SUPABASE_URL`
+- `SUPABASE_KEY`
+- `JWT_SECRET`
+- `CLIENT_ORIGIN`
+- `TMDB_API_KEY`
+- `ADMIN_EMAILS`

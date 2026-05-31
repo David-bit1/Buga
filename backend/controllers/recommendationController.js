@@ -1,8 +1,14 @@
-const Profile = require('../models/Profile');
+const { selectOne } = require('../services/supabaseRepository');
 const { getRecommendationsForProfile, recordEvent } = require('../services/recommendationService');
 
 const ensureProfileOwned = async (userId, profileId) => {
-  const profile = await Profile.findOne({ _id: profileId, user: userId });
+  const profile = await selectOne('profiles', {
+    filters: [
+      { type: 'eq', column: 'id', value: profileId },
+      { type: 'eq', column: 'user_id', value: userId }
+    ]
+  });
+
   if (!profile) {
     const error = new Error('Perfil no encontrado');
     error.statusCode = 404;

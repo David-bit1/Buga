@@ -1,7 +1,6 @@
 const express = require('express');
 const cors = require('cors');
 const dotenv = require('dotenv');
-const connectDB = require('./config/db');
 const authRoutes = require('./routes/authRoutes');
 const profileRoutes = require('./routes/profileRoutes');
 const recommendationRoutes = require('./routes/recommendationRoutes');
@@ -12,8 +11,20 @@ dotenv.config();
 
 const app = express();
 const port = process.env.PORT || 3000;
+const allowedOrigins = String(process.env.CLIENT_ORIGIN || '')
+  .split(',')
+  .map((origin) => origin.trim())
+  .filter(Boolean);
 
-app.use(cors());
+app.use(cors({
+  origin(origin, callback) {
+    if (!origin || allowedOrigins.length === 0 || allowedOrigins.includes(origin)) {
+      return callback(null, true);
+    }
+
+    return callback(new Error(`Origen no permitido por CORS: ${origin}`));
+  }
+}));
 app.use(express.json());
 
 app.use('/api/auth', authRoutes);
@@ -35,7 +46,6 @@ app.use((error, _req, res, _next) => {
 
 const start = async () => {
   try {
-    await connectDB();
     app.listen(port, () => {
       console.log(`Buga backend corriendo en http://localhost:${port}`);
     });
