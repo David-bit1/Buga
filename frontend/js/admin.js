@@ -73,12 +73,12 @@ const authMultipartFetch = (url, formData) => {
 const requireAdmin = () => {
     const session = window.BugaAuth?.getAuthSession?.();
     if (!session?.token) {
-        window.location.href = 'login.html';
+        window.location.href = '/pages/login.html';
         return false;
     }
 
     if (session.user?.role !== 'admin') {
-        window.location.href = 'index.html';
+        window.location.href = '/index.html';
         return false;
     }
 
@@ -553,7 +553,7 @@ const bootstrap = async () => {
     adminLogout?.addEventListener('click', () => {
         window.BugaAuth?.clearAuthSession?.();
         window.BugaAuth?.clearActiveProfile?.();
-        window.location.href = 'login.html';
+        window.location.href = '/pages/login.html';
     });
 
     movieForm?.addEventListener('submit', handleMovieSubmit);

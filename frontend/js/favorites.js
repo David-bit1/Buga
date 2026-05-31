@@ -124,7 +124,7 @@ const renderEmptyState = () => {
         <article class="favorites-empty">
             <h3>Tu lista está vacía</h3>
             <p>Agrega películas desde las cards del inicio o desde la ficha individual para verlas aquí guardadas.</p>
-            <a class="btn" href="index.html">Explorar películas</a>
+            <a class="btn" href="/index.html">Explorar películas</a>
         </article>
     `;
 };
@@ -242,7 +242,7 @@ const wireMenu = () => {
 };
 
 const navigateToMovie = (movieId) => {
-    const targetUrl = `movie.html?id=${movieId}`;
+    const targetUrl = `/pages/movie.html?id=${movieId}`;
     document.body.classList.add('page-leaving');
     window.setTimeout(() => {
         window.location.href = targetUrl;

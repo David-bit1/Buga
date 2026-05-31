@@ -750,7 +750,7 @@ const bootstrap = async () => {
     if (backLink) {
         backLink.addEventListener('click', (event) => {
             event.preventDefault();
-            navigateWithTransition('index.html');
+            navigateWithTransition('/index.html');
         });
     }
 

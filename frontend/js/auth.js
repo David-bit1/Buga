@@ -351,7 +351,7 @@ const updateNavbarAuth = () => {
             chip.setAttribute('aria-label', 'Iniciar sesión');
             chip.dataset.authState = 'guest';
             chip.onclick = () => {
-                window.location.href = 'login.html';
+                window.location.href = '/pages/login.html';
             };
             return;
         }
@@ -382,7 +382,7 @@ const handleLogout = () => {
     clearActiveProfile();
     hideProfileDropdown();
     updateNavbarAuth();
-    window.location.href = 'index.html';
+    window.location.href = '/index.html';
 };
 
 const fetchCurrentUser = async () => {
@@ -439,7 +439,7 @@ const handleAuthForm = async (form) => {
                 ? 'Tu cuenta premium quedó lista.'
                 : 'Bienvenido de vuelta a Buga.'
         });
-        window.location.href = 'profiles.html';
+        window.location.href = '/pages/profiles.html';
     } catch (error) {
         showAuthError(form, error.message || 'Ocurrió un error');
         showBugaToast({
@@ -486,19 +486,19 @@ const bootstrapDropdown = () => {
 
         if (event.target.closest('[data-auth-action="profiles"]')) {
             hideProfileDropdown();
-            window.location.href = 'profiles.html';
+            window.location.href = '/pages/profiles.html';
             return;
         }
 
         if (event.target.closest('[data-auth-action="manage-profiles"]')) {
             hideProfileDropdown();
-            window.location.href = 'manage-profiles.html';
+            window.location.href = '/pages/manage-profiles.html';
             return;
         }
 
         if (event.target.closest('[data-auth-action="admin"]')) {
             hideProfileDropdown();
-            window.location.href = 'admin.html';
+            window.location.href = '/pages/admin.html';
             return;
         }
 
@@ -528,12 +528,12 @@ document.addEventListener('DOMContentLoaded', () => {
         const isAdminPage = document.body.classList.contains('admin-page');
 
         if (hasSession && isAuthPage) {
-            window.location.href = 'profiles.html';
+            window.location.href = '/pages/profiles.html';
             return;
         }
 
         if (hasSession && !isProfilesPage && !isAdminPage && !getActiveProfile()) {
-            window.location.href = 'profiles.html';
+            window.location.href = '/pages/profiles.html';
         }
     })();
 });

@@ -77,7 +77,7 @@ const scrollByAmount = (direction) => {
 const navigateToMovie = (movieId) => {
     document.body.classList.add('page-leaving');
     window.setTimeout(() => {
-        window.location.href = `movie.html?id=${movieId}`;
+        window.location.href = `/pages/movie.html?id=${movieId}`;
     }, 180);
 };
 
@@ -148,7 +148,7 @@ const renderEmptyState = (title, message) => {
                 <p class="recommendation-badge">Personalizado</p>
                 <h3>${escapeText(title)}</h3>
                 <p>${escapeText(message)}</p>
-                <a class="btn" href="index.html">Explorar catálogo</a>
+                <a class="btn" href="/index.html">Explorar catálogo</a>
             </div>
         </article>
     `;

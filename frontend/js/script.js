@@ -806,11 +806,11 @@ const updateHeroContent = (movie) => {
             heroDescription.textContent = movie.description;
         }
         if (heroPrimaryAction) {
-            heroPrimaryAction.href = `movie.html?id=${movie.id}`;
+            heroPrimaryAction.href = `/pages/movie.html?id=${movie.id}`;
             heroPrimaryAction.textContent = 'Ver ahora';
         }
         if (heroSecondaryAction) {
-            heroSecondaryAction.href = `movie.html?id=${movie.id}`;
+            heroSecondaryAction.href = `/pages/movie.html?id=${movie.id}`;
             heroSecondaryAction.textContent = 'Más información';
         }
         if (heroMeta) {
@@ -1448,7 +1448,7 @@ const wireMenu = () => {
 };
 
 const navigateToMovie = (movieId) => {
-    const targetUrl = `movie.html?id=${movieId}`;
+    const targetUrl = `/pages/movie.html?id=${movieId}`;
     document.body.classList.add('page-leaving');
     window.setTimeout(() => {
         window.location.href = targetUrl;

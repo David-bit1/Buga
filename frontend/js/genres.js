@@ -245,7 +245,7 @@ const toggleFavorite = (movieId) => {
 const navigateToMovie = (movieId) => {
     document.body.classList.add('page-leaving');
     window.setTimeout(() => {
-        window.location.href = `movie.html?id=${movieId}`;
+        window.location.href = `/pages/movie.html?id=${movieId}`;
     }, 180);
 };
 

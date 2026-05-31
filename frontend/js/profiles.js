@@ -30,7 +30,7 @@ let editingProfileId = '';
 
 const requireAuth = () => {
   if (!window.BugaAuth?.getAuthToken?.()) {
-    window.location.href = 'login.html';
+    window.location.href = '/pages/login.html';
     return false;
   }
 
@@ -175,7 +175,7 @@ const selectProfile = (profile) => {
     key: `select:${profile.id}`
   });
   window.setTimeout(() => {
-    window.location.href = 'index.html';
+    window.location.href = '/index.html';
   }, 350);
 };
 
@@ -303,7 +303,7 @@ const refreshProfiles = async () => {
     console.warn('Profiles failed', error);
     notify({ type: 'error', title: 'No se pudieron cargar los perfiles', message: error.message || 'Revisa tu conexión.' });
     if (error.status === 401 || error.status === 403) {
-      window.location.href = 'login.html';
+      window.location.href = '/pages/login.html';
     }
   } finally {
     hideLoader();
@@ -327,7 +327,7 @@ const wireEvents = () => {
     const createCard = event.target.closest('#openManageProfiles');
 
     if (createCard) {
-      window.location.href = 'manage-profiles.html';
+      window.location.href = '/pages/manage-profiles.html';
       return;
     }
 
@@ -361,7 +361,7 @@ const wireEvents = () => {
   profileCancel?.addEventListener('click', resetForm);
 
   createProfileShortcut?.addEventListener('click', () => {
-    window.location.href = 'manage-profiles.html';
+    window.location.href = '/pages/manage-profiles.html';
   });
 };
 

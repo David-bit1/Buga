@@ -1,4 +1,3 @@
-const path = require('path');
 const express = require('express');
 const cors = require('cors');
 const dotenv = require('dotenv');
@@ -22,7 +21,6 @@ app.use('/api/profiles', profileRoutes);
 app.use('/api/recommendations', recommendationRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/videos', videoRoutes);
-app.use(express.static(path.join(__dirname, '..', 'Frontend')));
 
 app.get('/health', (_req, res) => {
   res.json({ ok: true });
