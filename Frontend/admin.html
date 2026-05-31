@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#08040f">
+    <title>Buga | Panel de Administración</title>
+    <link rel="stylesheet" href="admin.css">
+</head>
+<body class="admin-page is-loading">
+    <div class="page-loader" id="pageLoader" aria-live="polite" aria-label="Cargando panel administrativo">
+        <div class="page-loader-card">
+            <div class="page-loader-spinner" aria-hidden="true"></div>
+            <p>Cargando panel</p>
+        </div>
+    </div>
+
+    <div class="admin-shell">
+        <aside class="admin-sidebar" id="adminSidebar">
+            <div class="admin-brand">
+                <img src="img/log-tipo.png" alt="Logo BUGA" class="admin-logo">
+                <div>
+                    <p>Netflix Admin style</p>
+                    <h1>Buga Admin</h1>
+                </div>
+            </div>
+
+            <nav class="admin-nav" aria-label="Navegación del panel">
+                <button class="admin-nav-link is-active" type="button" data-admin-tab="dashboard">Dashboard</button>
+                <button class="admin-nav-link" type="button" data-admin-tab="movies">Películas</button>
+                <button class="admin-nav-link" type="button" data-admin-tab="users">Usuarios</button>
+                <button class="admin-nav-link" type="button" data-admin-tab="genres">Géneros</button>
+                <button class="admin-nav-link" type="button" data-admin-tab="settings">Configuración</button>
+            </nav>
+
+            <div class="admin-sidebar-footer">
+                <a class="admin-back-link" href="index.html">Volver a Buga</a>
+                <button class="admin-logout" type="button" id="adminLogout">Cerrar sesión</button>
+            </div>
+        </aside>
+
+        <main class="admin-main">
+            <header class="admin-topbar">
+                <div>
+                    <p class="admin-kicker">Panel exclusivo</p>
+                    <h2>Administración de la plataforma</h2>
+                </div>
+                <div class="admin-topbar-actions">
+                    <button class="admin-refresh" type="button" id="adminRefresh">Actualizar</button>
+                </div>
+            </header>
+
+            <section class="admin-section is-active" data-admin-section="dashboard">
+                <div class="admin-stats" id="adminStats"></div>
+                <div class="admin-grid two-col">
+                    <article class="admin-card">
+                        <h3>Actividad reciente</h3>
+                        <div class="admin-list" id="recentUsers"></div>
+                    </article>
+                    <article class="admin-card">
+                        <h3>Últimas películas</h3>
+                        <div class="admin-list" id="recentMovies"></div>
+                    </article>
+                </div>
+            </section>
+
+            <section class="admin-section" data-admin-section="movies">
+                <article class="admin-card">
+                    <div class="admin-card-header">
+                        <div>
+                            <p class="admin-kicker">Películas</p>
+                            <h3>Agregar / editar película</h3>
+                        </div>
+                        <button class="admin-secondary" type="button" id="clearMovieForm">Limpiar</button>
+                    </div>
+
+                    <form class="admin-form" id="movieForm">
+                        <input type="hidden" id="movieId">
+                        <div class="admin-form-grid">
+                            <label><span>TMDB ID</span><input id="movieTmdbId" type="number" placeholder="238" required></label>
+                            <label><span>Título</span><input id="movieTitle" type="text" placeholder="The Godfather" required></label>
+                        </div>
+                        <label><span>Descripción</span><textarea id="movieOverview" rows="4" placeholder="Descripción completa"></textarea></label>
+                        <div class="admin-form-grid">
+                            <label><span>Poster</span><input id="moviePoster" type="url" placeholder="https://..."></label>
+                            <label><span>Backdrop</span><input id="movieBackdrop" type="url" placeholder="https://..."></label>
+                        </div>
+                        <div class="admin-form-grid">
+                            <label><span>Estreno</span><input id="movieReleaseDate" type="text" placeholder="1972-03-14"></label>
+                            <label><span>Duración</span><input id="movieRuntime" type="number" placeholder="175"></label>
+                        </div>
+                        <div class="admin-form-grid">
+                            <label><span>Video</span><input id="movieVideoSource" type="url" placeholder="https://...mp4"></label>
+                            <label><span>Estado</span>
+                                <select id="movieStatus">
+                                    <option value="published">Publicado</option>
+                                    <option value="draft">Borrador</option>
+                                </select>
+                            </label>
+                        </div>
+                        <label><span>Subir MP4</span><input id="movieUpload" type="file" accept="video/mp4,video/*"></label>
+                        <label><span>Géneros</span><input id="movieGenres" type="text" placeholder="Drama, Crimen"></label>
+                        <label class="admin-switch">
+                            <input id="movieFeatured" type="checkbox">
+                            <span>Destacada</span>
+                        </label>
+                        <div class="admin-actions">
+                            <button class="admin-primary" type="submit" id="movieSubmit">Guardar película</button>
+                        </div>
+                    </form>
+                </article>
+
+                <article class="admin-card">
+                    <div class="admin-card-header">
+                        <div>
+                            <p class="admin-kicker">Catálogo</p>
+                            <h3>Películas guardadas</h3>
+                        </div>
+                    </div>
+                    <div class="admin-table-wrap">
+                        <table class="admin-table">
+                            <thead>
+                                <tr>
+                                    <th>Título</th>
+                                    <th>TMDB</th>
+                                    <th>Estado</th>
+                                    <th>Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody id="moviesTable"></tbody>
+                        </table>
+                    </div>
+                </article>
+            </section>
+
+            <section class="admin-section" data-admin-section="users">
+                <article class="admin-card">
+                    <div class="admin-card-header">
+                        <div>
+                            <p class="admin-kicker">Usuarios</p>
+                            <h3>Gestionar usuarios</h3>
+                        </div>
+                    </div>
+                    <div class="admin-table-wrap">
+                        <table class="admin-table">
+                            <thead>
+                                <tr>
+                                    <th>Nombre</th>
+                                    <th>Email</th>
+                                    <th>Rol</th>
+                                    <th>Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody id="usersTable"></tbody>
+                        </table>
+                    </div>
+                </article>
+            </section>
+
+            <section class="admin-section" data-admin-section="genres">
+                <div class="admin-grid two-col">
+                    <article class="admin-card">
+                        <div class="admin-card-header">
+                            <div>
+                                <p class="admin-kicker">Géneros</p>
+                                <h3>Agregar / editar género</h3>
+                            </div>
+                            <button class="admin-secondary" type="button" id="clearGenreForm">Limpiar</button>
+                        </div>
+
+                        <form class="admin-form" id="genreForm">
+                            <input type="hidden" id="genreId">
+                            <div class="admin-form-grid">
+                                <label><span>Nombre</span><input id="genreName" type="text" placeholder="Drama" required></label>
+                                <label><span>TMDB ID</span><input id="genreTmdbId" type="number" placeholder="18"></label>
+                            </div>
+                            <div class="admin-form-grid">
+                                <label><span>Color</span><input id="genreColor" type="color" value="#8a4dff"></label>
+                                <label><span>Activo</span>
+                                    <select id="genreActive">
+                                        <option value="true">Sí</option>
+                                        <option value="false">No</option>
+                                    </select>
+                                </label>
+                            </div>
+                            <label><span>Descripción</span><textarea id="genreDescription" rows="4" placeholder="Descripción del género"></textarea></label>
+                            <div class="admin-actions">
+                                <button class="admin-primary" type="submit" id="genreSubmit">Guardar género</button>
+                            </div>
+                        </form>
+                    </article>
+
+                    <article class="admin-card">
+                        <div class="admin-card-header">
+                            <div>
+                                <p class="admin-kicker">Lista</p>
+                                <h3>Géneros creados</h3>
+                            </div>
+                        </div>
+                        <div class="admin-table-wrap">
+                            <table class="admin-table">
+                                <thead>
+                                    <tr>
+                                        <th>Nombre</th>
+                                        <th>Slug</th>
+                                        <th>Estado</th>
+                                        <th>Acciones</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="genresTable"></tbody>
+                            </table>
+                        </div>
+                    </article>
+                </div>
+            </section>
+
+            <section class="admin-section" data-admin-section="settings">
+                <div class="admin-grid two-col">
+                    <article class="admin-card">
+                        <div class="admin-card-header">
+                            <div>
+                                <p class="admin-kicker">Configuración</p>
+                                <h3>Ajustes del catálogo</h3>
+                            </div>
+                        </div>
+                        <form class="admin-form" id="settingsForm">
+                            <label><span>Películas destacadas</span><input id="settingFeaturedLimit" type="number" min="1" value="10"></label>
+                            <label><span>Trending</span><input id="settingTrendingLimit" type="number" min="1" value="8"></label>
+                            <label class="admin-switch">
+                                <input id="settingUserUploads" type="checkbox">
+                                <span>Permitir cargas de usuario</span>
+                            </label>
+                            <label><span>Tema</span><input id="settingTheme" type="text" value="morado-negro"></label>
+                            <label><span>Color principal</span><input id="settingAccent" type="color" value="#8a4dff"></label>
+                            <div class="admin-actions">
+                                <button class="admin-primary" type="submit">Guardar configuración</button>
+                            </div>
+                        </form>
+                    </article>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <script src="auth.js"></script>
+    <script src="admin.js"></script>
+</body>
+</html>

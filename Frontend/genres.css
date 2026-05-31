@@ -1,0 +1,198 @@
+@import url("style.css");
+
+.genres-main {
+    display: block;
+}
+
+.genres-hero {
+    position: relative;
+    isolation: isolate;
+    min-height: clamp(30rem, 80svh, 48rem);
+    display: grid;
+    place-items: center;
+    padding: clamp(1.75rem, 4vw, 4rem) 0;
+    text-align: center;
+    background:
+        linear-gradient(180deg, rgba(6, 2, 10, 0.16), rgba(6, 2, 10, 0.78)),
+        radial-gradient(circle at top, rgba(138, 77, 255, 0.18), transparent 42%),
+        radial-gradient(circle at bottom, rgba(60, 18, 199, 0.12), transparent 30%);
+}
+
+.genres-banner {
+    width: min(860px, calc(100% - 1.75rem));
+}
+
+.genres-kicker {
+    margin-bottom: 0.9rem;
+    color: rgba(138, 77, 255, 0.95);
+    font-size: 0.88rem;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+}
+
+.genres-banner h1 {
+    font-size: clamp(2.3rem, 6vw, 5rem);
+    line-height: 0.95;
+    letter-spacing: -0.04em;
+    margin-bottom: 0.95rem;
+}
+
+.genres-banner p {
+    width: min(60ch, 100%);
+    margin: 0 auto;
+    color: rgba(248, 244, 255, 0.82);
+    font-size: clamp(0.98rem, 1.8vw, 1.08rem);
+    line-height: 1.75;
+}
+
+.genres-search {
+    margin-top: 1.6rem;
+}
+
+.genres-search-box {
+    width: min(42rem, 100%);
+    margin: 0 auto;
+}
+
+.genres-stats {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.9rem;
+    margin-top: 1.35rem;
+}
+
+.genre-stat {
+    padding: 1rem;
+    border-radius: 22px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    background: rgba(255, 255, 255, 0.05);
+    backdrop-filter: blur(12px);
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+}
+
+.genre-stat span {
+    color: rgba(247, 243, 255, 0.58);
+    font-size: 0.83rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+}
+
+.genre-stat strong {
+    font-size: 1.15rem;
+}
+
+.genres-section {
+    padding: 0 0 clamp(2.5rem, 5vw, 4rem);
+}
+
+.genres-section-header {
+    margin-bottom: 1.1rem;
+}
+
+.genres-section-header p {
+    color: rgba(248, 244, 255, 0.72);
+    margin-top: 0.4rem;
+}
+
+.genres-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    margin-bottom: 1.4rem;
+}
+
+.genre-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.82rem 1rem;
+    border-radius: 999px;
+    border: 1px solid rgba(138, 77, 255, 0.18);
+    background: rgba(255, 255, 255, 0.05);
+    color: rgba(255, 255, 255, 0.88);
+    cursor: pointer;
+    transition: transform 0.22s ease, background 0.22s ease, border-color 0.22s ease, box-shadow 0.22s ease;
+}
+
+.genre-chip:hover {
+    transform: translateY(-2px);
+    background: rgba(255, 255, 255, 0.08);
+    border-color: rgba(138, 77, 255, 0.45);
+    box-shadow: 0 10px 22px rgba(138, 77, 255, 0.15);
+}
+
+.genre-chip.is-active {
+    color: #fff;
+    background: linear-gradient(135deg, rgba(138, 77, 255, 0.94), rgba(60, 18, 199, 0.95));
+    border-color: rgba(255, 255, 255, 0.16);
+    box-shadow: 0 12px 26px rgba(138, 77, 255, 0.28);
+}
+
+.genre-chip-count {
+    min-width: 1.35rem;
+    height: 1.35rem;
+    border-radius: 999px;
+    display: inline-grid;
+    place-items: center;
+    padding: 0 0.42rem;
+    background: rgba(255, 255, 255, 0.14);
+    color: #fff;
+    font-size: 0.78rem;
+}
+
+.genres-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 1rem;
+}
+
+.genres-grid .movie-card {
+    height: 100%;
+}
+
+.genre-empty {
+    grid-column: 1 / -1;
+    padding: 2.2rem 1.4rem;
+    border-radius: 28px;
+    border: 1px solid rgba(138, 77, 255, 0.18);
+    background: rgba(15, 10, 26, 0.88);
+    color: rgba(248, 244, 255, 0.84);
+    text-align: center;
+}
+
+.genre-empty h3 {
+    font-size: clamp(1.2rem, 3vw, 1.8rem);
+    margin-bottom: 0.55rem;
+}
+
+.genre-empty p {
+    max-width: 58ch;
+    margin: 0 auto;
+    line-height: 1.75;
+    color: rgba(248, 244, 255, 0.72);
+}
+
+.genres-grid .movie-card-actions {
+    margin-top: auto;
+}
+
+@media (max-width: 640px) {
+    .genres-banner {
+        width: min(860px, calc(100% - 1rem));
+    }
+
+    .genres-stats {
+        grid-template-columns: 1fr;
+    }
+
+    .genres-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .genre-chip {
+        width: 100%;
+        justify-content: space-between;
+    }
+}

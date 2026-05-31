@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#08040f">
+    <title>Buga | Iniciar sesión</title>
+    <link rel="stylesheet" href="auth.css">
+</head>
+<body class="auth-page">
+    <main class="auth-shell">
+        <section class="auth-visual">
+            <div class="auth-visual-card">
+                <span class="auth-highlight">Buga Streaming</span>
+                <h1>Bienvenido de nuevo</h1>
+                <p>Accede a tu cuenta para seguir viendo películas, guardar favoritos y retomar donde lo dejaste.</p>
+            </div>
+        </section>
+
+        <section class="auth-panel">
+            <div class="auth-card">
+                <div class="auth-card-top">
+                    <img src="img/log-tipo.png" alt="Logo BUGA">
+                    <a href="index.html">Volver</a>
+                </div>
+
+                <h2>Iniciar sesión</h2>
+                <p>Entra a tu cuenta de Buga.</p>
+
+                <form class="auth-form" data-auth-form="login">
+                    <label class="auth-field">
+                        <span>Email</span>
+                        <input class="auth-input" type="email" name="email" placeholder="tu@email.com" required>
+                    </label>
+
+                    <label class="auth-field">
+                        <span>Contraseña</span>
+                        <input class="auth-input" type="password" name="password" placeholder="••••••••" required minlength="6">
+                    </label>
+
+                    <p class="auth-error" aria-live="polite"></p>
+
+                    <button class="auth-button" type="submit">Entrar</button>
+                </form>
+
+                <p class="auth-switch">¿No tienes cuenta? <a href="register.html">Crear cuenta</a></p>
+            </div>
+        </section>
+    </main>
+
+    <script src="auth.js"></script>
+</body>
+</html>

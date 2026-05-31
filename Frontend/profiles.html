@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#08040f">
+    <title>Buga | Perfiles</title>
+    <link rel="stylesheet" href="profiles.css">
+</head>
+<body class="profiles-page is-loading">
+    <div class="page-loader" id="pageLoader" aria-live="polite" aria-label="Cargando perfiles">
+        <div class="page-loader-card">
+            <div class="page-loader-spinner" aria-hidden="true"></div>
+            <p>Cargando perfiles</p>
+        </div>
+    </div>
+
+    <main class="profiles-shell">
+        <section class="profiles-visual">
+            <div class="profiles-visual-card">
+                <img class="profiles-logo" src="img/log-tipo.png" alt="Logo BUGA">
+                <p class="profiles-kicker">Streaming premium</p>
+                <h1>¿Quién está viendo Buga?</h1>
+                <p>Selecciona un perfil para continuar con tus favoritos, tu historial y lo que estabas viendo.</p>
+            </div>
+        </section>
+
+        <section class="profiles-panel">
+            <div class="profiles-panel-top">
+                <a class="profiles-back" href="login.html">Salir</a>
+                <a class="profiles-manage-link" href="manage-profiles.html">Administrar perfiles</a>
+            </div>
+
+            <div class="profiles-panel-card">
+                <div class="profiles-panel-header">
+                    <div>
+                        <p class="profiles-section-kicker">Cuenta activa</p>
+                        <h2>Selecciona un perfil</h2>
+                    </div>
+                    <p class="profiles-limit" id="profilesLimitLabel"></p>
+                </div>
+
+                <div class="profiles-grid" id="profilesGrid" aria-label="Perfiles disponibles"></div>
+
+                <div class="profiles-footer">
+                    <button class="profiles-create-link" type="button" id="createProfileShortcut">Crear un nuevo perfil</button>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <script src="auth.js"></script>
+    <script src="profiles.js"></script>
+</body>
+</html>

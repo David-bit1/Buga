@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#08040f">
+    <title>Buga | Administrar perfiles</title>
+    <link rel="stylesheet" href="profiles.css">
+</head>
+<body class="profiles-page is-loading">
+    <div class="page-loader" id="pageLoader" aria-live="polite" aria-label="Cargando perfiles">
+        <div class="page-loader-card">
+            <div class="page-loader-spinner" aria-hidden="true"></div>
+            <p>Cargando perfiles</p>
+        </div>
+    </div>
+
+    <main class="profiles-shell manage-shell">
+        <section class="profiles-visual manage-visual">
+            <div class="profiles-visual-card">
+                <img class="profiles-logo" src="img/log-tipo.png" alt="Logo BUGA">
+                <p class="profiles-kicker">Administración</p>
+                <h1>Gestiona tus perfiles</h1>
+                <p>Crea, edita y elimina perfiles para mantener tu experiencia separada por persona.</p>
+                <a class="profiles-back manage-back" href="profiles.html">Volver a selección</a>
+            </div>
+        </section>
+
+        <section class="profiles-panel manage-panel">
+            <div class="profiles-panel-card manage-card">
+                <div class="profiles-panel-header">
+                    <div>
+                        <p class="profiles-section-kicker">Perfiles</p>
+                        <h2>Administrar perfiles</h2>
+                    </div>
+                    <p class="profiles-limit" id="manageProfilesLimitLabel"></p>
+                </div>
+
+                <form class="profile-form" id="profileForm">
+                    <input type="hidden" id="profileFormId" value="">
+                    <div class="profile-form-grid">
+                        <label class="profile-field">
+                            <span>Nombre</span>
+                            <input class="profile-input" id="profileName" maxlength="32" placeholder="Nombre del perfil" required>
+                        </label>
+
+                        <label class="profile-field">
+                            <span>Color</span>
+                            <input class="profile-input profile-color" id="profileThemeColor" type="color" value="#8a4dff">
+                        </label>
+                    </div>
+
+                    <div class="profile-field">
+                        <span>Avatar</span>
+                        <div class="avatar-picker" id="avatarPicker"></div>
+                        <input type="hidden" id="profileAvatar" value="neon">
+                    </div>
+
+                    <label class="profile-switch">
+                        <input type="checkbox" id="profileKids">
+                        <span>Perfil infantil</span>
+                    </label>
+
+                    <div class="profile-form-actions">
+                        <button class="btn profile-submit" type="submit" id="profileSubmit">Crear perfil</button>
+                        <button class="profile-cancel" type="button" id="profileCancel" hidden>Cancelar edición</button>
+                    </div>
+                </form>
+
+                <div class="profiles-manage-grid" id="manageProfilesGrid"></div>
+            </div>
+        </section>
+    </main>
+
+    <script src="auth.js"></script>
+    <script src="profiles.js"></script>
+</body>
+</html>

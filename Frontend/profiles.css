@@ -1,0 +1,444 @@
+@import url("style.css");
+
+body.profiles-page {
+    background:
+        radial-gradient(circle at top left, rgba(138, 77, 255, 0.18), transparent 28%),
+        radial-gradient(circle at top right, rgba(60, 18, 199, 0.16), transparent 28%),
+        linear-gradient(180deg, #030106 0%, #05020a 55%, #020105 100%);
+}
+
+.profiles-shell {
+    min-height: 100vh;
+    display: grid;
+    grid-template-columns: 1.05fr 0.95fr;
+}
+
+.profiles-visual,
+.profiles-panel {
+    min-height: 100vh;
+    display: grid;
+    place-items: center;
+    padding: clamp(1rem, 4vw, 3rem);
+}
+
+.profiles-visual {
+    position: relative;
+    overflow: hidden;
+    background:
+        linear-gradient(180deg, rgba(5, 2, 10, 0.26), rgba(5, 2, 10, 0.82)),
+        url("https://s3.amazonaws.com/nightjarprod/content/uploads/sites/370/2025/09/16081758/rb2NWyb008u1EcKCOyXs2Nmj0ra-scaled.jpg");
+    background-size: cover;
+    background-position: center;
+}
+
+.profiles-visual::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(circle at center, rgba(138, 77, 255, 0.18), transparent 48%);
+}
+
+.profiles-visual-card,
+.profiles-panel-card {
+    width: min(34rem, 100%);
+    padding: clamp(1.4rem, 3vw, 2.2rem);
+    border-radius: 32px;
+    border: 1px solid rgba(138, 77, 255, 0.18);
+    background: rgba(10, 5, 18, 0.84);
+    backdrop-filter: blur(18px);
+    box-shadow: 0 24px 60px rgba(0, 0, 0, 0.42);
+}
+
+.profiles-logo {
+    width: 7rem;
+    display: block;
+    filter: drop-shadow(0 0 18px rgba(138, 77, 255, 0.28));
+}
+
+.profiles-kicker,
+.profiles-section-kicker {
+    margin-top: 1rem;
+    margin-bottom: 0.5rem;
+    color: rgba(138, 77, 255, 0.9);
+    text-transform: uppercase;
+    letter-spacing: 0.18em;
+    font-size: 0.8rem;
+    font-weight: 700;
+}
+
+.profiles-visual-card h1,
+.profiles-panel-header h2 {
+    font-size: clamp(2rem, 5vw, 3.5rem);
+    line-height: 0.95;
+}
+
+.profiles-visual-card p,
+.profiles-limit {
+    color: rgba(248, 244, 255, 0.76);
+    line-height: 1.7;
+}
+
+.profiles-panel {
+    background: rgba(5, 2, 10, 0.96);
+}
+
+.profiles-panel-top {
+    position: absolute;
+    top: 1rem;
+    right: 1rem;
+    display: flex;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+}
+
+.profiles-back,
+.profiles-manage-link,
+.profiles-create-link,
+.profile-cancel {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 2.85rem;
+    padding: 0.8rem 1rem;
+    border-radius: 999px;
+    color: #fff;
+    font-weight: 700;
+    border: 1px solid rgba(138, 77, 255, 0.24);
+    background: rgba(255, 255, 255, 0.05);
+    transition: transform 0.22s ease, background 0.22s ease, border-color 0.22s ease;
+}
+
+.profiles-back:hover,
+.profiles-manage-link:hover,
+.profiles-create-link:hover,
+.profile-cancel:hover {
+    transform: translateY(-2px);
+    background: rgba(138, 77, 255, 0.1);
+    border-color: rgba(138, 77, 255, 0.45);
+}
+
+.profiles-panel-card {
+    position: relative;
+    width: min(40rem, 100%);
+}
+
+.profiles-panel-header {
+    display: flex;
+    align-items: start;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-bottom: 1.1rem;
+}
+
+.profiles-grid,
+.profiles-manage-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 1rem;
+}
+
+.profile-card,
+.profile-create-card {
+    position: relative;
+    overflow: hidden;
+    border-radius: 28px;
+    border: 1px solid rgba(138, 77, 255, 0.16);
+    background: rgba(255, 255, 255, 0.04);
+    padding: 1rem;
+    text-align: center;
+    cursor: pointer;
+    transition: transform 0.24s ease, border-color 0.24s ease, box-shadow 0.24s ease, background 0.24s ease;
+}
+
+.profile-card:hover,
+.profile-create-card:hover {
+    transform: translateY(-4px);
+    border-color: rgba(138, 77, 255, 0.42);
+    box-shadow: 0 18px 34px rgba(0, 0, 0, 0.26);
+    background: rgba(138, 77, 255, 0.08);
+}
+
+.profile-card.is-active {
+    border-color: rgba(138, 77, 255, 0.52);
+    box-shadow: 0 0 0 1px rgba(138, 77, 255, 0.28), 0 18px 34px rgba(0, 0, 0, 0.26);
+}
+
+.profile-avatar {
+    width: 4.25rem;
+    height: 4.25rem;
+    border-radius: 50%;
+    display: grid;
+    place-items: center;
+    margin: 0 auto 0.85rem;
+    color: #fff;
+    font-size: 1.5rem;
+    font-weight: 800;
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.12), 0 12px 24px rgba(0, 0, 0, 0.2);
+}
+
+.profile-card h3,
+.profile-create-card h3 {
+    font-size: 1rem;
+    margin-bottom: 0.35rem;
+}
+
+.profile-card p,
+.profile-create-card p {
+    color: rgba(248, 244, 255, 0.72);
+    font-size: 0.9rem;
+    line-height: 1.5;
+}
+
+.profile-card-actions {
+    display: flex;
+    gap: 0.5rem;
+    justify-content: center;
+    margin-top: 0.85rem;
+}
+
+.profile-mini-btn {
+    min-height: 2.3rem;
+    padding: 0.55rem 0.8rem;
+    border-radius: 999px;
+    color: #fff;
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(138, 77, 255, 0.18);
+    font-weight: 700;
+}
+
+.profile-mini-btn:hover {
+    border-color: rgba(138, 77, 255, 0.4);
+    background: rgba(138, 77, 255, 0.1);
+}
+
+.profile-create-card {
+    display: grid;
+    place-items: center;
+    min-height: 12rem;
+}
+
+.profile-create-plus {
+    width: 4.25rem;
+    height: 4.25rem;
+    border-radius: 50%;
+    display: grid;
+    place-items: center;
+    margin: 0 auto 0.85rem;
+    background: linear-gradient(135deg, #9a5fff, #3d12e3);
+    color: #fff;
+    font-size: 2rem;
+    box-shadow: 0 12px 24px rgba(138, 77, 255, 0.24);
+}
+
+.profile-form {
+    margin-top: 1rem;
+    display: grid;
+    gap: 0.95rem;
+}
+
+.profile-form-grid {
+    display: grid;
+    grid-template-columns: 1fr 160px;
+    gap: 0.85rem;
+}
+
+.profile-field {
+    display: grid;
+    gap: 0.45rem;
+}
+
+.profile-field span,
+.profile-switch span {
+    color: rgba(248, 244, 255, 0.82);
+    font-size: 0.92rem;
+}
+
+.profile-input {
+    width: 100%;
+    min-height: 3rem;
+    padding: 0.82rem 1rem;
+    border-radius: 18px;
+    border: 1px solid rgba(138, 77, 255, 0.18);
+    background: rgba(255, 255, 255, 0.05);
+    color: #fff;
+}
+
+.profile-color {
+    padding: 0.35rem;
+}
+
+.avatar-picker {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(62px, 1fr));
+    gap: 0.65rem;
+}
+
+.avatar-option {
+    aspect-ratio: 1;
+    border-radius: 18px;
+    border: 1px solid rgba(138, 77, 255, 0.18);
+    background: rgba(255, 255, 255, 0.05);
+    color: #fff;
+    cursor: pointer;
+    display: grid;
+    place-items: center;
+    gap: 0.3rem;
+    font-size: 0.78rem;
+    padding: 0.45rem;
+}
+
+.avatar-option span {
+    width: 2rem;
+    height: 2rem;
+    border-radius: 50%;
+    display: grid;
+    place-items: center;
+    color: #fff;
+    font-size: 1rem;
+    font-weight: 800;
+}
+
+.avatar-option.is-active {
+    border-color: rgba(138, 77, 255, 0.52);
+    background: rgba(138, 77, 255, 0.1);
+}
+
+.profile-switch {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+}
+
+.profile-switch input {
+    width: 1rem;
+    height: 1rem;
+    accent-color: var(--purple);
+}
+
+.profile-form-actions {
+    display: flex;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+}
+
+.profile-submit {
+    min-width: 10rem;
+}
+
+.manage-card {
+    width: min(52rem, 100%);
+}
+
+.manage-shell {
+    grid-template-columns: 0.95fr 1.05fr;
+}
+
+.manage-visual {
+    padding-right: 0;
+}
+
+.manage-back {
+    margin-top: 1.2rem;
+}
+
+.manage-shell .profiles-panel {
+    position: relative;
+    align-items: start;
+}
+
+.manage-shell .profiles-panel-card {
+    margin-top: 3rem;
+}
+
+.manage-profile-item {
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    gap: 0.75rem;
+    align-items: center;
+    padding: 0.9rem;
+    border-radius: 22px;
+    border: 1px solid rgba(138, 77, 255, 0.16);
+    background: rgba(255, 255, 255, 0.04);
+}
+
+.manage-profile-item + .manage-profile-item {
+    margin-top: 0.75rem;
+}
+
+.manage-profile-item .profile-avatar {
+    margin: 0;
+    width: 3.2rem;
+    height: 3.2rem;
+    font-size: 1.1rem;
+}
+
+.manage-profile-item h3 {
+    font-size: 1rem;
+    margin-bottom: 0.15rem;
+}
+
+.manage-profile-item p {
+    color: rgba(248, 244, 255, 0.66);
+    font-size: 0.88rem;
+}
+
+.manage-actions {
+    display: flex;
+    gap: 0.55rem;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+}
+
+.manage-empty {
+    text-align: center;
+    color: rgba(248, 244, 255, 0.72);
+    padding: 1rem;
+}
+
+@media (max-width: 980px) {
+    .profiles-shell,
+    .manage-shell {
+        grid-template-columns: 1fr;
+    }
+
+    .profiles-visual,
+    .profiles-panel {
+        min-height: auto;
+        padding: 1rem;
+    }
+
+    .profiles-panel-top {
+        position: static;
+        margin-bottom: 1rem;
+        justify-content: flex-end;
+    }
+
+    .manage-shell .profiles-panel-card {
+        margin-top: 0;
+    }
+}
+
+@media (max-width: 640px) {
+    .profiles-visual-card,
+    .profiles-panel-card {
+        border-radius: 26px;
+    }
+
+    .profiles-grid,
+    .profiles-manage-grid {
+        grid-template-columns: 1fr 1fr;
+    }
+
+    .profile-form-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .manage-profile-item {
+        grid-template-columns: auto 1fr;
+    }
+
+    .manage-actions {
+        grid-column: 1 / -1;
+        justify-content: flex-start;
+    }
+}

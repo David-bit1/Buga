@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#08040f">
+    <title>Buga | Película</title>
+    <link rel="stylesheet" href="movie.css">
+</head>
+<body class="movie-page is-loading">
+    <div class="page-loader movie-page-loader" id="moviePageLoader" aria-live="polite" aria-label="Cargando película">
+        <div class="movie-loader-card">
+            <div class="movie-loader-poster movie-skeleton"></div>
+            <div class="movie-loader-copy">
+                <div class="movie-skeleton movie-skeleton-line movie-skeleton-line-lg"></div>
+                <div class="movie-skeleton movie-skeleton-line"></div>
+                <div class="movie-skeleton movie-skeleton-line movie-skeleton-line-sm"></div>
+                <div class="movie-skeleton movie-skeleton-button"></div>
+            </div>
+            <div class="page-loader-spinner movie-page-spinner" aria-hidden="true"></div>
+        </div>
+    </div>
+
+    <header class="movie-header">
+        <div class="movie-header-inner">
+            <a class="movie-brand" href="index.html" aria-label="Volver al inicio de Buga">
+                <img src="img/log-tipo.png" alt="Logo BUGA">
+            </a>
+
+            <div class="movie-header-actions">
+                <a class="movie-back-link" href="index.html">Volver al catálogo</a>
+                <button class="profile-chip" type="button" aria-label="Perfil de usuario">
+                    <svg class="profile-icon" width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                        <circle cx="12" cy="8" r="4"></circle>
+                        <path d="M 12 14 A 7 7 0 0 0 5 21 H 19 A 7 7 0 0 0 12 14 Z"></path>
+                    </svg>
+                    <span>Perfil</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <main class="movie-main">
+        <section class="movie-hero" id="movieHero">
+            <div class="movie-hero-backdrop" id="movieBackdrop"></div>
+            <div class="movie-hero-overlay"></div>
+
+            <div class="movie-shell">
+                <div class="movie-layout">
+                    <aside class="movie-poster-frame">
+                        <img id="moviePoster" src="" alt="" loading="eager" decoding="async">
+                    </aside>
+
+                    <article class="movie-info">
+                        <h1 id="movieTitle"></h1>
+                        <p class="movie-tagline" id="movieTagline"></p>
+
+                        <div class="movie-meta" id="movieMeta"></div>
+
+                        <p class="movie-description" id="movieDescription"></p>
+
+                        <div class="movie-facts">
+                            <div class="movie-fact">
+                                <span>Género</span>
+                                <strong id="movieGenre">-</strong>
+                            </div>
+                            <div class="movie-fact">
+                                <span>Año</span>
+                                <strong id="movieYear">-</strong>
+                            </div>
+                            <div class="movie-fact">
+                                <span>Duración</span>
+                                <strong id="movieRuntime">-</strong>
+                            </div>
+                        </div>
+
+                        <div class="movie-actions">
+                            <button class="movie-btn movie-btn-primary" id="playButton" type="button">Reproducir</button>
+                            <button class="movie-btn movie-btn-secondary" id="favoriteButton" type="button">Agregar a favoritos</button>
+                        </div>
+                    </article>
+                </div>
+            </div>
+        </section>
+
+        <section class="movie-player-section" aria-label="Reproductor de video">
+            <div class="movie-shell">
+                <div class="player-card">
+                    <div class="player-stage">
+                        <video
+                            id="movieVideo"
+                            class="movie-video"
+                            preload="metadata"
+                            playsinline
+                            crossorigin="anonymous"
+                        ></video>
+
+                        <div class="player-loader" id="playerLoader" aria-live="polite" aria-label="Cargando reproductor">
+                            <div class="page-loader-spinner" aria-hidden="true"></div>
+                            <p>Cargando reproductor…</p>
+                        </div>
+
+                        <button class="player-overlay-button" id="overlayPlayButton" type="button" aria-label="Reproducir video">
+                            <span class="player-overlay-icon" aria-hidden="true">▶</span>
+                        </button>
+
+                        <div class="player-chrome">
+                            <div class="player-controls-top">
+                                <button class="player-control-button" id="playPauseButton" type="button" aria-label="Reproducir o pausar">
+                                    <span aria-hidden="true" id="playPauseIcon">▶</span>
+                                </button>
+
+                                <div class="player-time">
+                                    <span id="currentTime">0:00</span>
+                                    <span class="player-time-separator">/</span>
+                                    <span id="durationTime">0:00</span>
+                                </div>
+
+                                <button class="player-control-button" id="muteButton" type="button" aria-label="Silenciar o activar sonido">
+                                    <span aria-hidden="true" id="muteIcon">🔊</span>
+                                </button>
+
+                                <button class="player-control-button" id="captionsButton" type="button" aria-label="Activar o desactivar subtítulos" hidden>
+                                    <span aria-hidden="true">CC</span>
+                                </button>
+
+                                <label class="player-quality" for="qualitySelect">
+                                    <span>Calidad</span>
+                                    <select id="qualitySelect" aria-label="Seleccionar calidad de video"></select>
+                                </label>
+
+                                <button class="player-control-button" id="fullscreenButton" type="button" aria-label="Pantalla completa">
+                                    <span aria-hidden="true">⛶</span>
+                                </button>
+                            </div>
+
+                            <label class="progress-bar" aria-label="Barra de progreso">
+                                <input id="progressInput" type="range" min="0" max="1000" value="0" step="1" aria-label="Progreso de video">
+                            </label>
+
+                            <div class="player-controls-bottom">
+                                <label class="volume-control" aria-label="Volumen">
+                                    <span class="volume-icon" id="volumeIcon" aria-hidden="true">🔊</span>
+                                    <input id="volumeInput" type="range" min="0" max="100" value="100" step="1" aria-label="Control de volumen">
+                                </label>
+
+                                <div class="player-status" id="playerStatus">Listo para reproducir</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <div class="page-transition" aria-hidden="true"></div>
+    <script src="https://cdn.jsdelivr.net/npm/hls.js@1.5.18"></script>
+    <script src="auth.js"></script>
+    <script src="movie.js"></script>
+</body>
+</html>

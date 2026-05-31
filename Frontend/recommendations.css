@@ -1,0 +1,71 @@
+.recommendations-section {
+    padding-top: clamp(1rem, 2vw, 1.75rem);
+}
+
+.recommendations-grid .movie-card-tag {
+    background: linear-gradient(135deg, rgba(40, 214, 169, 0.98), rgba(138, 77, 255, 0.95));
+}
+
+.recommendations-grid .movie-card {
+    min-height: 100%;
+}
+
+.recommendations-grid .movie-card-body p {
+    -webkit-line-clamp: 2;
+}
+
+.recommendations-grid .movie-card-actions {
+    margin-top: auto;
+}
+
+.recommendation-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: fit-content;
+    padding: 0.38rem 0.7rem;
+    border-radius: 999px;
+    margin-bottom: 0.85rem;
+    color: #fff;
+    font-size: 0.76rem;
+    font-weight: 800;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    background: linear-gradient(135deg, rgba(138, 77, 255, 0.9), rgba(60, 18, 199, 0.92));
+    border: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.recommendations-empty {
+    display: grid;
+    place-items: center;
+    min-height: 18rem;
+    text-align: center;
+    border-radius: 28px;
+    border: 1px solid rgba(138, 77, 255, 0.18);
+    background:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.03)),
+        rgba(15, 10, 26, 0.86);
+    color: rgba(248, 244, 255, 0.82);
+    padding: 1.6rem;
+}
+
+.recommendations-empty h3 {
+    font-size: 1.3rem;
+    margin-bottom: 0.45rem;
+}
+
+.recommendations-empty p {
+    max-width: 42rem;
+    line-height: 1.6;
+    margin-bottom: 1rem;
+}
+
+.recommendations-section[hidden] {
+    display: none !important;
+}
+
+@media (max-width: 640px) {
+    .recommendations-grid .movie-card-body p {
+        -webkit-line-clamp: 3;
+    }
+}

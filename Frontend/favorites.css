@@ -1,0 +1,76 @@
+@import url("style.css");
+
+.favorites-hero {
+    position: relative;
+    isolation: isolate;
+    min-height: clamp(22rem, 52svh, 34rem);
+    display: grid;
+    place-items: center;
+    padding: clamp(1.75rem, 4vw, 4rem) 0;
+    text-align: center;
+    background:
+        linear-gradient(180deg, rgba(6, 2, 10, 0.16), rgba(6, 2, 10, 0.76)),
+        radial-gradient(circle at top, rgba(138, 77, 255, 0.18), transparent 42%);
+}
+
+.favorites-banner {
+    width: min(760px, calc(100% - 1.75rem));
+}
+
+.favorites-kicker {
+    margin-bottom: 0.85rem;
+    color: rgba(138, 77, 255, 0.95);
+    font-size: 0.88rem;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+}
+
+.favorites-section {
+    padding-top: 1rem;
+}
+
+.favorites-carousel {
+    overflow: visible;
+}
+
+.favorites-grid {
+    padding-bottom: 0.5rem;
+}
+
+.favorites-empty {
+    grid-column: 1 / -1;
+    width: 100%;
+    padding: 2.2rem 1.4rem;
+    border-radius: 28px;
+    border: 1px solid rgba(138, 77, 255, 0.18);
+    background: rgba(15, 10, 26, 0.88);
+    text-align: center;
+    color: rgba(248, 244, 255, 0.82);
+    display: grid;
+    gap: 0.95rem;
+    place-items: center;
+}
+
+.favorites-empty h3 {
+    font-size: clamp(1.3rem, 3vw, 1.8rem);
+}
+
+.favorites-empty p {
+    max-width: 58ch;
+    line-height: 1.7;
+    color: rgba(248, 244, 255, 0.72);
+}
+
+.favorites-empty .btn {
+    margin-top: 0.2rem;
+}
+
+@media (max-width: 640px) {
+    .favorites-banner {
+        width: min(760px, calc(100% - 1rem));
+    }
+
+    .favorites-empty {
+        padding: 1.6rem 1rem;
+    }
+}

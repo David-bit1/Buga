@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#08040f">
+    <title>Buga | Crear cuenta</title>
+    <link rel="stylesheet" href="auth.css">
+</head>
+<body class="auth-page">
+    <main class="auth-shell">
+        <section class="auth-visual">
+            <div class="auth-visual-card">
+                <span class="auth-highlight">Únete a Buga</span>
+                <h1>Crea tu cuenta</h1>
+                <p>Guarda tu progreso, arma tu lista de favoritos y continúa viendo en todos tus dispositivos.</p>
+            </div>
+        </section>
+
+        <section class="auth-panel">
+            <div class="auth-card">
+                <div class="auth-card-top">
+                    <img src="img/log-tipo.png" alt="Logo BUGA">
+                    <a href="index.html">Volver</a>
+                </div>
+
+                <h2>Registrarse</h2>
+                <p>Configura tu perfil para empezar.</p>
+
+                <form class="auth-form" data-auth-form="register">
+                    <label class="auth-field">
+                        <span>Nombre</span>
+                        <input class="auth-input" type="text" name="name" placeholder="Tu nombre" required minlength="2">
+                    </label>
+
+                    <label class="auth-field">
+                        <span>Email</span>
+                        <input class="auth-input" type="email" name="email" placeholder="tu@email.com" required>
+                    </label>
+
+                    <label class="auth-field">
+                        <span>Contraseña</span>
+                        <input class="auth-input" type="password" name="password" placeholder="Mínimo 6 caracteres" required minlength="6">
+                    </label>
+
+                    <p class="auth-error" aria-live="polite"></p>
+
+                    <button class="auth-button" type="submit">Crear cuenta</button>
+                </form>
+
+                <p class="auth-switch">¿Ya tienes cuenta? <a href="login.html">Iniciar sesión</a></p>
+            </div>
+        </section>
+    </main>
+
+    <script src="auth.js"></script>
+</body>
+</html>
