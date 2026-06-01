@@ -1,4 +1,4 @@
-const API_BASE = 'sb_publishable_nE09A25LrjERPnLPJkVQjA_dhhvNypp';
+const API_BASE = '/api/auth';
 const AUTH_STORAGE_KEY = 'buga-auth';
 const ACTIVE_PROFILE_KEY = 'buga-active-profile';
 const TOAST_FLASH_KEY = 'buga-toast-flash';
