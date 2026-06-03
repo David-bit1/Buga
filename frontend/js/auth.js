@@ -1,4 +1,6 @@
-const API_BASE = '/api/auth';
+const API_ORIGIN = 'https://buga.onrender.com';
+const API_BASE = `${API_ORIGIN}/api/auth`;
+const RECOMMENDATIONS_API_BASE = `${API_ORIGIN}/api/recommendations`;
 const AUTH_STORAGE_KEY = 'buga-auth';
 const ACTIVE_PROFILE_KEY = 'buga-active-profile';
 const TOAST_FLASH_KEY = 'buga-toast-flash';
@@ -214,7 +216,7 @@ const recordPreferenceEvent = async (payload = {}) => {
     preferenceEventCooldowns.set(cooldownKey, Date.now());
 
     try {
-        const response = await authFetch('/api/recommendations/events', {
+        const response = await authFetch(`${RECOMMENDATIONS_API_BASE}/events`, {
             method: 'POST',
             body: JSON.stringify({
                 profileId: profile.id,
