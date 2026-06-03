@@ -1,4 +1,4 @@
-const API_BASE = '/api/profiles';
+const API_BASE = 'https://buga.onrender.com';
 const PROFILE_AVATARS = [
   { key: 'neon', label: 'Neon', icon: 'N', color: '#8a4dff' },
   { key: 'violet', label: 'Violet', icon: 'V', color: '#c06cff' },

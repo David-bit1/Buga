@@ -1,13 +1,14 @@
+const dotenv = require('dotenv');
+
+dotenv.config();
+
 const express = require('express');
 const cors = require('cors');
-const dotenv = require('dotenv');
 const authRoutes = require('./routes/authRoutes');
 const profileRoutes = require('./routes/profileRoutes');
 const recommendationRoutes = require('./routes/recommendationRoutes');
 const adminRoutes = require('./routes/adminRoutes');
 const videoRoutes = require('./routes/videoRoutes');
-
-dotenv.config();
 
 const app = express();
 const port = process.env.PORT || 3000;
