@@ -1,4 +1,10 @@
 {
   "version": 2,
-  "cleanUrls": true
+  "cleanUrls": true,
+  "rewrites": [
+    {
+      "source": "/api/:path*",
+      "destination": "https://buga.onrender.com/api/:path*"
+    }
+  ]
 }

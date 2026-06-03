@@ -1,4 +1,4 @@
-const API_BASE = 'https://buga.onrender.com/api/auth';
+const API_BASE = '/api/auth';
 const AUTH_STORAGE_KEY = 'buga-auth';
 const ACTIVE_PROFILE_KEY = 'buga-active-profile';
 const TOAST_FLASH_KEY = 'buga-toast-flash';
@@ -238,7 +238,7 @@ const recordPreferenceEvent = async (payload = {}) => {
             })
         });
 
-        const data = await response.json().catch(() => ({}));
+        const data = await readResponseData(response);
         if (!response.ok) {
             throw new Error(data.message || 'No se pudieron guardar las preferencias');
         }
@@ -274,6 +274,22 @@ const authFetch = (url, options = {}) => {
         ...options,
         headers
     });
+};
+
+const readResponseData = async (response) => {
+    const text = await response.text();
+
+    if (!text) {
+        return {};
+    }
+
+    try {
+        return JSON.parse(text);
+    } catch {
+        return {
+            message: text
+        };
+    }
 };
 
 const showAuthError = (form, message) => {
@@ -394,7 +410,7 @@ const fetchCurrentUser = async () => {
 
     try {
         const response = await authFetch(`${API_BASE}/me`);
-        const data = await response.json();
+        const data = await readResponseData(response);
         if (!response.ok) {
             throw new Error(data.message || 'Sesión inválida');
         }
@@ -424,8 +440,7 @@ const handleAuthForm = async (form) => {
             },
             body: JSON.stringify(payload)
         });
-
-                const API_BASE = 'https://buga-backend.onrender.com/api/auth';
+        const data = await readResponseData(response);
 
         if (!response.ok) {
             throw new Error(data.message || 'No se pudo completar la operación');
