@@ -1,7 +1,7 @@
 const { createClient } = require('@supabase/supabase-js');
 
-const supabaseUrl = process.env.SUBABASE_URL; //[] https://rjodxfpfjchrrbeubfak.supabase.com;
-const supabaseKey = process.env.SUPABASE_KEY;
+const supabaseUrl = process.env.SUPABASE_URL || process.env.SUBABASE_URL;
+const supabaseKey = process.env.SUPABASE_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY;
 
 if (!supabaseUrl || !supabaseKey) {
   throw new Error('SUPABASE_URL y SUPABASE_KEY son obligatorios');
