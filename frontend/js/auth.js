@@ -1,4 +1,4 @@
-const API_BASE = '/api/auth';
+const API_BASE = 'https://buga.onrender.com/api/auth';
 const AUTH_STORAGE_KEY = 'buga-auth';
 const ACTIVE_PROFILE_KEY = 'buga-active-profile';
 const TOAST_FLASH_KEY = 'buga-toast-flash';
@@ -425,7 +425,7 @@ const handleAuthForm = async (form) => {
             body: JSON.stringify(payload)
         });
 
-        const data = await response.json();
+                const API_BASE = 'https://buga-backend.onrender.com/api/auth';
 
         if (!response.ok) {
             throw new Error(data.message || 'No se pudo completar la operación');

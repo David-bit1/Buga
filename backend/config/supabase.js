@@ -1,6 +1,6 @@
 const { createClient } = require('@supabase/supabase-js');
 
-const supabaseUrl = process.env.SUPABASE_URL;
+const supabaseUrl = process.env.SUBABASE_URL; //[] https://rjodxfpfjchrrbeubfak.supabase.com;
 const supabaseKey = process.env.SUPABASE_KEY;
 
 if (!supabaseUrl || !supabaseKey) {
