@@ -38,7 +38,7 @@ const requireAuth = () => {
   return true;
 };
 
-const authFetch = (url, options = {}) => {
+const profileAuthFetch = (url, options = {}) => {
   const token = window.BugaAuth?.getAuthToken?.();
   const headers = {
     'Content-Type': 'application/json',
@@ -57,7 +57,7 @@ const authFetch = (url, options = {}) => {
 
 const authFetchWithTimeout = (url, options = {}, label = 'request') =>
   Promise.race([
-    authFetch(url, options),
+    profileAuthFetch(url, options),
     new Promise((_, reject) => {
       window.setTimeout(() => reject(new Error(`${label} timeout`)), REQUEST_TIMEOUT_MS);
     })
@@ -240,7 +240,7 @@ const submitProfileForm = async (event) => {
 
   const isEditing = Boolean(editingProfileId);
   try {
-    const response = await authFetch(`${API_BASE}${isEditing ? `/${editingProfileId}` : ''}`, {
+    const response = await profileAuthFetch(`${API_BASE}${isEditing ? `/${editingProfileId}` : ''}`, {
       method: isEditing ? 'PUT' : 'POST',
       body: JSON.stringify(payload)
     });
@@ -280,7 +280,7 @@ const deleteProfile = async (profileId) => {
   }
 
   try {
-    const response = await authFetch(`${API_BASE}/${profileId}`, { method: 'DELETE' });
+    const response = await profileAuthFetch(`${API_BASE}/${profileId}`, { method: 'DELETE' });
     const data = await response.json();
 
     if (!response.ok) {

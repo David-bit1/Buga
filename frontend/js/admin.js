@@ -53,7 +53,7 @@ let usersCache = [];
 let genresCache = [];
 let settingsCache = { catalog: {}, ui: {} };
 
-const authFetch = (url, options = {}) => window.BugaAuth?.authFetch?.(url, options) || fetch(url, options);
+const adminAuthFetch = (url, options = {}) => window.BugaAuth?.authFetch?.(url, options) || fetch(url, options);
 const notify = (options) => window.BugaToast?.show?.(options);
 const authMultipartFetch = (url, formData) => {
     const token = window.BugaAuth?.getAuthToken?.();
@@ -235,7 +235,7 @@ const renderGenresTable = () => {
 };
 
 const fetchJson = async (url, options = {}) => {
-    const response = await authFetch(url, options);
+    const response = await adminAuthFetch(url, options);
     const data = await response.json().catch(() => ({}));
     if (!response.ok) {
         const error = new Error(data.message || 'La operación no pudo completarse');

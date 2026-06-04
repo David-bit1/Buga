@@ -9,7 +9,7 @@ const FALLBACK_POSTER = 'https://via.placeholder.com/500x750?text=No+Poster';
 const RECOMMENDATION_FAVORITES_KEY = window.BugaAuth?.getProfileStorageKey?.('buga-favorites') || 'buga-favorites';
 const RECOMMENDATION_HISTORY_KEY = window.BugaAuth?.getProfileStorageKey?.('buga-watch-history') || 'buga-watch-history';
 
-const authFetch = (url, options = {}) => {
+const recommendationAuthFetch = (url, options = {}) => {
     const token = window.BugaAuth?.getAuthToken?.();
     const headers = {
         'Content-Type': 'application/json',
@@ -196,7 +196,7 @@ const fetchRecommendations = async () => {
     renderSkeleton(6);
 
     try {
-        const response = await authFetch(`${RECOMMENDATIONS_API}?profileId=${encodeURIComponent(profile.id)}&limit=12`);
+        const response = await recommendationAuthFetch(`${RECOMMENDATIONS_API}?profileId=${encodeURIComponent(profile.id)}&limit=12`);
         const data = await response.json().catch(() => ({}));
 
         if (!response.ok) {
