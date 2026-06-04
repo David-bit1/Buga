@@ -311,8 +311,10 @@ const deleteProfile = async (profileId) => {
 };
 
 const refreshProfiles = async () => {
+  let failSafeId = null;
+
   showLoader();
-  const failSafeId = window.setTimeout(() => {
+  failSafeId = window.setTimeout(() => {
     console.warn('Profiles loader fail-safe activated');
     hideLoader();
   }, 12000);

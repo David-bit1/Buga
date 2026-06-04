@@ -1735,6 +1735,8 @@ const wireCarouselControls = () => {
 };
 
 const bootstrap = async () => {
+    let failSafeId = null;
+
     console.log('Auth state:', {
         page: window.location.pathname,
         loading: true,
@@ -1757,7 +1759,7 @@ const bootstrap = async () => {
 
     renderContinueWatching();
     showPageLoader();
-    const failSafeId = window.setTimeout(() => {
+    failSafeId = window.setTimeout(() => {
         console.warn('Home loader fail-safe activated');
         hidePageLoader();
     }, 12000);
