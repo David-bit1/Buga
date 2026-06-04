@@ -4,6 +4,15 @@ const RECOMMENDATIONS_API_BASE = `${API_ORIGIN}/api/recommendations`;
 const AUTH_STORAGE_KEY = 'buga-auth';
 const ACTIVE_PROFILE_KEY = 'buga-active-profile';
 const TOAST_FLASH_KEY = 'buga-toast-flash';
+const REQUEST_TIMEOUT_MS = 9000;
+
+const withTimeout = (promise, timeoutMs = REQUEST_TIMEOUT_MS, label = 'request') =>
+    Promise.race([
+        promise,
+        new Promise((_, reject) => {
+            window.setTimeout(() => reject(new Error(`${label} timeout`)), timeoutMs);
+        })
+    ]);
 
 const toastIcons = {
     success: `
@@ -405,21 +414,34 @@ const handleLogout = () => {
 
 const fetchCurrentUser = async () => {
     const session = getAuthSession();
+    console.log('Auth state:', {
+        page: window.location.pathname,
+        loading: true,
+        token: Boolean(session?.token),
+        user: session?.user || null
+    });
+
     if (!session?.token) {
         updateNavbarAuth();
+        console.log('Loading:', false);
+        console.log('User:', null);
         return;
     }
 
     try {
-        const response = await authFetch(`${API_BASE}/me`);
+        const response = await withTimeout(authFetch(`${API_BASE}/me`), REQUEST_TIMEOUT_MS, 'auth/me');
         const data = await readResponseData(response);
         if (!response.ok) {
             throw new Error(data.message || 'Sesión inválida');
         }
 
         saveSession({ ...session, user: data.user });
+        console.log('Loading:', false);
+        console.log('User:', data.user);
     } catch {
         clearAuthSession();
+        console.log('Loading:', false);
+        console.log('User:', null);
     } finally {
         updateNavbarAuth();
     }
@@ -435,13 +457,13 @@ const handleAuthForm = async (form) => {
     setLoading(form, true);
 
     try {
-        const response = await fetch(`${API_BASE}${endpoint}`, {
+        const response = await withTimeout(fetch(`${API_BASE}${endpoint}`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
             },
             body: JSON.stringify(payload)
-        });
+        }), REQUEST_TIMEOUT_MS, `${mode} auth`);
         const data = await readResponseData(response);
 
         if (!response.ok) {
@@ -449,6 +471,12 @@ const handleAuthForm = async (form) => {
         }
 
         saveSession({ token: data.token, user: data.user });
+        console.log('Auth state:', {
+            page: window.location.pathname,
+            loading: false,
+            token: Boolean(data.token),
+            user: data.user
+        });
         pushToastFlash({
             type: 'success',
             title: mode === 'register' ? 'Cuenta creada' : 'Sesión iniciada',

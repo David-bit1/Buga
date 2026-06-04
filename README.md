@@ -22,7 +22,7 @@ Plataforma de streaming premium con frontend estático, backend separado y base 
 ## Variables de entorno del backend
 
 - `SUPABASE_URL`
-- `SUPABASE_KEY`
+- `SUPABASE_SERVICE_ROLE_KEY`
 - `JWT_SECRET`
 - `CLIENT_ORIGIN`
 - `TMDB_API_KEY`

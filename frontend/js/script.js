@@ -9,6 +9,15 @@ const HERO_SLIDE_INTERVAL = 6500;
 const TRENDING_VISIBLE_COUNT = 8;
 const TRENDING_ROTATION_INTERVAL = 5400;
 const TRAILER_HOVER_DELAY = 240;
+const REQUEST_TIMEOUT_MS = 9000;
+
+const withTimeout = (promise, timeoutMs = REQUEST_TIMEOUT_MS, label = 'request') =>
+    Promise.race([
+        promise,
+        new Promise((_, reject) => {
+            window.setTimeout(() => reject(new Error(`${label} timeout`)), timeoutMs);
+        })
+    ]);
 
 const heroSection = document.getElementById('banner');
 const heroBackdropA = document.getElementById('heroBackdropA');
@@ -285,9 +294,9 @@ const createMovieCardMedia = (movie, tagLabel = '') => `
 `;
 
 const getMovieDetails = async (movieId) => {
-    const response = await fetch(
+    const response = await withTimeout(fetch(
         `${TMDB_BASE_URL}/movie/${movieId}?api_key=${API_KEY}&language=es-ES`
-    );
+    ), REQUEST_TIMEOUT_MS, `tmdb movie ${movieId}`);
 
     if (!response.ok) {
         throw new Error(`TMDB responded with ${response.status}`);
@@ -343,9 +352,9 @@ const getTrailerVideoKey = async (movieId) => {
 
     const requestTrailerList = async (language = '') => {
         const languageQuery = language ? `&language=${language}` : '';
-        const response = await fetch(
+        const response = await withTimeout(fetch(
             `${TMDB_BASE_URL}/movie/${movieId}/videos?api_key=${API_KEY}${languageQuery}`
-        );
+        ), REQUEST_TIMEOUT_MS, `tmdb trailer ${movieId}`);
 
         if (!response.ok) {
             throw new Error(`TMDB responded with ${response.status}`);
@@ -1726,6 +1735,14 @@ const wireCarouselControls = () => {
 };
 
 const bootstrap = async () => {
+    console.log('Auth state:', {
+        page: window.location.pathname,
+        loading: true,
+        token: Boolean(window.BugaAuth?.getAuthToken?.()),
+        user: window.BugaAuth?.getAuthSession?.()?.user || null,
+        activeProfile: window.BugaAuth?.getActiveProfile?.() || null
+    });
+
     wireMenu();
     wireHeroControls();
     wireMovieActions();
@@ -1740,6 +1757,10 @@ const bootstrap = async () => {
 
     renderContinueWatching();
     showPageLoader();
+    const failSafeId = window.setTimeout(() => {
+        console.warn('Home loader fail-safe activated');
+        hidePageLoader();
+    }, 12000);
     window.addEventListener('storage', (event) => {
         if (event.key === WATCH_HISTORY_KEY) {
             renderContinueWatching();
@@ -1758,7 +1779,10 @@ const bootstrap = async () => {
             loadHeroSlides()
         ]);
     } finally {
+        window.clearTimeout(failSafeId);
         hidePageLoader();
+        console.log('Loading:', false);
+        console.log('User:', window.BugaAuth?.getAuthSession?.()?.user || null);
     }
 };
 

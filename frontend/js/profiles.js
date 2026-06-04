@@ -1,4 +1,5 @@
 const API_BASE = 'https://buga.onrender.com';
+const REQUEST_TIMEOUT_MS = 9000;
 const PROFILE_AVATARS = [
   { key: 'neon', label: 'Neon', icon: 'N', color: '#8a4dff' },
   { key: 'violet', label: 'Violet', icon: 'V', color: '#c06cff' },
@@ -53,6 +54,14 @@ const authFetch = (url, options = {}) => {
     headers
   });
 };
+
+const authFetchWithTimeout = (url, options = {}, label = 'request') =>
+  Promise.race([
+    authFetch(url, options),
+    new Promise((_, reject) => {
+      window.setTimeout(() => reject(new Error(`${label} timeout`)), REQUEST_TIMEOUT_MS);
+    })
+  ]);
 
 const notify = (options) => window.BugaToast?.show?.(options);
 
@@ -152,8 +161,15 @@ const renderProfiles = () => {
 };
 
 const fetchProfiles = async () => {
-  const response = await authFetch(API_BASE);
-  const data = await response.json();
+  console.log('Auth state:', {
+    page: window.location.pathname,
+    loading: true,
+    token: Boolean(window.BugaAuth?.getAuthToken?.()),
+    user: window.BugaAuth?.getAuthSession?.()?.user || null
+  });
+
+  const response = await authFetchWithTimeout(API_BASE, {}, 'profiles');
+  const data = await response.json().catch(() => ({}));
 
   if (!response.ok) {
     const error = new Error(data.message || 'No se pudieron cargar los perfiles');
@@ -296,6 +312,11 @@ const deleteProfile = async (profileId) => {
 
 const refreshProfiles = async () => {
   showLoader();
+  const failSafeId = window.setTimeout(() => {
+    console.warn('Profiles loader fail-safe activated');
+    hideLoader();
+  }, 12000);
+
   try {
     await fetchProfiles();
     renderProfiles();
@@ -306,7 +327,10 @@ const refreshProfiles = async () => {
       window.location.href = '/pages/login.html';
     }
   } finally {
+    window.clearTimeout(failSafeId);
     hideLoader();
+    console.log('Loading:', false);
+    console.log('User:', window.BugaAuth?.getAuthSession?.()?.user || null);
   }
 };
 
