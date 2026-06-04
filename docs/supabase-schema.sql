@@ -12,12 +12,10 @@ $$;
 
 create table if not exists public.users (
   id uuid primary key default gen_random_uuid(),
-  name text not null,
-  email text not null unique,
-  password_hash text not null,
-  role text not null default 'user' check (role in ('user', 'admin')),
-  created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now()
+  username text unique not null,
+  email text unique not null,
+  password text not null,
+  created_at timestamptz default now()
 );
 
 create table if not exists public.profiles (
@@ -59,7 +57,7 @@ create table if not exists public.watch_history (
   backdrop text not null default '',
   genres jsonb not null default '[]'::jsonb,
   progress numeric not null default 0,
-  current_time numeric not null default 0,
+  "current_time" numeric not null default 0,
   duration numeric not null default 0,
   runtime numeric not null default 0,
   last_viewed timestamptz not null default now(),
@@ -151,7 +149,6 @@ declare
   table_name text;
 begin
   foreach table_name in array array[
-    'users',
     'profiles',
     'favorites',
     'watch_history',
@@ -171,7 +168,6 @@ begin
   end loop;
 end $$;
 
-alter table public.users enable row level security;
 alter table public.profiles enable row level security;
 alter table public.favorites enable row level security;
 alter table public.watch_history enable row level security;

@@ -17,6 +17,16 @@ const slugify = (value) =>
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-+|-+$/g, '');
 
+const getRoleFromEmail = (email) => {
+  const normalizedEmail = String(email || '').trim().toLowerCase();
+  const adminEmails = String(process.env.ADMIN_EMAILS || '')
+    .split(',')
+    .map((item) => item.trim().toLowerCase())
+    .filter(Boolean);
+
+  return adminEmails.includes(normalizedEmail) ? 'admin' : 'user';
+};
+
 const sanitizeMovie = (movie) => ({
   id: movie.id,
   tmdbId: movie.tmdb_id,
@@ -54,12 +64,15 @@ const sanitizeGenre = (genre) => ({
 
 const sanitizeUser = (user) => ({
   id: user.id,
-  name: user.name,
+  username: user.username,
+  name: user.username,
   email: user.email,
-  role: user.role || 'user',
+  role: getRoleFromEmail(user.email),
   createdAt: user.created_at,
   updatedAt: user.updated_at
 });
+
+const USER_LIST_SELECT = 'id, username, email, created_at';
 
 const ensureAdminSetting = async (key, fallback = {}) => {
   const existing = await selectOne('admin_settings', {
@@ -75,17 +88,26 @@ const ensureAdminSetting = async (key, fallback = {}) => {
 
 const getDashboard = async (_req, res, next) => {
   try {
-    const [userCount, adminCount, profileCount, movieCount, genreCount, preferenceCount, recentUsers, recentMovies] =
+    const [userCount, profileCount, movieCount, genreCount, preferenceCount, allUsers, recentUsers, recentMovies] =
       await Promise.all([
         countRows('users'),
-        countRows('users', [{ type: 'eq', column: 'role', value: 'admin' }]),
         countRows('profiles'),
         countRows('movies'),
         countRows('genres'),
         countRows('user_preferences'),
-        selectMany('users', { order: { column: 'created_at', ascending: false }, limit: 5 }),
+        selectMany('users', { select: USER_LIST_SELECT }),
+        selectMany('users', { select: USER_LIST_SELECT, order: { column: 'created_at', ascending: false }, limit: 5 }),
         selectMany('movies', { order: { column: 'created_at', ascending: false }, limit: 5 })
       ]);
+
+    const adminEmails = String(process.env.ADMIN_EMAILS || '')
+      .split(',')
+      .map((item) => item.trim().toLowerCase())
+      .filter(Boolean);
+    const resolvedAdminCount = allUsers.reduce(
+      (total, user) => total + (adminEmails.includes(String(user.email || '').toLowerCase()) ? 1 : 0),
+      0
+    );
 
     const settings = await Promise.all([
       ensureAdminSetting('catalog', { featuredLimit: 10, trendingLimit: 8, allowUserUploads: false }),
@@ -95,7 +117,7 @@ const getDashboard = async (_req, res, next) => {
     return res.json({
       stats: {
         users: userCount,
-        admins: adminCount,
+        admins: resolvedAdminCount,
         profiles: profileCount,
         movies: movieCount,
         genres: genreCount,
@@ -315,7 +337,7 @@ const deleteGenre = async (req, res, next) => {
 
 const listUsers = async (_req, res, next) => {
   try {
-    const users = await selectMany('users', { order: { column: 'created_at', ascending: false } });
+    const users = await selectMany('users', { select: USER_LIST_SELECT, order: { column: 'created_at', ascending: false } });
     return res.json({ users: users.map(sanitizeUser) });
   } catch (error) {
     return next(error);
@@ -326,6 +348,7 @@ const updateUser = async (req, res, next) => {
   try {
     const { userId } = req.params;
     const user = await selectOne('users', {
+      select: 'id, username, email, created_at',
       filters: [{ type: 'eq', column: 'id', value: userId }]
     });
 
@@ -334,8 +357,8 @@ const updateUser = async (req, res, next) => {
     }
 
     const payload = {};
-    if (req.body.name) payload.name = req.body.name;
-    if (req.body.role && ['user', 'admin'].includes(req.body.role)) payload.role = req.body.role;
+    if (req.body.username) payload.username = req.body.username;
+    if (req.body.name) payload.username = req.body.name;
 
     const [updatedUser] = await updateRows('users', [{ type: 'eq', column: 'id', value: userId }], payload);
     return res.json({

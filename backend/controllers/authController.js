@@ -6,19 +6,31 @@ const {
 } = require('../services/supabaseRepository');
 
 const DEFAULT_AVATAR = { key: 'neon', themeColor: '#8a4dff' };
+const USER_SELECT = 'id, username, email, password, created_at';
+
+const getRoleFromEmail = (email) => {
+  const normalizedEmail = String(email || '').trim().toLowerCase();
+  const adminEmails = String(process.env.ADMIN_EMAILS || '')
+    .split(',')
+    .map((item) => item.trim().toLowerCase())
+    .filter(Boolean);
+
+  return adminEmails.includes(normalizedEmail) ? 'admin' : 'user';
+};
 
 const createToken = (user) =>
   jwt.sign(
-    { id: user.id, name: user.name, email: user.email, role: user.role || 'user' },
+    { id: user.id, username: user.username, name: user.username, email: user.email, role: getRoleFromEmail(user.email) },
     process.env.JWT_SECRET,
     { expiresIn: '7d' }
   );
 
 const sanitizeUser = (user) => ({
   id: user.id,
-  name: user.name,
+  username: user.username,
+  name: user.username,
   email: user.email,
-  role: user.role || 'user',
+  role: getRoleFromEmail(user.email),
   createdAt: user.created_at || user.createdAt
 });
 
@@ -34,15 +46,20 @@ const createDefaultProfile = async (userId) =>
 
 const register = async (req, res, next) => {
   try {
-    const { name, email, password } = req.body;
+    const { username, name, email, password } = req.body;
+    const resolvedUsername = String(username || name || '').trim();
 
-    if (!name || !email || !password) {
+    if (!resolvedUsername || !email || !password) {
       return res.status(400).json({ message: 'Completa todos los campos' });
     }
 
     const normalizedEmail = String(email).trim().toLowerCase();
     const existingUser = await selectOne('users', {
+      select: 'id, username, email',
       filters: [{ type: 'eq', column: 'email', value: normalizedEmail }]
+    }) || await selectOne('users', {
+      select: 'id, username, email',
+      filters: [{ type: 'eq', column: 'username', value: resolvedUsername }]
     });
 
     if (existingUser) {
@@ -50,17 +67,11 @@ const register = async (req, res, next) => {
     }
 
     const hashedPassword = await bcrypt.hash(password, 12);
-    const adminEmails = String(process.env.ADMIN_EMAILS || '')
-      .split(',')
-      .map((item) => item.trim().toLowerCase())
-      .filter(Boolean);
-    const role = adminEmails.includes(normalizedEmail) ? 'admin' : 'user';
 
     const user = await insertOne('users', {
-      name: String(name).trim(),
+      username: resolvedUsername,
       email: normalizedEmail,
-      password_hash: hashedPassword,
-      role
+      password: hashedPassword
     });
 
     await createDefaultProfile(user.id);
@@ -86,6 +97,7 @@ const login = async (req, res, next) => {
 
     const normalizedEmail = String(email).trim().toLowerCase();
     const user = await selectOne('users', {
+      select: USER_SELECT,
       filters: [{ type: 'eq', column: 'email', value: normalizedEmail }]
     });
 
@@ -93,7 +105,7 @@ const login = async (req, res, next) => {
       return res.status(401).json({ message: 'Credenciales inválidas' });
     }
 
-    const isPasswordValid = await bcrypt.compare(password, user.password_hash || '');
+    const isPasswordValid = await bcrypt.compare(password, user.password || '');
     if (!isPasswordValid) {
       return res.status(401).json({ message: 'Credenciales inválidas' });
     }
@@ -112,6 +124,7 @@ const login = async (req, res, next) => {
 const me = async (req, res, next) => {
   try {
     const user = await selectOne('users', {
+      select: USER_SELECT,
       filters: [{ type: 'eq', column: 'id', value: req.user.id }]
     });
 
