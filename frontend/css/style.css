@@ -1353,6 +1353,13 @@ body.menu-open .site-header {
 }
 
 @media (hover: none), (pointer: coarse) {
+    .movies-carousel,
+    .movies-grid {
+        touch-action: auto;
+        overscroll-behavior-x: auto;
+        cursor: auto;
+    }
+
     .movie-trailer-preview {
         display: none;
     }
