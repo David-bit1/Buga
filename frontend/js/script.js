@@ -1,3 +1,5 @@
+(function () {
+// Scoped wrapper to avoid redeclaration errors when multiple page scripts share the same page.
 const HOME_SHARED = window.BugaShared;
 const HERO_SLIDE_INTERVAL = 6500;
 const TRENDING_VISIBLE_COUNT = 8;
@@ -224,7 +226,7 @@ const preloadImage = (source) => {
     image.src = source;
 };
 
-const getFavorites = () => {
+const getHomeFavorites = () => {
     try {
         return JSON.parse(localStorage.getItem(HOME_SHARED.getProfileStorageKey('buga-favorites')) || '[]');
     } catch {
@@ -232,7 +234,7 @@ const getFavorites = () => {
     }
 };
 
-const setFavorites = (favorites) => {
+const setHomeFavorites = (favorites) => {
     localStorage.setItem(HOME_SHARED.getProfileStorageKey('buga-favorites'), JSON.stringify(favorites));
 };
 
@@ -248,9 +250,9 @@ const setWatchHistory = (entries) => {
     localStorage.setItem(HOME_SHARED.getProfileStorageKey('buga-watch-history'), JSON.stringify(entries));
 };
 
-const isFavoriteMovie = (movieId) => getFavorites().includes(movieId);
+const isHomeFavoriteMovie = (movieId) => getHomeFavorites().includes(movieId);
 
-const getFavoriteIcon = (favorite) => (favorite ? '♥' : '♡');
+const getHomeFavoriteIcon = (favorite) => (favorite ? '♥' : '♡');
 
 const formatWatchTime = (seconds) => {
     if (!Number.isFinite(seconds) || seconds < 0) {
@@ -463,7 +465,7 @@ const getSearchPanelContent = (state, movies = [], query = '') => {
 
 const createCard = (movie) => {
     const genreLabel = movie.genres?.[0]?.name || 'Cine';
-    const favorite = isFavoriteMovie(movie.id);
+    const favorite = isHomeFavoriteMovie(movie.id);
 
     return `
         <article class="movie-card" data-movie-id="${movie.id}" tabindex="0" role="link" aria-label="Abrir ${movie.title}">
@@ -474,7 +476,7 @@ const createCard = (movie) => {
                 <p>${shortenText(movie.description, 110)}</p>
                 <div class="movie-card-actions">
                     <button class="favorite-toggle ${favorite ? 'is-active' : ''}" type="button" data-favorite-toggle="${movie.id}" data-movie-title="${movie.title}" aria-pressed="${favorite}" aria-label="${favorite ? 'Quitar de favoritos' : 'Agregar a favoritos'}">
-                        <span class="favorite-icon" aria-hidden="true">${getFavoriteIcon(favorite)}</span>
+                        <span class="favorite-icon" aria-hidden="true">${getHomeFavoriteIcon(favorite)}</span>
                     </button>
                     <button class="ver-btn" type="button" data-movie-id="${movie.id}" data-title="${movie.title}">Ver</button>
                 </div>
@@ -1027,8 +1029,8 @@ const renderTrendingCard = (movie, index) => `
             <h3>${movie.title}</h3>
             <p>${shortenText(movie.description, 110)}</p>
             <div class="movie-card-actions">
-                <button class="favorite-toggle ${isFavoriteMovie(movie.id) ? 'is-active' : ''}" type="button" data-favorite-toggle="${movie.id}" data-movie-title="${movie.title}" aria-pressed="${isFavoriteMovie(movie.id)}" aria-label="${isFavoriteMovie(movie.id) ? 'Quitar de favoritos' : 'Agregar a favoritos'}">
-                    <span class="favorite-icon" aria-hidden="true">${getFavoriteIcon(isFavoriteMovie(movie.id))}</span>
+                <button class="favorite-toggle ${isHomeFavoriteMovie(movie.id) ? 'is-active' : ''}" type="button" data-favorite-toggle="${movie.id}" data-movie-title="${movie.title}" aria-pressed="${isHomeFavoriteMovie(movie.id)}" aria-label="${isHomeFavoriteMovie(movie.id) ? 'Quitar de favoritos' : 'Agregar a favoritos'}">
+                    <span class="favorite-icon" aria-hidden="true">${getHomeFavoriteIcon(isHomeFavoriteMovie(movie.id))}</span>
                 </button>
                 <button class="ver-btn" type="button" data-movie-id="${movie.id}" data-title="${movie.title}">Ver</button>
             </div>
@@ -1204,18 +1206,18 @@ const refreshFeaturedGrid = (query = '') => {
 };
 
 const updateFavoriteButton = (button, movieId) => {
-    const favorite = isFavoriteMovie(movieId);
+    const favorite = isHomeFavoriteMovie(movieId);
     button.classList.toggle('is-active', favorite);
     button.setAttribute('aria-pressed', String(favorite));
     button.setAttribute('aria-label', favorite ? 'Quitar de favoritos' : 'Agregar a favoritos');
     const icon = button.querySelector('.favorite-icon');
     if (icon) {
-        icon.textContent = getFavoriteIcon(favorite);
+        icon.textContent = getHomeFavoriteIcon(favorite);
     }
 };
 
 const toggleFavorite = (movieId) => {
-    const favorites = getFavorites();
+    const favorites = getHomeFavorites();
     const index = favorites.indexOf(movieId);
     const isRemoving = index >= 0;
 
@@ -1225,7 +1227,7 @@ const toggleFavorite = (movieId) => {
         favorites.push(movieId);
     }
 
-    setFavorites(favorites);
+    setHomeFavorites(favorites);
 
     return isRemoving ? 'removed' : 'added';
 };
@@ -1779,3 +1781,4 @@ const bootstrap = async () => {
 };
 
 bootstrap();
+})();

@@ -1,3 +1,4 @@
+(function () {
 const ADMIN_API = '/api/admin';
 
 const adminSidebar = document.getElementById('adminSidebar');
@@ -572,3 +573,4 @@ const bootstrap = async () => {
 };
 
 document.addEventListener('DOMContentLoaded', bootstrap);
+})();

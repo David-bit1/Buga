@@ -1,3 +1,4 @@
+(function () {
 const GENRES_SHARED = window.BugaShared;
 const FEATURED_MOVIE_IDS = GENRES_SHARED.FEATURED_MOVIE_IDS;
 const GENRES_FAVORITES_KEY = GENRES_SHARED.getProfileStorageKey('buga-favorites');
@@ -26,7 +27,7 @@ const normalizeSearchText = (value) =>
         .normalize('NFD')
         .replace(/[\u0300-\u036f]/g, '');
 
-const getFavorites = () => {
+const getGenresFavorites = () => {
     try {
         return JSON.parse(localStorage.getItem(GENRES_FAVORITES_KEY) || '[]');
     } catch {
@@ -34,17 +35,17 @@ const getFavorites = () => {
     }
 };
 
-const setFavorites = (favorites) => {
+const setGenresFavorites = (favorites) => {
     localStorage.setItem(GENRES_FAVORITES_KEY, JSON.stringify(favorites));
 };
 
-const isFavoriteMovie = (movieId) => getFavorites().includes(movieId);
+const isGenresFavoriteMovie = (movieId) => getGenresFavorites().includes(movieId);
 
 const notifyToast = (options) => window.BugaToast?.show?.(options) || null;
 const syncPreferenceEvent = (payload) => window.BugaAuth?.recordPreferenceEvent?.(payload);
 
 
-const getFavoriteIcon = (favorite) => (favorite ? '♥' : '♡');
+const getGenresFavoriteIcon = (favorite) => (favorite ? '♥' : '♡');
 
 const showPageLoader = () => {
     document.body.classList.add('is-loading');
@@ -79,7 +80,7 @@ const mapMovie = (movie) => ({
 
 const createMovieCard = (movie) => {
     const genreLabel = movie.genres?.[0]?.name || 'Cine';
-    const favorite = isFavoriteMovie(movie.id);
+    const favorite = isGenresFavoriteMovie(movie.id);
 
     return `
         <article class="movie-card" data-movie-id="${movie.id}" data-movie-title="${movie.title}" tabindex="0" role="link" aria-label="Abrir ${movie.title}">
@@ -90,7 +91,7 @@ const createMovieCard = (movie) => {
                 <p>${movie.description.length > 110 ? `${movie.description.slice(0, 110).trim()}...` : movie.description}</p>
                 <div class="movie-card-actions">
                     <button class="favorite-toggle ${favorite ? 'is-active' : ''}" type="button" data-favorite-toggle="${movie.id}" aria-pressed="${favorite}" aria-label="${favorite ? 'Quitar de favoritos' : 'Agregar a favoritos'}">
-                        <span class="favorite-icon" aria-hidden="true">${getFavoriteIcon(favorite)}</span>
+                        <span class="favorite-icon" aria-hidden="true">${getGenresFavoriteIcon(favorite)}</span>
                     </button>
                     <button class="ver-btn" type="button" data-movie-id="${movie.id}">Ver</button>
                 </div>
@@ -213,18 +214,18 @@ const renderMovies = () => {
 };
 
 const updateFavoriteButton = (button, movieId) => {
-    const favorite = isFavoriteMovie(movieId);
+    const favorite = isGenresFavoriteMovie(movieId);
     button.classList.toggle('is-active', favorite);
     button.setAttribute('aria-pressed', String(favorite));
     button.setAttribute('aria-label', favorite ? 'Quitar de favoritos' : 'Agregar a favoritos');
     const icon = button.querySelector('.favorite-icon');
     if (icon) {
-        icon.textContent = getFavoriteIcon(favorite);
+        icon.textContent = getGenresFavoriteIcon(favorite);
     }
 };
 
 const toggleFavorite = (movieId) => {
-    const favorites = getFavorites();
+    const favorites = getGenresFavorites();
     const index = favorites.indexOf(movieId);
     const isRemoving = index >= 0;
 
@@ -234,7 +235,7 @@ const toggleFavorite = (movieId) => {
         favorites.push(movieId);
     }
 
-    setFavorites(favorites);
+    setGenresFavorites(favorites);
 
     return isRemoving ? 'removed' : 'added';
 };
@@ -434,3 +435,4 @@ const bootstrap = async () => {
 };
 
 bootstrap();
+})();

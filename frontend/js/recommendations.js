@@ -1,3 +1,5 @@
+(function () {
+// Scoped wrapper to keep recommendation helpers isolated from the home catalog script.
 const RECOMMENDATIONS_SHARED = window.BugaShared;
 const RECOMMENDATIONS_API = window.BugaEndpoints?.recommendationsBase || '/api/recommendations';
 const RECOMMENDATIONS_SECTION = document.getElementById('recommendationsSection');
@@ -26,7 +28,7 @@ const recommendationAuthFetch = (url, options = {}) => {
     });
 };
 
-const getFavorites = () => {
+const getRecommendationFavorites = () => {
     try {
         return JSON.parse(localStorage.getItem(RECOMMENDATION_FAVORITES_KEY) || '[]');
     } catch {
@@ -34,11 +36,11 @@ const getFavorites = () => {
     }
 };
 
-const setFavorites = (favorites) => {
+const setRecommendationFavorites = (favorites) => {
     localStorage.setItem(RECOMMENDATION_FAVORITES_KEY, JSON.stringify(favorites));
 };
 
-const isFavoriteMovie = (movieId) => getFavorites().includes(movieId);
+const isRecommendationFavoriteMovie = (movieId) => getRecommendationFavorites().includes(movieId);
 
 const notifyToast = (options) => window.BugaToast?.show?.(options) || null;
 
@@ -82,7 +84,7 @@ const navigateToMovie = (movieId) => {
 };
 
 const updateFavoriteButton = (button, movieId) => {
-    const favorite = isFavoriteMovie(movieId);
+    const favorite = isRecommendationFavoriteMovie(movieId);
     button.classList.toggle('is-active', favorite);
     button.setAttribute('aria-pressed', String(favorite));
     button.setAttribute('aria-label', favorite ? 'Quitar de favoritos' : 'Agregar a favoritos');
@@ -93,7 +95,7 @@ const updateFavoriteButton = (button, movieId) => {
 };
 
 const toggleFavorite = (movie) => {
-    const favorites = getFavorites();
+    const favorites = getRecommendationFavorites();
     const index = favorites.indexOf(movie.id);
     const removing = index >= 0;
 
@@ -103,7 +105,7 @@ const toggleFavorite = (movie) => {
         favorites.push(movie.id);
     }
 
-    setFavorites(favorites);
+    setRecommendationFavorites(favorites);
 
     syncPreferenceEvent({
         type: 'favorite',
@@ -160,7 +162,7 @@ const renderRecommendations = (items) => {
     }
 
     RECOMMENDATIONS_GRID.innerHTML = items.map((movie) => {
-        const favorite = isFavoriteMovie(movie.id);
+        const favorite = isRecommendationFavoriteMovie(movie.id);
         const poster = movie.poster || movie.backdrop || RECOMMENDATIONS_SHARED.FALLBACK_POSTER;
 
         return `
@@ -312,3 +314,4 @@ document.addEventListener('DOMContentLoaded', bootstrap);
 window.BugaRecommendations = {
     refresh: fetchRecommendations
 };
+})();

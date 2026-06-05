@@ -1,3 +1,4 @@
+(function () {
 const PROFILES_API_BASE = window.BugaEndpoints?.profilesBase || 'https://buga.onrender.com/api/profiles';
 const PROFILE_AVATARS = [
   { key: 'neon', label: 'Neon', icon: 'N', color: '#8a4dff' },
@@ -400,3 +401,4 @@ const bootstrap = async () => {
 };
 
 document.addEventListener('DOMContentLoaded', bootstrap);
+})();

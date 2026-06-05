@@ -1,3 +1,4 @@
+(function () {
 const MOVIE_SHARED = window.BugaShared;
 const MOVIE_FAVORITES_KEY = MOVIE_SHARED.getProfileStorageKey('buga-favorites');
 const WATCH_HISTORY_KEY = MOVIE_SHARED.getProfileStorageKey('buga-watch-history');
@@ -112,7 +113,7 @@ const normalizeMovie = (movie) => ({
     subtitlesSrc: movie.subtitlesSrc || ''
 });
 
-const getFavorites = () => {
+const getMovieFavorites = () => {
     try {
         return JSON.parse(localStorage.getItem(MOVIE_FAVORITES_KEY) || '[]');
     } catch {
@@ -120,7 +121,7 @@ const getFavorites = () => {
     }
 };
 
-const setFavorites = (favorites) => {
+const setMovieFavorites = (favorites) => {
     localStorage.setItem(MOVIE_FAVORITES_KEY, JSON.stringify(favorites));
 };
 
@@ -177,7 +178,7 @@ const updateFavoriteState = () => {
         return;
     }
 
-    const favorites = getFavorites();
+    const favorites = getMovieFavorites();
     const isFavorite = favorites.includes(currentMovie.id);
     favoriteButton.classList.toggle('is-active', isFavorite);
     favoriteButton.innerHTML = `
@@ -602,7 +603,7 @@ const handleFavoriteToggle = () => {
         return;
     }
 
-    const favorites = getFavorites();
+    const favorites = getMovieFavorites();
     const index = favorites.indexOf(currentMovie.id);
 
     if (index >= 0) {
@@ -611,7 +612,7 @@ const handleFavoriteToggle = () => {
         favorites.push(currentMovie.id);
     }
 
-    setFavorites(favorites);
+    setMovieFavorites(favorites);
     updateFavoriteState();
 
     notifyToast({
@@ -832,3 +833,4 @@ const bootstrap = async () => {
 };
 
 bootstrap();
+})();

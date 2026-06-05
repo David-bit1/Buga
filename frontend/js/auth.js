@@ -1,3 +1,4 @@
+(function () {
 const AUTH_SHARED = window.BugaShared;
 
 window.BugaEndpoints = {
@@ -608,3 +609,4 @@ window.BugaToast = {
     error: (message, title = 'Error', options = {}) => showBugaToast({ ...options, type: 'error', title, message }),
     info: (message, title = 'Info', options = {}) => showBugaToast({ ...options, type: 'info', title, message })
 };
+})();
