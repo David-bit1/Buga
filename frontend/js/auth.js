@@ -21,7 +21,7 @@ window.BugaConfig = {
 
 window.BugaUtils = {
     ...(window.BugaUtils || {}),
-    withTimeout: (promise, timeoutMs = REQUEST_TIMEOUT_MS, label = 'request') =>
+    requestWithTimeout: (promise, timeoutMs = REQUEST_TIMEOUT_MS, label = 'request') =>
         Promise.race([
             promise,
             new Promise((_, reject) => {
@@ -29,8 +29,6 @@ window.BugaUtils = {
             })
         ])
 };
-
-const requestWithTimeout = window.BugaUtils.withTimeout;
 
 const toastIcons = {
     success: `
@@ -447,7 +445,7 @@ const fetchCurrentUser = async () => {
     }
 
     try {
-        const response = await requestWithTimeout(authFetch(`${API_BASE}/me`), REQUEST_TIMEOUT_MS, 'auth/me');
+        const response = await window.BugaUtils.requestWithTimeout(authFetch(`${API_BASE}/me`), REQUEST_TIMEOUT_MS, 'auth/me');
         const data = await readResponseData(response);
         if (!response.ok) {
             throw new Error(data.message || 'Sesión inválida');
@@ -475,7 +473,7 @@ const handleAuthForm = async (form) => {
     setLoading(form, true);
 
     try {
-        const response = await requestWithTimeout(fetch(`${API_BASE}${endpoint}`, {
+        const response = await window.BugaUtils.requestWithTimeout(fetch(`${API_BASE}${endpoint}`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'

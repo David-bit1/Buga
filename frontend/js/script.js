@@ -10,7 +10,6 @@ const TRENDING_VISIBLE_COUNT = 8;
 const TRENDING_ROTATION_INTERVAL = 5400;
 const TRAILER_HOVER_DELAY = 240;
 const HOME_REQUEST_TIMEOUT_MS = window.BugaConfig?.requestTimeoutMs || 9000;
-const requestWithTimeout = window.BugaUtils?.withTimeout || ((promise) => promise);
 
 const heroSection = document.getElementById('banner');
 const heroBackdropA = document.getElementById('heroBackdropA');
@@ -287,7 +286,7 @@ const createMovieCardMedia = (movie, tagLabel = '') => `
 `;
 
 const getMovieDetails = async (movieId) => {
-    const response = await requestWithTimeout(fetch(
+    const response = await window.BugaUtils.requestWithTimeout(fetch(
         `${TMDB_BASE_URL}/movie/${movieId}?api_key=${API_KEY}&language=es-ES`
     ), HOME_REQUEST_TIMEOUT_MS, `tmdb movie ${movieId}`);
 
@@ -345,7 +344,7 @@ const getTrailerVideoKey = async (movieId) => {
 
     const requestTrailerList = async (language = '') => {
         const languageQuery = language ? `&language=${language}` : '';
-        const response = await requestWithTimeout(fetch(
+        const response = await window.BugaUtils.requestWithTimeout(fetch(
             `${TMDB_BASE_URL}/movie/${movieId}/videos?api_key=${API_KEY}${languageQuery}`
         ), HOME_REQUEST_TIMEOUT_MS, `tmdb trailer ${movieId}`);
 
@@ -517,6 +516,7 @@ const showPageLoader = () => {
     if (pageLoader) {
         pageLoader.setAttribute('aria-busy', 'true');
     }
+    console.log('Loader visible');
 };
 
 const hidePageLoader = () => {
@@ -524,6 +524,7 @@ const hidePageLoader = () => {
     if (pageLoader) {
         pageLoader.setAttribute('aria-busy', 'false');
     }
+    console.log('Loader hidden');
 };
 
 const renderMovies = (movies) => {
@@ -1729,6 +1730,7 @@ const wireCarouselControls = () => {
 
 const bootstrap = async () => {
     let failSafeId = null;
+    console.log('Catalog render start');
 
     console.log('Auth state:', {
         page: window.location.pathname,
@@ -1778,6 +1780,7 @@ const bootstrap = async () => {
         hidePageLoader();
         console.log('Loading:', false);
         console.log('User:', window.BugaAuth?.getAuthSession?.()?.user || null);
+        console.log('Catalog render complete');
     }
 };
 
