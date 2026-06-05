@@ -1,11 +1,6 @@
-const API_KEY = 'b24af203b14e23f8c91844baae37cfab';
-const TMDB_BASE_URL = 'https://api.themoviedb.org/3';
-const IMAGE_BASE_URL = 'https://image.tmdb.org/t/p/w780';
-const POSTER_BASE_URL = 'https://image.tmdb.org/t/p/w500';
-const DEFAULT_VIDEO_SOURCE = 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4';
-const FALLBACK_POSTER = 'https://via.placeholder.com/500x750?text=No+Poster';
-const FAVORITES_KEY = window.BugaAuth?.getProfileStorageKey?.('buga-favorites') || 'buga-favorites';
-const WATCH_HISTORY_KEY = window.BugaAuth?.getProfileStorageKey?.('buga-watch-history') || 'buga-watch-history';
+const MOVIE_SHARED = window.BugaShared;
+const MOVIE_FAVORITES_KEY = MOVIE_SHARED.getProfileStorageKey('buga-favorites');
+const WATCH_HISTORY_KEY = MOVIE_SHARED.getProfileStorageKey('buga-watch-history');
 
 const movieHero = document.getElementById('movieHero');
 const movieBackdrop = document.getElementById('movieBackdrop');
@@ -107,8 +102,8 @@ const normalizeMovie = (movie) => ({
     title: movie.title || movie.original_title || `Película ${movie.id}`,
     description: movie.overview || movie.description || 'Descripción no disponible.',
     tagline: movie.tagline || '',
-    poster: movie.poster_path ? `${POSTER_BASE_URL}${movie.poster_path}` : movie.poster || FALLBACK_POSTER,
-    backdrop: movie.backdrop_path ? `${IMAGE_BASE_URL}${movie.backdrop_path}` : movie.backdrop || '',
+    poster: movie.poster_path ? `${MOVIE_SHARED.POSTER_BASE_URL}${movie.poster_path}` : movie.poster || MOVIE_SHARED.FALLBACK_POSTER,
+    backdrop: movie.backdrop_path ? `${MOVIE_SHARED.IMAGE_BASE_URL_W780}${movie.backdrop_path}` : movie.backdrop || '',
     release_date: movie.release_date || '',
     runtime: movie.runtime || 0,
     genres: Array.isArray(movie.genres) ? movie.genres : [],
@@ -119,14 +114,14 @@ const normalizeMovie = (movie) => ({
 
 const getFavorites = () => {
     try {
-        return JSON.parse(localStorage.getItem(FAVORITES_KEY) || '[]');
+        return JSON.parse(localStorage.getItem(MOVIE_FAVORITES_KEY) || '[]');
     } catch {
         return [];
     }
 };
 
 const setFavorites = (favorites) => {
-    localStorage.setItem(FAVORITES_KEY, JSON.stringify(favorites));
+    localStorage.setItem(MOVIE_FAVORITES_KEY, JSON.stringify(favorites));
 };
 
 const getWatchHistory = () => {
@@ -309,7 +304,7 @@ const saveWatchProgress = (force = false) => {
     const entry = {
         id: currentMovie.id,
         title: currentMovie.title,
-        poster: currentMovie.poster || FALLBACK_POSTER,
+        poster: currentMovie.poster || MOVIE_SHARED.FALLBACK_POSTER,
         backdrop: currentMovie.backdrop || '',
         description: currentMovie.description || '',
         genres: Array.isArray(currentMovie.genres) ? currentMovie.genres : [],
@@ -376,7 +371,7 @@ const destroyHls = () => {
 };
 
 const getPlaybackSources = (movie) => ({
-    mp4: movie?.videoSrc || DEFAULT_VIDEO_SOURCE,
+    mp4: movie?.videoSrc || MOVIE_SHARED.DEFAULT_VIDEO_SOURCE,
     hls: movie?.hlsSrc || '',
     subtitles: movie?.subtitlesSrc || ''
 });
@@ -570,7 +565,7 @@ const applyMovie = (movie) => {
     movieTitle.textContent = movie.title;
     movieDescription.textContent = movie.description || 'Descripción no disponible.';
     movieTagline.textContent = movie.tagline || 'Un clásico con una estética oscura y elegante.';
-    moviePoster.src = movie.poster || FALLBACK_POSTER;
+    moviePoster.src = movie.poster || MOVIE_SHARED.FALLBACK_POSTER;
     moviePoster.alt = `Poster de ${movie.title}`;
 
     const backdropUrl = movie.backdrop || movie.poster;
@@ -593,7 +588,7 @@ const applyMovie = (movie) => {
 };
 
 const fetchMovieFromTMDB = async (id) => {
-    const response = await fetch(`${TMDB_BASE_URL}/movie/${id}?api_key=${API_KEY}&language=es-ES`);
+    const response = await fetch(`${MOVIE_SHARED.TMDB_BASE_URL}/movie/${id}?api_key=${MOVIE_SHARED.API_KEY}&language=es-ES`);
 
     if (!response.ok) {
         throw new Error(`TMDB responded with ${response.status}`);
@@ -707,7 +702,7 @@ const wirePlayer = () => {
 
         if (!hlsInstance) {
             if (qualitySelect.value === 'mp4') {
-                movieVideo.src = currentMovie.videoSrc || DEFAULT_VIDEO_SOURCE;
+                movieVideo.src = currentMovie.videoSrc || MOVIE_SHARED.DEFAULT_VIDEO_SOURCE;
                 movieVideo.load();
             }
             return;

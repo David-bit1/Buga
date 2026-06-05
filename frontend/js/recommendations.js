@@ -1,13 +1,13 @@
-const RECOMMENDATIONS_API = '/api/recommendations';
+const RECOMMENDATIONS_SHARED = window.BugaShared;
+const RECOMMENDATIONS_API = window.BugaEndpoints?.recommendationsBase || '/api/recommendations';
 const RECOMMENDATIONS_SECTION = document.getElementById('recommendationsSection');
 const RECOMMENDATIONS_GRID = document.getElementById('recommendationsGrid');
 const RECOMMENDATIONS_SUBTITLE = document.getElementById('recommendationsSubtitle');
 const RECOMMENDATIONS_PREV = document.querySelector('[data-recommendation-carousel="prev"]');
 const RECOMMENDATIONS_NEXT = document.querySelector('[data-recommendation-carousel="next"]');
 
-const FALLBACK_POSTER = 'https://via.placeholder.com/500x750?text=No+Poster';
-const RECOMMENDATION_FAVORITES_KEY = window.BugaAuth?.getProfileStorageKey?.('buga-favorites') || 'buga-favorites';
-const RECOMMENDATION_HISTORY_KEY = window.BugaAuth?.getProfileStorageKey?.('buga-watch-history') || 'buga-watch-history';
+const RECOMMENDATION_FAVORITES_KEY = RECOMMENDATIONS_SHARED.getProfileStorageKey('buga-favorites');
+const RECOMMENDATION_HISTORY_KEY = RECOMMENDATIONS_SHARED.getProfileStorageKey('buga-watch-history');
 
 const recommendationAuthFetch = (url, options = {}) => {
     const token = window.BugaAuth?.getAuthToken?.();
@@ -161,7 +161,7 @@ const renderRecommendations = (items) => {
 
     RECOMMENDATIONS_GRID.innerHTML = items.map((movie) => {
         const favorite = isFavoriteMovie(movie.id);
-        const poster = movie.poster || movie.backdrop || FALLBACK_POSTER;
+        const poster = movie.poster || movie.backdrop || RECOMMENDATIONS_SHARED.FALLBACK_POSTER;
 
         return `
             <article class="movie-card recommendation-card" data-movie-id="${movie.id}" data-movie-title="${escapeText(movie.title)}" tabindex="0" role="link" aria-label="Abrir ${escapeText(movie.title)}">

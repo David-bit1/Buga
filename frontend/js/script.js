@@ -1,15 +1,9 @@
-const FEATURED_MOVIE_IDS = [653, 19, 962, 961, 10098, 643, 22596, 40574, 701, 23282];
-const API_KEY = 'b24af203b14e23f8c91844baae37cfab';
-const TMDB_BASE_URL = 'https://api.themoviedb.org/3';
-const IMAGE_BASE_URL = 'https://image.tmdb.org/t/p/w500';
-const FALLBACK_POSTER = 'https://via.placeholder.com/500x750?text=No+Poster';
-const FAVORITES_KEY = window.BugaAuth?.getProfileStorageKey?.('buga-favorites') || 'buga-favorites';
-const WATCH_HISTORY_KEY = window.BugaAuth?.getProfileStorageKey?.('buga-watch-history') || 'buga-watch-history';
+const HOME_SHARED = window.BugaShared;
 const HERO_SLIDE_INTERVAL = 6500;
 const TRENDING_VISIBLE_COUNT = 8;
 const TRENDING_ROTATION_INTERVAL = 5400;
 const TRAILER_HOVER_DELAY = 240;
-const HOME_REQUEST_TIMEOUT_MS = window.BugaConfig?.requestTimeoutMs || 9000;
+const HOME_REQUEST_TIMEOUT_MS = HOME_SHARED.REQUEST_TIMEOUT_MS;
 
 const heroSection = document.getElementById('banner');
 const heroBackdropA = document.getElementById('heroBackdropA');
@@ -232,26 +226,26 @@ const preloadImage = (source) => {
 
 const getFavorites = () => {
     try {
-        return JSON.parse(localStorage.getItem(FAVORITES_KEY) || '[]');
+        return JSON.parse(localStorage.getItem(HOME_SHARED.getProfileStorageKey('buga-favorites')) || '[]');
     } catch {
         return [];
     }
 };
 
 const setFavorites = (favorites) => {
-    localStorage.setItem(FAVORITES_KEY, JSON.stringify(favorites));
+    localStorage.setItem(HOME_SHARED.getProfileStorageKey('buga-favorites'), JSON.stringify(favorites));
 };
 
 const getWatchHistory = () => {
     try {
-        return JSON.parse(localStorage.getItem(WATCH_HISTORY_KEY) || '[]');
+        return JSON.parse(localStorage.getItem(HOME_SHARED.getProfileStorageKey('buga-watch-history')) || '[]');
     } catch {
         return [];
     }
 };
 
 const setWatchHistory = (entries) => {
-    localStorage.setItem(WATCH_HISTORY_KEY, JSON.stringify(entries));
+    localStorage.setItem(HOME_SHARED.getProfileStorageKey('buga-watch-history'), JSON.stringify(entries));
 };
 
 const isFavoriteMovie = (movieId) => getFavorites().includes(movieId);
@@ -280,14 +274,14 @@ const shortenText = (text, limit = 110) => {
 const createMovieCardMedia = (movie, tagLabel = '') => `
     <div class="movie-card-media">
         ${tagLabel ? `<div class="movie-card-tag">${tagLabel}</div>` : ''}
-        <img class="movie-poster" src="${movie.poster || FALLBACK_POSTER}" alt="Poster de ${movie.title}" loading="lazy" decoding="async">
+        <img class="movie-poster" src="${movie.poster || HOME_SHARED.FALLBACK_POSTER}" alt="Poster de ${movie.title}" loading="lazy" decoding="async">
         <div class="movie-trailer-preview" aria-hidden="true"></div>
     </div>
 `;
 
 const getMovieDetails = async (movieId) => {
-    const response = await window.BugaUtils.requestWithTimeout(fetch(
-        `${TMDB_BASE_URL}/movie/${movieId}?api_key=${API_KEY}&language=es-ES`
+    const response = await HOME_SHARED.requestWithTimeout(fetch(
+        `${HOME_SHARED.TMDB_BASE_URL}/movie/${movieId}?api_key=${HOME_SHARED.API_KEY}&language=es-ES`
     ), HOME_REQUEST_TIMEOUT_MS, `tmdb movie ${movieId}`);
 
     if (!response.ok) {
@@ -300,8 +294,8 @@ const getMovieDetails = async (movieId) => {
 const mapMovie = (movie) => ({
     id: movie.id,
     title: movie.title || movie.original_title || 'Película',
-    poster: movie.poster_path ? `${IMAGE_BASE_URL}${movie.poster_path}` : FALLBACK_POSTER,
-    backdrop: movie.backdrop_path ? `${IMAGE_BASE_URL}${movie.backdrop_path}` : '',
+    poster: movie.poster_path ? `${HOME_SHARED.IMAGE_BASE_URL}${movie.poster_path}` : HOME_SHARED.FALLBACK_POSTER,
+    backdrop: movie.backdrop_path ? `${HOME_SHARED.IMAGE_BASE_URL}${movie.backdrop_path}` : '',
     description: movie.overview || 'Descripción no disponible.',
     genres: Array.isArray(movie.genres) ? movie.genres : [],
     year: formatYear(movie.release_date)
@@ -344,8 +338,8 @@ const getTrailerVideoKey = async (movieId) => {
 
     const requestTrailerList = async (language = '') => {
         const languageQuery = language ? `&language=${language}` : '';
-        const response = await window.BugaUtils.requestWithTimeout(fetch(
-            `${TMDB_BASE_URL}/movie/${movieId}/videos?api_key=${API_KEY}${languageQuery}`
+        const response = await HOME_SHARED.requestWithTimeout(fetch(
+            `${HOME_SHARED.TMDB_BASE_URL}/movie/${movieId}/videos?api_key=${HOME_SHARED.API_KEY}${languageQuery}`
         ), HOME_REQUEST_TIMEOUT_MS, `tmdb trailer ${movieId}`);
 
         if (!response.ok) {
@@ -453,7 +447,7 @@ const getSearchPanelContent = (state, movies = [], query = '') => {
         ${movies
             .map((movie) => `
                 <button class="search-result-item" type="button" data-search-movie-id="${movie.id}" aria-label="Abrir ${movie.title}">
-                    <img class="search-result-poster" src="${movie.poster || FALLBACK_POSTER}" alt="" loading="lazy" decoding="async">
+                    <img class="search-result-poster" src="${movie.poster || HOME_SHARED.FALLBACK_POSTER}" alt="" loading="lazy" decoding="async">
                     <div class="search-result-copy">
                         <strong>${movie.title}</strong>
                         <div class="search-result-meta">
@@ -494,7 +488,7 @@ const renderLoadingState = () => {
         return;
     }
 
-    moviesGrid.innerHTML = FEATURED_MOVIE_IDS
+    moviesGrid.innerHTML = HOME_SHARED.FEATURED_MOVIE_IDS
         .map(() => `
             <article class="movie-card movie-card-skeleton" aria-hidden="true">
                 <div class="movie-poster movie-poster-skeleton"></div>
@@ -539,7 +533,7 @@ const renderMovies = (movies) => {
 const normalizeWatchEntry = (entry) => ({
     id: Number(entry.id),
     title: entry.title || 'Película',
-    poster: entry.poster || FALLBACK_POSTER,
+    poster: entry.poster || HOME_SHARED.FALLBACK_POSTER,
     description: entry.description || 'Descripción no disponible.',
     genres: Array.isArray(entry.genres) ? entry.genres : [],
     year: entry.year || 'N/A',
@@ -776,7 +770,7 @@ const setHeroBackdrop = (movie) => {
         return;
     }
 
-    const backdropSource = movie?.backdrop || FALLBACK_POSTER;
+    const backdropSource = movie?.backdrop || HOME_SHARED.FALLBACK_POSTER;
     inactiveBackdrop.style.backgroundImage = `linear-gradient(180deg, rgba(4, 1, 9, 0.08), rgba(4, 1, 9, 0.68)), url('${backdropSource}')`;
     requestAnimationFrame(() => {
         inactiveBackdrop.classList.add('is-visible');
@@ -878,7 +872,7 @@ const setHeroSlide = (nextIndex, direction = 1, immediate = false) => {
 
     const nextMovie = heroMoviesCache[(heroActiveIndex + 1) % totalSlides];
     if (nextMovie) {
-        preloadImage(nextMovie.backdrop || FALLBACK_POSTER);
+        preloadImage(nextMovie.backdrop || HOME_SHARED.FALLBACK_POSTER);
     }
 };
 
@@ -955,7 +949,7 @@ const renderHeroFallback = () => {
         id: 0,
         title: 'Películas y Series',
         description: 'Disfruta del mejor contenido con una experiencia cinematográfica premium.',
-        backdrop: FALLBACK_POSTER,
+        backdrop: HOME_SHARED.FALLBACK_POSTER,
         year: 'N/A',
         genres: ['Streaming'],
         voteAverage: 0,
@@ -980,8 +974,8 @@ const loadHeroSlides = async () => {
                 id: movie.id,
                 title: movie.title || 'Película destacada',
                 description: movie.description || 'Disfruta del catálogo de Buga.',
-                backdrop: movie.backdrop || movie.poster || FALLBACK_POSTER,
-                poster: movie.poster || FALLBACK_POSTER,
+                backdrop: movie.backdrop || movie.poster || HOME_SHARED.FALLBACK_POSTER,
+                poster: movie.poster || HOME_SHARED.FALLBACK_POSTER,
                 year: movie.year || 'N/A',
                 genres: Array.isArray(movie.genres)
                     ? movie.genres.map((genre) => genre?.name).filter(Boolean)
@@ -1124,8 +1118,8 @@ const loadTrendingMovies = async () => {
             .map((movie, index) => ({
                 id: movie.id,
                 title: movie.title || 'Tendencia',
-                poster: movie.poster || FALLBACK_POSTER,
-                backdrop: movie.backdrop || movie.poster || FALLBACK_POSTER,
+                poster: movie.poster || HOME_SHARED.FALLBACK_POSTER,
+                backdrop: movie.backdrop || movie.poster || HOME_SHARED.FALLBACK_POSTER,
                 description: movie.description || 'Lo más visto del catálogo de Buga.',
                 genres: Array.isArray(movie.genres)
                     ? movie.genres.map((genre) => genre?.name).filter(Boolean)
@@ -1332,7 +1326,7 @@ const loadFeaturedMovies = async (options = {}) => {
 
     try {
         const results = await Promise.allSettled(
-            FEATURED_MOVIE_IDS.map(async (movieId) => {
+            HOME_SHARED.FEATURED_MOVIE_IDS.map(async (movieId) => {
                 const movie = await getMovieDetails(movieId);
                 return mapMovie(movie);
             })
@@ -1759,11 +1753,11 @@ const bootstrap = async () => {
         hidePageLoader();
     }, 12000);
     window.addEventListener('storage', (event) => {
-        if (event.key === WATCH_HISTORY_KEY) {
+        if (event.key === HOME_SHARED.getProfileStorageKey('buga-watch-history')) {
             renderContinueWatching();
         }
 
-        if (event.key === FAVORITES_KEY) {
+        if (event.key === HOME_SHARED.getProfileStorageKey('buga-favorites')) {
             refreshFeaturedGrid(searchInput?.value || '');
             renderTrendingMovies();
         }

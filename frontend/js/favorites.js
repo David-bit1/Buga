@@ -1,8 +1,5 @@
-const API_KEY = 'b24af203b14e23f8c91844baae37cfab';
-const TMDB_BASE_URL = 'https://api.themoviedb.org/3';
-const IMAGE_BASE_URL = 'https://image.tmdb.org/t/p/w500';
-const FALLBACK_POSTER = 'https://via.placeholder.com/500x750?text=No+Poster';
-const FAVORITES_KEY = window.BugaAuth?.getProfileStorageKey?.('buga-favorites') || 'buga-favorites';
+const FAVORITES_SHARED = window.BugaShared;
+const FAVORITES_PAGE_STORAGE_KEY = FAVORITES_SHARED.getProfileStorageKey('buga-favorites');
 
 const favoritesGrid = document.getElementById('favoritesGrid');
 const pageLoader = document.getElementById('pageLoader');
@@ -14,14 +11,14 @@ const formatYear = (releaseDate) => (releaseDate ? String(releaseDate).slice(0, 
 
 const getFavorites = () => {
     try {
-        return JSON.parse(localStorage.getItem(FAVORITES_KEY) || '[]');
+        return JSON.parse(localStorage.getItem(FAVORITES_PAGE_STORAGE_KEY) || '[]');
     } catch {
         return [];
     }
 };
 
 const setFavorites = (favorites) => {
-    localStorage.setItem(FAVORITES_KEY, JSON.stringify(favorites));
+    localStorage.setItem(FAVORITES_PAGE_STORAGE_KEY, JSON.stringify(favorites));
 };
 
 const isFavoriteMovie = (movieId) => getFavorites().includes(movieId);
@@ -44,7 +41,7 @@ const hidePageLoader = () => {
 
 const getMovieDetails = async (movieId) => {
     const response = await fetch(
-        `${TMDB_BASE_URL}/movie/${movieId}?api_key=${API_KEY}&language=es-ES`
+        `${FAVORITES_SHARED.TMDB_BASE_URL}/movie/${movieId}?api_key=${FAVORITES_SHARED.API_KEY}&language=es-ES`
     );
 
     if (!response.ok) {
@@ -57,7 +54,7 @@ const getMovieDetails = async (movieId) => {
 const mapMovie = (movie) => ({
     id: movie.id,
     title: movie.title || movie.original_title || 'Película',
-    poster: movie.poster_path ? `${IMAGE_BASE_URL}${movie.poster_path}` : FALLBACK_POSTER,
+    poster: movie.poster_path ? `${FAVORITES_SHARED.IMAGE_BASE_URL}${movie.poster_path}` : FAVORITES_SHARED.FALLBACK_POSTER,
     description: movie.overview || 'Descripción no disponible.',
     genres: Array.isArray(movie.genres) ? movie.genres : [],
     year: formatYear(movie.release_date)
@@ -77,7 +74,7 @@ const createCard = (movie) => {
 
     return `
         <article class="movie-card" data-movie-id="${movie.id}" data-movie-title="${movie.title}" tabindex="0" role="link" aria-label="Abrir ${movie.title}">
-            <img class="movie-poster" src="${movie.poster || FALLBACK_POSTER}" alt="Poster de ${movie.title}" loading="lazy" decoding="async">
+            <img class="movie-poster" src="${movie.poster || FAVORITES_SHARED.FALLBACK_POSTER}" alt="Poster de ${movie.title}" loading="lazy" decoding="async">
             <div class="movie-card-body">
                 <p class="movie-card-kicker">${genreLabel} • ${movie.year}</p>
                 <h3>${movie.title}</h3>

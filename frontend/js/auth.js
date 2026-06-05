@@ -1,33 +1,21 @@
-const API_ORIGIN = 'https://buga.onrender.com';
-const API_BASE = `${API_ORIGIN}/api/auth`;
-const RECOMMENDATIONS_API_BASE = `${API_ORIGIN}/api/recommendations`;
-const AUTH_STORAGE_KEY = 'buga-auth';
-const ACTIVE_PROFILE_KEY = 'buga-active-profile';
-const TOAST_FLASH_KEY = 'buga-toast-flash';
-const REQUEST_TIMEOUT_MS = 9000;
+const AUTH_SHARED = window.BugaShared;
 
 window.BugaEndpoints = {
-    origin: API_ORIGIN,
-    authBase: API_BASE,
-    recommendationsBase: RECOMMENDATIONS_API_BASE,
-    profilesBase: `${API_ORIGIN}/api/profiles`
+    origin: AUTH_SHARED.API_ORIGIN,
+    authBase: AUTH_SHARED.API_BASES.auth,
+    recommendationsBase: AUTH_SHARED.API_BASES.recommendations,
+    profilesBase: AUTH_SHARED.API_BASES.profiles
 };
 
 window.BugaConfig = {
     ...(window.BugaConfig || {}),
-    requestTimeoutMs: REQUEST_TIMEOUT_MS,
-    apiOrigin: API_ORIGIN
+    requestTimeoutMs: AUTH_SHARED.REQUEST_TIMEOUT_MS,
+    apiOrigin: AUTH_SHARED.API_ORIGIN
 };
 
 window.BugaUtils = {
     ...(window.BugaUtils || {}),
-    requestWithTimeout: (promise, timeoutMs = REQUEST_TIMEOUT_MS, label = 'request') =>
-        Promise.race([
-            promise,
-            new Promise((_, reject) => {
-                window.setTimeout(() => reject(new Error(`${label} timeout`)), timeoutMs);
-            })
-        ])
+    requestWithTimeout: AUTH_SHARED.requestWithTimeout
 };
 
 const toastIcons = {
@@ -156,52 +144,52 @@ const showBugaToast = (options = {}) => {
 };
 
 const pushToastFlash = (payload) => {
-    sessionStorage.setItem(TOAST_FLASH_KEY, JSON.stringify(payload));
+    sessionStorage.setItem(AUTH_SHARED.STORAGE_KEYS.TOAST_FLASH, JSON.stringify(payload));
 };
 
 const consumeToastFlash = () => {
     try {
-        const payload = JSON.parse(sessionStorage.getItem(TOAST_FLASH_KEY) || 'null');
-        sessionStorage.removeItem(TOAST_FLASH_KEY);
+        const payload = JSON.parse(sessionStorage.getItem(AUTH_SHARED.STORAGE_KEYS.TOAST_FLASH) || 'null');
+        sessionStorage.removeItem(AUTH_SHARED.STORAGE_KEYS.TOAST_FLASH);
         return payload;
     } catch {
-        sessionStorage.removeItem(TOAST_FLASH_KEY);
+        sessionStorage.removeItem(AUTH_SHARED.STORAGE_KEYS.TOAST_FLASH);
         return null;
     }
 };
 
 const getAuthSession = () => {
     try {
-        return JSON.parse(localStorage.getItem(AUTH_STORAGE_KEY) || 'null');
+        return JSON.parse(localStorage.getItem(AUTH_SHARED.STORAGE_KEYS.AUTH) || 'null');
     } catch {
         return null;
     }
 };
 
 const setAuthSession = (session) => {
-    localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(session));
+    localStorage.setItem(AUTH_SHARED.STORAGE_KEYS.AUTH, JSON.stringify(session));
 };
 
 const clearAuthSession = () => {
-    localStorage.removeItem(AUTH_STORAGE_KEY);
+    localStorage.removeItem(AUTH_SHARED.STORAGE_KEYS.AUTH);
 };
 
 const getAuthToken = () => getAuthSession()?.token || '';
 
 const getActiveProfile = () => {
     try {
-        return JSON.parse(localStorage.getItem(ACTIVE_PROFILE_KEY) || 'null');
+        return JSON.parse(localStorage.getItem(AUTH_SHARED.STORAGE_KEYS.ACTIVE_PROFILE) || 'null');
     } catch {
         return null;
     }
 };
 
 const setActiveProfile = (profile) => {
-    localStorage.setItem(ACTIVE_PROFILE_KEY, JSON.stringify(profile));
+    localStorage.setItem(AUTH_SHARED.STORAGE_KEYS.ACTIVE_PROFILE, JSON.stringify(profile));
 };
 
 const clearActiveProfile = () => {
-    localStorage.removeItem(ACTIVE_PROFILE_KEY);
+    localStorage.removeItem(AUTH_SHARED.STORAGE_KEYS.ACTIVE_PROFILE);
 };
 
 const getProfileStorageKey = (baseKey) => {
@@ -241,7 +229,7 @@ const recordPreferenceEvent = async (payload = {}) => {
     preferenceEventCooldowns.set(cooldownKey, Date.now());
 
     try {
-        const response = await authFetch(`${RECOMMENDATIONS_API_BASE}/events`, {
+        const response = await authFetch(`${AUTH_SHARED.API_BASES.recommendations}/events`, {
             method: 'POST',
             body: JSON.stringify({
                 profileId: profile.id,
@@ -445,7 +433,7 @@ const fetchCurrentUser = async () => {
     }
 
     try {
-        const response = await window.BugaUtils.requestWithTimeout(authFetch(`${API_BASE}/me`), REQUEST_TIMEOUT_MS, 'auth/me');
+        const response = await window.BugaUtils.requestWithTimeout(authFetch(`${AUTH_SHARED.API_BASES.auth}/me`), AUTH_SHARED.REQUEST_TIMEOUT_MS, 'auth/me');
         const data = await readResponseData(response);
         if (!response.ok) {
             throw new Error(data.message || 'Sesión inválida');
@@ -473,13 +461,13 @@ const handleAuthForm = async (form) => {
     setLoading(form, true);
 
     try {
-        const response = await window.BugaUtils.requestWithTimeout(fetch(`${API_BASE}${endpoint}`, {
+        const response = await window.BugaUtils.requestWithTimeout(fetch(`${AUTH_SHARED.API_BASES.auth}${endpoint}`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
             },
             body: JSON.stringify(payload)
-        }), REQUEST_TIMEOUT_MS, `${mode} auth`);
+        }), AUTH_SHARED.REQUEST_TIMEOUT_MS, `${mode} auth`);
         const data = await readResponseData(response);
 
         if (!response.ok) {

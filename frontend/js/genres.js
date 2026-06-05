@@ -1,9 +1,6 @@
-const FEATURED_MOVIE_IDS = [653, 19, 962, 961, 10098, 643, 22596, 40574, 701, 23282];
-const API_KEY = 'b24af203b14e23f8c91844baae37cfab';
-const TMDB_BASE_URL = 'https://api.themoviedb.org/3';
-const IMAGE_BASE_URL = 'https://image.tmdb.org/t/p/w500';
-const FALLBACK_POSTER = 'https://via.placeholder.com/500x750?text=No+Poster';
-const FAVORITES_KEY = window.BugaAuth?.getProfileStorageKey?.('buga-favorites') || 'buga-favorites';
+const GENRES_SHARED = window.BugaShared;
+const FEATURED_MOVIE_IDS = GENRES_SHARED.FEATURED_MOVIE_IDS;
+const GENRES_FAVORITES_KEY = GENRES_SHARED.getProfileStorageKey('buga-favorites');
 
 const genreMoviesGrid = document.getElementById('genreMoviesGrid');
 const genreChips = document.getElementById('genreChips');
@@ -31,14 +28,14 @@ const normalizeSearchText = (value) =>
 
 const getFavorites = () => {
     try {
-        return JSON.parse(localStorage.getItem(FAVORITES_KEY) || '[]');
+        return JSON.parse(localStorage.getItem(GENRES_FAVORITES_KEY) || '[]');
     } catch {
         return [];
     }
 };
 
 const setFavorites = (favorites) => {
-    localStorage.setItem(FAVORITES_KEY, JSON.stringify(favorites));
+    localStorage.setItem(GENRES_FAVORITES_KEY, JSON.stringify(favorites));
 };
 
 const isFavoriteMovie = (movieId) => getFavorites().includes(movieId);
@@ -61,7 +58,7 @@ const hidePageLoader = () => {
 
 const getMovieDetails = async (movieId) => {
     const response = await fetch(
-        `${TMDB_BASE_URL}/movie/${movieId}?api_key=${API_KEY}&language=es-ES`
+        `${GENRES_SHARED.TMDB_BASE_URL}/movie/${movieId}?api_key=${GENRES_SHARED.API_KEY}&language=es-ES`
     );
 
     if (!response.ok) {
@@ -74,7 +71,7 @@ const getMovieDetails = async (movieId) => {
 const mapMovie = (movie) => ({
     id: movie.id,
     title: movie.title || movie.original_title || 'Película',
-    poster: movie.poster_path ? `${IMAGE_BASE_URL}${movie.poster_path}` : FALLBACK_POSTER,
+    poster: movie.poster_path ? `${GENRES_SHARED.IMAGE_BASE_URL}${movie.poster_path}` : GENRES_SHARED.FALLBACK_POSTER,
     description: movie.overview || 'Descripción no disponible.',
     genres: Array.isArray(movie.genres) ? movie.genres : [],
     year: formatYear(movie.release_date)
@@ -86,7 +83,7 @@ const createMovieCard = (movie) => {
 
     return `
         <article class="movie-card" data-movie-id="${movie.id}" data-movie-title="${movie.title}" tabindex="0" role="link" aria-label="Abrir ${movie.title}">
-            <img class="movie-poster" src="${movie.poster || FALLBACK_POSTER}" alt="Poster de ${movie.title}" loading="lazy" decoding="async">
+            <img class="movie-poster" src="${movie.poster || GENRES_SHARED.FALLBACK_POSTER}" alt="Poster de ${movie.title}" loading="lazy" decoding="async">
             <div class="movie-card-body">
                 <p class="movie-card-kicker">${genreLabel} • ${movie.year}</p>
                 <h3>${movie.title}</h3>
