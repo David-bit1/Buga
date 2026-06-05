@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#08040f">
+    <title>Buga | Subir película</title>
+    <link rel="icon" type="image/svg+xml" href="/assets/icons/favicon.svg">
+    <link rel="stylesheet" href="/css/upload-movie.css">
+</head>
+<body class="admin-page upload-page is-loading">
+    <div class="page-loader" id="pageLoader" aria-live="polite" aria-label="Cargando pantalla de subida">
+        <div class="page-loader-card">
+            <div class="page-loader-spinner" aria-hidden="true"></div>
+            <p>Cargando subida</p>
+        </div>
+    </div>
+
+    <div class="admin-shell upload-shell">
+        <aside class="admin-sidebar">
+            <div class="admin-brand">
+                <img src="/assets/images/logo-buga.png" alt="Logo BUGA" class="admin-logo">
+                <div>
+                    <p>Upload Studio</p>
+                    <h1>Buga Admin</h1>
+                </div>
+            </div>
+
+            <div class="upload-sidebar-copy">
+                <p class="admin-kicker">Flujo premium</p>
+                <h2>Sube posters, banners y video en un solo paso.</h2>
+                <p>Drag & drop, barra de progreso y validaciones pensadas para administración real.</p>
+            </div>
+
+            <div class="admin-sidebar-footer">
+                <a class="admin-back-link" href="/pages/admin.html">Volver al panel</a>
+                <a class="admin-secondary" href="/index.html">Ir al catálogo</a>
+            </div>
+        </aside>
+
+        <main class="admin-main">
+            <header class="admin-topbar">
+                <div>
+                    <p class="admin-kicker">Subida de películas</p>
+                    <h2>Agregar nueva película</h2>
+                </div>
+                <div class="admin-topbar-actions">
+                    <button class="admin-secondary" type="button" id="refreshMovies">Actualizar lista</button>
+                    <button class="admin-refresh" type="button" id="clearForm">Limpiar formulario</button>
+                </div>
+            </header>
+
+            <section class="upload-layout">
+                <article class="admin-card upload-card">
+                    <div class="admin-card-header">
+                        <div>
+                            <p class="admin-kicker">Formulario</p>
+                            <h3 id="formTitle">Nueva película</h3>
+                        </div>
+                        <span class="upload-badge">Premium</span>
+                    </div>
+
+                    <form class="upload-form" id="movieUploadForm">
+                        <input type="hidden" id="movieId">
+
+                        <div class="admin-form-grid">
+                            <label><span>Título</span><input id="movieTitle" type="text" placeholder="The Godfather" required></label>
+                            <label><span>Año</span><input id="movieYear" type="number" min="1888" max="2100" placeholder="1972" required></label>
+                        </div>
+
+                        <label><span>Descripción</span><textarea id="movieDescription" rows="4" placeholder="Descripción completa de la película" required></textarea></label>
+
+                        <div class="admin-form-grid">
+                            <label><span>Géneros</span><input id="movieGenres" type="text" placeholder="Drama, Crimen" required></label>
+                            <label><span>Duración (min)</span><input id="movieDuration" type="number" min="1" placeholder="175" required></label>
+                        </div>
+
+                        <div class="admin-form-grid">
+                            <label><span>Clasificación</span>
+                                <select id="movieClassification" required>
+                                    <option value="G">G</option>
+                                    <option value="PG">PG</option>
+                                    <option value="PG-13" selected>PG-13</option>
+                                    <option value="R">R</option>
+                                    <option value="NC-17">NC-17</option>
+                                </select>
+                            </label>
+                            <label><span>Estado</span>
+                                <select id="movieStatus">
+                                    <option value="published" selected>Publicado</option>
+                                    <option value="draft">Borrador</option>
+                                </select>
+                            </label>
+                        </div>
+
+                        <label class="admin-switch">
+                            <input id="movieFeatured" type="checkbox">
+                            <span>Destacar en portada</span>
+                        </label>
+
+                        <div class="upload-drop-grid">
+                            <label class="upload-dropzone" data-dropzone="poster">
+                                <input id="moviePoster" type="file" name="poster" accept="image/*" hidden>
+                                <span class="upload-dropzone-title">Poster</span>
+                                <strong>Arrastra o haz clic</strong>
+                                <p id="posterMeta">PNG/JPG recomendado</p>
+                            </label>
+
+                            <label class="upload-dropzone" data-dropzone="banner">
+                                <input id="movieBanner" type="file" name="banner" accept="image/*" hidden>
+                                <span class="upload-dropzone-title">Banner</span>
+                                <strong>Arrastra o haz clic</strong>
+                                <p id="bannerMeta">Imagen panorámica</p>
+                            </label>
+
+                            <label class="upload-dropzone" data-dropzone="video">
+                                <input id="movieVideo" type="file" name="video" accept="video/*" hidden>
+                                <span class="upload-dropzone-title">Video</span>
+                                <strong>Arrastra o haz clic</strong>
+                                <p id="videoMeta">MP4 / MOV / WEBM</p>
+                            </label>
+                        </div>
+
+                        <div class="upload-progress" hidden>
+                            <div class="upload-progress-head">
+                                <span>Subiendo película</span>
+                                <strong id="progressLabel">0%</strong>
+                            </div>
+                            <div class="upload-progress-bar">
+                                <span id="progressBar"></span>
+                            </div>
+                        </div>
+
+                        <div class="admin-actions upload-actions">
+                            <button class="admin-primary" type="submit" id="movieSubmit">Subir película</button>
+                        </div>
+                    </form>
+                </article>
+
+                <article class="admin-card upload-library">
+                    <div class="admin-card-header">
+                        <div>
+                            <p class="admin-kicker">Biblioteca</p>
+                            <h3>Películas subidas</h3>
+                        </div>
+                    </div>
+
+                    <div class="admin-table-wrap">
+                        <table class="admin-table">
+                            <thead>
+                                <tr>
+                                    <th>Título</th>
+                                    <th>Año</th>
+                                    <th>Géneros</th>
+                                    <th>Estado</th>
+                                    <th>Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody id="moviesTable"></tbody>
+                        </table>
+                    </div>
+                </article>
+            </section>
+        </main>
+    </div>
+
+    <script src="/js/shared.js"></script>
+    <script src="/js/auth.js"></script>
+    <script src="/js/upload-movie.js"></script>
+</body>
+</html>

@@ -25,6 +25,7 @@
             auth: 'https://buga.onrender.com/api/auth',
             recommendations: 'https://buga.onrender.com/api/recommendations',
             profiles: 'https://buga.onrender.com/api/profiles',
+            movies: 'https://buga.onrender.com/api/movies',
             admin: '/api/admin'
         }
     };

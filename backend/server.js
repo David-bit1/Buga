@@ -4,11 +4,14 @@ dotenv.config();
 
 const express = require('express');
 const cors = require('cors');
+const path = require('path');
 const authRoutes = require('./routes/authRoutes');
 const profileRoutes = require('./routes/profileRoutes');
 const recommendationRoutes = require('./routes/recommendationRoutes');
 const adminRoutes = require('./routes/adminRoutes');
 const videoRoutes = require('./routes/videoRoutes');
+const movieRoutes = require('./routes/movieRoutes');
+const { connectMongo } = require('./config/mongo');
 
 const app = express();
 const port = process.env.PORT || 3000;
@@ -43,12 +46,14 @@ app.use(cors({
   }
 }));
 app.use(express.json());
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 app.use('/api/auth', authRoutes);
 app.use('/api/profiles', profileRoutes);
 app.use('/api/recommendations', recommendationRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/videos', videoRoutes);
+app.use('/api/movies', movieRoutes);
 
 app.get('/health', (_req, res) => {
   res.json({ ok: true });
@@ -69,6 +74,12 @@ app.use((error, _req, res, _next) => {
 
 const start = async () => {
   try {
+    if (process.env.MONGO_URI) {
+      await connectMongo();
+    } else {
+      console.warn('MONGO_URI no configurado; el sistema de subida de películas quedará deshabilitado hasta configurarlo.');
+    }
+
     app.listen(port, () => {
       console.log(`Buga backend corriendo en http://localhost:${port}`);
     });

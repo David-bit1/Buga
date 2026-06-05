@@ -10,6 +10,7 @@ const RECOMMENDATIONS_NEXT = document.querySelector('[data-recommendation-carous
 
 const RECOMMENDATION_FAVORITES_KEY = RECOMMENDATIONS_SHARED.getProfileStorageKey('buga-favorites');
 const RECOMMENDATION_HISTORY_KEY = RECOMMENDATIONS_SHARED.getProfileStorageKey('buga-watch-history');
+const RECOMMENDATION_ALLOWED_IDS = new Set((RECOMMENDATIONS_SHARED.FEATURED_MOVIE_IDS || []).map(Number));
 
 const recommendationAuthFetch = (url, options = {}) => {
     const token = window.BugaAuth?.getAuthToken?.();
@@ -41,6 +42,8 @@ const setRecommendationFavorites = (favorites) => {
 };
 
 const isRecommendationFavoriteMovie = (movieId) => getRecommendationFavorites().includes(movieId);
+
+const isAllowedCatalogMovie = (movieId) => RECOMMENDATION_ALLOWED_IDS.has(Number(movieId));
 
 const notifyToast = (options) => window.BugaToast?.show?.(options) || null;
 
@@ -161,7 +164,17 @@ const renderRecommendations = (items) => {
         return;
     }
 
-    RECOMMENDATIONS_GRID.innerHTML = items.map((movie) => {
+    const allowedItems = items.filter((movie) => isAllowedCatalogMovie(movie.id));
+
+    if (!allowedItems.length) {
+        renderEmptyState(
+            'Aún no hay recomendaciones en tu catálogo',
+            'Las sugerencias solo muestran películas que ya están en Buga.'
+        );
+        return;
+    }
+
+    RECOMMENDATIONS_GRID.innerHTML = allowedItems.map((movie) => {
         const favorite = isRecommendationFavoriteMovie(movie.id);
         const poster = movie.poster || movie.backdrop || RECOMMENDATIONS_SHARED.FALLBACK_POSTER;
 
@@ -206,22 +219,23 @@ const fetchRecommendations = async () => {
         }
 
         const recommendations = Array.isArray(data.recommendations) ? data.recommendations : [];
+        const catalogRecommendations = recommendations.filter((movie) => isAllowedCatalogMovie(movie.id));
         if (RECOMMENDATIONS_SUBTITLE) {
             const profileName = profile.name || 'tu perfil';
-            RECOMMENDATIONS_SUBTITLE.textContent = recommendations.length
+            RECOMMENDATIONS_SUBTITLE.textContent = catalogRecommendations.length
                 ? `Sugerencias para ${profileName} basadas en favoritos, historial y géneros.`
                 : `Todavía estamos aprendiendo tus gustos en ${profileName}.`;
         }
 
-        if (recommendations.length === 0) {
+        if (catalogRecommendations.length === 0) {
             renderEmptyState(
                 'Aún estamos afinando tus gustos',
-                'Agrega favoritos, reproduce algunas películas y esta fila se llenará automáticamente.'
+                'Agrega favoritos, reproduce algunas películas y esta fila se llenará automáticamente con títulos que ya están en Buga.'
             );
             return;
         }
 
-        renderRecommendations(recommendations);
+        renderRecommendations(catalogRecommendations);
     } catch (error) {
         console.warn('Recommendations failed', error);
         notifyToast({

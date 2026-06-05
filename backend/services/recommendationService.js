@@ -10,6 +10,7 @@ const TMDB_BASE_URL = 'https://api.themoviedb.org/3';
 const TMDB_LANGUAGE = 'es-ES';
 const TMDB_IMAGE_BASE = 'https://image.tmdb.org/t/p/w500';
 const MAX_PREVIEW_RESULTS = 30;
+const CATALOG_MOVIE_IDS = new Set([653, 19, 962, 961, 10098, 643, 22596, 40574, 701, 23282]);
 
 const DEFAULT_FALLBACK_GENRES = [28, 18, 35, 80, 878, 14];
 
@@ -143,6 +144,8 @@ const getProfileOrThrow = async (userId, profileId) => {
 
   return profile;
 };
+
+const isCatalogMovie = (movieId) => CATALOG_MOVIE_IDS.has(Number(movieId));
 
 const getOrCreatePreferences = async (userId, profileId) => {
   const existing = await selectOne('user_preferences', {
@@ -417,7 +420,7 @@ const collectMovieCandidates = async (requests) => {
   const candidates = new Map();
 
   const mergeMovie = (movie, scoreBoost, source, reason) => {
-    if (!movie?.id) {
+    if (!movie?.id || !isCatalogMovie(movie.id)) {
       return;
     }
 
@@ -548,7 +551,7 @@ const getRecommendationsForProfile = async ({ userId, profileId, limit = 12 }) =
   ]);
 
   const topMovies = [...candidates.values()]
-    .filter((movie) => movie.id && !excludedIds.has(Number(movie.id)))
+      .filter((movie) => movie.id && isCatalogMovie(movie.id) && !excludedIds.has(Number(movie.id)))
     .sort((left, right) => {
       if ((right.score || 0) !== (left.score || 0)) {
         return (right.score || 0) - (left.score || 0);
@@ -588,7 +591,7 @@ const getRecommendationsForProfile = async ({ userId, profileId, limit = 12 }) =
 
   const fillers = await collectMovieCandidates(fallbackRequests);
   const fillerMovies = [...fillers.values()]
-    .filter((movie) => movie.id && !excludedIds.has(Number(movie.id)))
+    .filter((movie) => movie.id && isCatalogMovie(movie.id) && !excludedIds.has(Number(movie.id)))
     .sort((left, right) => (right.score || 0) - (left.score || 0))
     .slice(0, limit - topMovies.length)
     .map((movie) => ({
