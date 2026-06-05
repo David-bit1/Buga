@@ -9,9 +9,8 @@ const HERO_SLIDE_INTERVAL = 6500;
 const TRENDING_VISIBLE_COUNT = 8;
 const TRENDING_ROTATION_INTERVAL = 5400;
 const TRAILER_HOVER_DELAY = 240;
-const REQUEST_TIMEOUT_MS = 9000;
 
-const withTimeout = (promise, timeoutMs = REQUEST_TIMEOUT_MS, label = 'request') =>
+const withTimeout = (promise, timeoutMs = window.BugaConfig?.requestTimeoutMs || 9000, label = 'request') =>
     Promise.race([
         promise,
         new Promise((_, reject) => {

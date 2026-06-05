@@ -1,5 +1,4 @@
 const PROFILES_API_BASE = window.BugaEndpoints?.profilesBase || 'https://buga.onrender.com/api/profiles';
-const REQUEST_TIMEOUT_MS = 9000;
 const PROFILE_AVATARS = [
   { key: 'neon', label: 'Neon', icon: 'N', color: '#8a4dff' },
   { key: 'violet', label: 'Violet', icon: 'V', color: '#c06cff' },
@@ -59,7 +58,7 @@ const authFetchWithTimeout = (url, options = {}, label = 'request') =>
   Promise.race([
     profileAuthFetch(url, options),
     new Promise((_, reject) => {
-      window.setTimeout(() => reject(new Error(`${label} timeout`)), REQUEST_TIMEOUT_MS);
+      window.setTimeout(() => reject(new Error(`${label} timeout`)), window.BugaConfig?.requestTimeoutMs || 9000);
     })
   ]);
 

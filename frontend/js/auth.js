@@ -21,6 +21,12 @@ window.BugaEndpoints = {
     profilesBase: `${API_ORIGIN}/api/profiles`
 };
 
+window.BugaConfig = {
+    ...(window.BugaConfig || {}),
+    requestTimeoutMs: REQUEST_TIMEOUT_MS,
+    apiOrigin: API_ORIGIN
+};
+
 const toastIcons = {
     success: `
         <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
