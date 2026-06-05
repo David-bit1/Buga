@@ -1,4 +1,4 @@
-const API_BASE = 'https://buga.onrender.com';
+const PROFILES_API_BASE = window.BugaEndpoints?.profilesBase || 'https://buga.onrender.com/api/profiles';
 const REQUEST_TIMEOUT_MS = 9000;
 const PROFILE_AVATARS = [
   { key: 'neon', label: 'Neon', icon: 'N', color: '#8a4dff' },
@@ -168,7 +168,7 @@ const fetchProfiles = async () => {
     user: window.BugaAuth?.getAuthSession?.()?.user || null
   });
 
-  const response = await authFetchWithTimeout(API_BASE, {}, 'profiles');
+  const response = await authFetchWithTimeout(PROFILES_API_BASE, {}, 'profiles');
   const data = await response.json().catch(() => ({}));
 
   if (!response.ok) {
@@ -240,7 +240,7 @@ const submitProfileForm = async (event) => {
 
   const isEditing = Boolean(editingProfileId);
   try {
-    const response = await profileAuthFetch(`${API_BASE}${isEditing ? `/${editingProfileId}` : ''}`, {
+    const response = await profileAuthFetch(`${PROFILES_API_BASE}${isEditing ? `/${editingProfileId}` : ''}`, {
       method: isEditing ? 'PUT' : 'POST',
       body: JSON.stringify(payload)
     });
@@ -280,7 +280,7 @@ const deleteProfile = async (profileId) => {
   }
 
   try {
-    const response = await profileAuthFetch(`${API_BASE}/${profileId}`, { method: 'DELETE' });
+    const response = await profileAuthFetch(`${PROFILES_API_BASE}/${profileId}`, { method: 'DELETE' });
     const data = await response.json();
 
     if (!response.ok) {
