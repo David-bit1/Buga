@@ -6,14 +6,6 @@ const ACTIVE_PROFILE_KEY = 'buga-active-profile';
 const TOAST_FLASH_KEY = 'buga-toast-flash';
 const REQUEST_TIMEOUT_MS = 9000;
 
-const withTimeout = (promise, timeoutMs = REQUEST_TIMEOUT_MS, label = 'request') =>
-    Promise.race([
-        promise,
-        new Promise((_, reject) => {
-            window.setTimeout(() => reject(new Error(`${label} timeout`)), timeoutMs);
-        })
-    ]);
-
 window.BugaEndpoints = {
     origin: API_ORIGIN,
     authBase: API_BASE,
@@ -26,6 +18,19 @@ window.BugaConfig = {
     requestTimeoutMs: REQUEST_TIMEOUT_MS,
     apiOrigin: API_ORIGIN
 };
+
+window.BugaUtils = {
+    ...(window.BugaUtils || {}),
+    withTimeout: (promise, timeoutMs = REQUEST_TIMEOUT_MS, label = 'request') =>
+        Promise.race([
+            promise,
+            new Promise((_, reject) => {
+                window.setTimeout(() => reject(new Error(`${label} timeout`)), timeoutMs);
+            })
+        ])
+};
+
+const requestWithTimeout = window.BugaUtils.withTimeout;
 
 const toastIcons = {
     success: `
@@ -442,7 +447,7 @@ const fetchCurrentUser = async () => {
     }
 
     try {
-        const response = await withTimeout(authFetch(`${API_BASE}/me`), REQUEST_TIMEOUT_MS, 'auth/me');
+        const response = await requestWithTimeout(authFetch(`${API_BASE}/me`), REQUEST_TIMEOUT_MS, 'auth/me');
         const data = await readResponseData(response);
         if (!response.ok) {
             throw new Error(data.message || 'Sesión inválida');
@@ -470,7 +475,7 @@ const handleAuthForm = async (form) => {
     setLoading(form, true);
 
     try {
-        const response = await withTimeout(fetch(`${API_BASE}${endpoint}`, {
+        const response = await requestWithTimeout(fetch(`${API_BASE}${endpoint}`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'

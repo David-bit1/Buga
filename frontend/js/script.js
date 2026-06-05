@@ -9,14 +9,8 @@ const HERO_SLIDE_INTERVAL = 6500;
 const TRENDING_VISIBLE_COUNT = 8;
 const TRENDING_ROTATION_INTERVAL = 5400;
 const TRAILER_HOVER_DELAY = 240;
-
-const withTimeout = (promise, timeoutMs = window.BugaConfig?.requestTimeoutMs || 9000, label = 'request') =>
-    Promise.race([
-        promise,
-        new Promise((_, reject) => {
-            window.setTimeout(() => reject(new Error(`${label} timeout`)), timeoutMs);
-        })
-    ]);
+const HOME_REQUEST_TIMEOUT_MS = window.BugaConfig?.requestTimeoutMs || 9000;
+const requestWithTimeout = window.BugaUtils?.withTimeout || ((promise) => promise);
 
 const heroSection = document.getElementById('banner');
 const heroBackdropA = document.getElementById('heroBackdropA');
@@ -293,9 +287,9 @@ const createMovieCardMedia = (movie, tagLabel = '') => `
 `;
 
 const getMovieDetails = async (movieId) => {
-    const response = await withTimeout(fetch(
+    const response = await requestWithTimeout(fetch(
         `${TMDB_BASE_URL}/movie/${movieId}?api_key=${API_KEY}&language=es-ES`
-    ), REQUEST_TIMEOUT_MS, `tmdb movie ${movieId}`);
+    ), HOME_REQUEST_TIMEOUT_MS, `tmdb movie ${movieId}`);
 
     if (!response.ok) {
         throw new Error(`TMDB responded with ${response.status}`);
@@ -351,9 +345,9 @@ const getTrailerVideoKey = async (movieId) => {
 
     const requestTrailerList = async (language = '') => {
         const languageQuery = language ? `&language=${language}` : '';
-        const response = await withTimeout(fetch(
+        const response = await requestWithTimeout(fetch(
             `${TMDB_BASE_URL}/movie/${movieId}/videos?api_key=${API_KEY}${languageQuery}`
-        ), REQUEST_TIMEOUT_MS, `tmdb trailer ${movieId}`);
+        ), HOME_REQUEST_TIMEOUT_MS, `tmdb trailer ${movieId}`);
 
         if (!response.ok) {
             throw new Error(`TMDB responded with ${response.status}`);
