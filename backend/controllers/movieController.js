@@ -1,8 +1,12 @@
-const fs = require('fs/promises');
-const path = require('path');
-const mongoose = require('mongoose');
-const Movie = require('../models/Movie');
-const { connectMongo } = require('../config/mongo');
+const fs = require('fs');
+const {
+  insertOne,
+  selectMany,
+  selectOne,
+  updateRows,
+  deleteRows
+} = require('../services/supabaseRepository');
+const { uploadFile, deleteFile } = require('../services/r2Service');
 
 const normalizeGenres = (value) => {
   if (Array.isArray(value)) {
@@ -15,9 +19,9 @@ const normalizeGenres = (value) => {
     .filter(Boolean);
 };
 
-const toNumber = (value, fallback = 0) => {
+const toInteger = (value, fallback = 0) => {
   const parsed = Number(value);
-  return Number.isFinite(parsed) ? parsed : fallback;
+  return Number.isInteger(parsed) ? parsed : fallback;
 };
 
 const toBoolean = (value) =>
@@ -27,62 +31,66 @@ const toBoolean = (value) =>
   value === '1' ||
   value === 'on';
 
-const buildPublicPath = (file) => {
-  if (!file) {
-    return '';
-  }
-
-  const folder = file.fieldname === 'poster'
-    ? 'posters'
-    : file.fieldname === 'banner'
-      ? 'banners'
-      : 'videos';
-
-  return `/uploads/movies/${folder}/${file.filename}`;
-};
-
-const serializeMovie = (movie) => ({
-  id: movie._id,
-  title: movie.title,
-  description: movie.description,
-  genres: movie.genres || [],
-  year: movie.year,
-  duration: movie.duration,
-  classification: movie.classification,
-  posterPath: movie.posterPath || '',
-  bannerPath: movie.bannerPath || '',
-  videoPath: movie.videoPath || '',
-  featured: Boolean(movie.featured),
-  status: movie.status,
-  createdBy: movie.createdBy,
-  createdAt: movie.createdAt,
-  updatedAt: movie.updatedAt
-});
-
-const removeFileIfExists = async (filePath) => {
-  if (!filePath) {
-    return;
-  }
-
-  const absolutePath = path.join(__dirname, '..', filePath.replace(/^\/+/, ''));
-  await fs.unlink(absolutePath).catch(() => {});
-};
+const sanitizeFileName = (name) =>
+  String(name || 'file')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9.]+/g, '-');
 
 const cleanupUploadedFiles = async (files = {}) => {
   const allFiles = Object.values(files).flat();
-  await Promise.all(allFiles.map((file) => fs.unlink(file.path).catch(() => {})));
+  await Promise.all(allFiles.map((file) => fs.promises.unlink(file.path).catch(() => {})));
 };
 
-const ensureMongo = async () => {
-  await connectMongo();
+const buildAssetKey = (movieId, field, originalName) => {
+  const safeName = sanitizeFileName(originalName);
+  return `movies/${movieId}/${field}/${Date.now()}-${safeName}`;
 };
 
-const isValidMovieId = (movieId) => mongoose.Types.ObjectId.isValid(movieId);
+const uploadAsset = async (file, movieId) => {
+  if (!file) {
+    return null;
+  }
+
+  const key = buildAssetKey(movieId, file.fieldname, file.originalname);
+  const publicUrl = await uploadFile({
+    key,
+    body: fs.createReadStream(file.path),
+    contentType: file.mimetype
+  });
+
+  return { url: publicUrl, key };
+};
+
+const deleteAssetKeys = async (keys = []) => {
+  await Promise.all(keys.filter(Boolean).map((key) => deleteFile(key)));
+};
+
+const serializeMovie = (movie) => ({
+  id: movie.id,
+  title: movie.title,
+  description: movie.description,
+  genres: movie.genres || [],
+  release_year: movie.release_year || 0,
+  poster_url: movie.poster_url || '',
+  banner_url: movie.banner_url || '',
+  video_url: movie.video_url || '',
+  subtitle_url: movie.subtitle_url || '',
+  featured: Boolean(movie.featured),
+  status: movie.status,
+  processing_status: movie.processing_status,
+  video_source: movie.video_source,
+  created_by: movie.created_by,
+  created_at: movie.created_at,
+  updated_at: movie.updated_at
+});
 
 const listMovies = async (_req, res, next) => {
   try {
-    await ensureMongo();
-    const movies = await Movie.find().sort({ createdAt: -1 }).lean();
+    const movies = await selectMany('movies', {
+      order: { column: 'created_at', ascending: false }
+    });
     return res.json({ movies: movies.map(serializeMovie) });
   } catch (error) {
     return next(error);
@@ -91,11 +99,10 @@ const listMovies = async (_req, res, next) => {
 
 const getMovie = async (req, res, next) => {
   try {
-    await ensureMongo();
-    if (!isValidMovieId(req.params.movieId)) {
-      return res.status(400).json({ message: 'ID de película inválido' });
-    }
-    const movie = await Movie.findById(req.params.movieId).lean();
+    const movie = await selectOne('movies', {
+      filters: [{ type: 'eq', column: 'id', value: req.params.movieId }]
+    });
+
     if (!movie) {
       return res.status(404).json({ message: 'Película no encontrada' });
     }
@@ -107,23 +114,21 @@ const getMovie = async (req, res, next) => {
 };
 
 const uploadMovie = async (req, res, next) => {
-  try {
-    await ensureMongo();
+  let assetUploads = [];
 
+  try {
     const {
       title,
       description = '',
       genres = '',
-      year,
-      duration = 0,
-      classification = 'PG-13',
+      release_year = 0,
       featured = false,
       status = 'published'
     } = req.body;
 
-    if (!title || !year) {
+    if (!title) {
       await cleanupUploadedFiles(req.files);
-      return res.status(400).json({ message: 'Título y año son obligatorios' });
+      return res.status(400).json({ message: 'El título es obligatorio' });
     }
 
     const posterFile = req.files?.poster?.[0] || null;
@@ -135,20 +140,37 @@ const uploadMovie = async (req, res, next) => {
       return res.status(400).json({ message: 'Debes subir poster, banner y video' });
     }
 
-    const movie = await Movie.create({
+    const movieId = `${Date.now()}-${Math.random().toString(16).slice(2, 10)}`;
+    const posterAsset = await uploadAsset(posterFile, movieId);
+    const bannerAsset = await uploadAsset(bannerFile, movieId);
+    const videoAsset = await uploadAsset(videoFile, movieId);
+    const subtitleFile = req.files?.subtitles?.[0] || req.files?.subtitle?.[0] || null;
+    const subtitleAsset = subtitleFile ? await uploadAsset(subtitleFile, movieId) : null;
+
+    assetUploads = [posterAsset, bannerAsset, videoAsset, subtitleAsset];
+
+    const movie = await insertOne('movies', {
       title: String(title).trim(),
-      description: String(description).trim(),
+      description: String(description || '').trim(),
       genres: normalizeGenres(genres),
-      year: toNumber(year),
-      duration: toNumber(duration),
-      classification: String(classification || 'PG-13').trim(),
-      posterPath: buildPublicPath(posterFile),
-      bannerPath: buildPublicPath(bannerFile),
-      videoPath: buildPublicPath(videoFile),
+      release_year: toInteger(release_year, 0),
+      poster_url: posterAsset.url,
+      banner_url: bannerAsset.url,
+      video_url: videoAsset.url,
+      subtitle_url: subtitleAsset?.url || '',
+      poster_key: posterAsset.key,
+      banner_key: bannerAsset.key,
+      video_key: videoAsset.key,
+      subtitle_key: subtitleAsset?.key || '',
+      video_source: 'r2',
+      source_file: videoAsset.url,
+      processing_status: 'idle',
       featured: toBoolean(featured),
-      status,
-      createdBy: String(req.user?.id || '')
+      status: String(status || 'published'),
+      created_by: req.user?.id || null
     });
+
+    await cleanupUploadedFiles(req.files);
 
     return res.status(201).json({
       message: 'Película subida correctamente',
@@ -156,19 +178,19 @@ const uploadMovie = async (req, res, next) => {
     });
   } catch (error) {
     await cleanupUploadedFiles(req.files).catch(() => {});
+    await deleteAssetKeys(assetUploads.map((asset) => asset?.key));
     return next(error);
   }
 };
 
 const updateMovie = async (req, res, next) => {
-  try {
-    await ensureMongo();
-    if (!isValidMovieId(req.params.movieId)) {
-      await cleanupUploadedFiles(req.files);
-      return res.status(400).json({ message: 'ID de película inválido' });
-    }
+  let updatedAssets = [];
 
-    const movie = await Movie.findById(req.params.movieId);
+  try {
+    const movie = await selectOne('movies', {
+      filters: [{ type: 'eq', column: 'id', value: req.params.movieId }]
+    });
+
     if (!movie) {
       await cleanupUploadedFiles(req.files);
       return res.status(404).json({ message: 'Película no encontrada' });
@@ -178,70 +200,102 @@ const updateMovie = async (req, res, next) => {
       title,
       description,
       genres,
-      year,
-      duration,
-      classification,
+      release_year,
       featured,
       status
     } = req.body;
 
-    if (title !== undefined) movie.title = String(title).trim();
-    if (description !== undefined) movie.description = String(description).trim();
-    if (genres !== undefined) movie.genres = normalizeGenres(genres);
-    if (year !== undefined) movie.year = toNumber(year, movie.year);
-    if (duration !== undefined) movie.duration = toNumber(duration, movie.duration);
-    if (classification !== undefined) movie.classification = String(classification).trim();
-    if (featured !== undefined) movie.featured = toBoolean(featured);
-    if (status !== undefined) movie.status = String(status);
+    const updatePayload = {};
+
+    if (title !== undefined) updatePayload.title = String(title).trim();
+    if (description !== undefined) updatePayload.description = String(description).trim();
+    if (genres !== undefined) updatePayload.genres = normalizeGenres(genres);
+    if (release_year !== undefined) updatePayload.release_year = toInteger(release_year, movie.release_year);
+    if (featured !== undefined) updatePayload.featured = toBoolean(featured);
+    if (status !== undefined) updatePayload.status = String(status);
 
     const posterFile = req.files?.poster?.[0] || null;
     const bannerFile = req.files?.banner?.[0] || null;
     const videoFile = req.files?.video?.[0] || null;
+    const subtitleFile = req.files?.subtitles?.[0] || req.files?.subtitle?.[0] || null;
 
     if (posterFile) {
-      await removeFileIfExists(movie.posterPath);
-      movie.posterPath = buildPublicPath(posterFile);
+      const posterAsset = await uploadAsset(posterFile, movie.id);
+      updatedAssets.push(posterAsset);
+      updatePayload.poster_url = posterAsset.url;
+      updatePayload.poster_key = posterAsset.key;
     }
 
     if (bannerFile) {
-      await removeFileIfExists(movie.bannerPath);
-      movie.bannerPath = buildPublicPath(bannerFile);
+      const bannerAsset = await uploadAsset(bannerFile, movie.id);
+      updatedAssets.push(bannerAsset);
+      updatePayload.banner_url = bannerAsset.url;
+      updatePayload.banner_key = bannerAsset.key;
     }
 
     if (videoFile) {
-      await removeFileIfExists(movie.videoPath);
-      movie.videoPath = buildPublicPath(videoFile);
+      const videoAsset = await uploadAsset(videoFile, movie.id);
+      updatedAssets.push(videoAsset);
+      updatePayload.video_url = videoAsset.url;
+      updatePayload.video_key = videoAsset.key;
+      updatePayload.source_file = videoAsset.url;
     }
 
-    await movie.save();
+    if (subtitleFile) {
+      const subtitleAsset = await uploadAsset(subtitleFile, movie.id);
+      updatedAssets.push(subtitleAsset);
+      updatePayload.subtitle_url = subtitleAsset.url;
+      updatePayload.subtitle_key = subtitleAsset.key;
+    }
+
+    if (Object.keys(updatePayload).length === 0) {
+      await cleanupUploadedFiles(req.files);
+      return res.status(400).json({ message: 'No se enviaron datos para actualizar' });
+    }
+
+    const updatedRows = await updateRows(
+      'movies',
+      [{ type: 'eq', column: 'id', value: req.params.movieId }],
+      updatePayload
+    );
+
+    await cleanupUploadedFiles(req.files);
+    await deleteAssetKeys([
+      posterFile ? movie.poster_key : null,
+      bannerFile ? movie.banner_key : null,
+      videoFile ? movie.video_key : null,
+      subtitleFile ? movie.subtitle_key : null
+    ]);
 
     return res.json({
       message: 'Película actualizada correctamente',
-      movie: serializeMovie(movie)
+      movie: serializeMovie(updatedRows[0] || movie)
     });
   } catch (error) {
     await cleanupUploadedFiles(req.files).catch(() => {});
+    await deleteAssetKeys(updatedAssets.map((asset) => asset?.key));
     return next(error);
   }
 };
 
 const deleteMovie = async (req, res, next) => {
   try {
-    await ensureMongo();
-    if (!isValidMovieId(req.params.movieId)) {
-      return res.status(400).json({ message: 'ID de película inválido' });
-    }
+    const movie = await selectOne('movies', {
+      filters: [{ type: 'eq', column: 'id', value: req.params.movieId }]
+    });
 
-    const movie = await Movie.findByIdAndDelete(req.params.movieId);
     if (!movie) {
       return res.status(404).json({ message: 'Película no encontrada' });
     }
 
-    await Promise.all([
-      removeFileIfExists(movie.posterPath),
-      removeFileIfExists(movie.bannerPath),
-      removeFileIfExists(movie.videoPath)
+    await deleteAssetKeys([
+      movie.poster_key,
+      movie.banner_key,
+      movie.video_key,
+      movie.subtitle_key
     ]);
+
+    await deleteRows('movies', [{ type: 'eq', column: 'id', value: req.params.movieId }]);
 
     return res.json({ message: 'Película eliminada correctamente' });
   } catch (error) {

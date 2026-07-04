@@ -187,7 +187,7 @@ const selectProfile = (profile) => {
   notify({
     type: 'success',
     title: 'Perfil seleccionado',
-    message: `Ahora estás viendo Buga como ${profile.name}.`,
+    message: `Ahora estás viendo UltraPelis como ${profile.name}.`,
     key: `select:${profile.id}`
   });
   window.setTimeout(() => {

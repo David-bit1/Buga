@@ -35,6 +35,7 @@ const movieUpload = multer({
   fileFilter: (_req, file, callback) => {
     const isImage = file.fieldname === 'poster' || file.fieldname === 'banner';
     const isVideo = file.fieldname === 'video';
+    const isSubtitle = file.fieldname === 'subtitles' || file.fieldname === 'subtitle';
 
     if (isImage && !file.mimetype.startsWith('image/')) {
       callback(new Error('Los posters y banners deben ser imágenes'));
@@ -44,6 +45,20 @@ const movieUpload = multer({
     if (isVideo && !file.mimetype.startsWith('video/')) {
       callback(new Error('El archivo de video debe ser un video válido'));
       return;
+    }
+
+    if (isSubtitle) {
+      const isSubtitleMime = [
+        'text/plain',
+        'application/x-subrip',
+        'application/octet-stream'
+      ].includes(file.mimetype);
+      const hasSrtExtension = String(file.originalname || '').toLowerCase().endsWith('.srt');
+
+      if (!isSubtitleMime && !hasSrtExtension) {
+        callback(new Error('Los subtítulos deben ser archivos .srt o texto'));
+        return;
+      }
     }
 
     callback(null, true);
@@ -56,7 +71,9 @@ const movieUpload = multer({
 const uploadMovieFiles = movieUpload.fields([
   { name: 'poster', maxCount: 1 },
   { name: 'banner', maxCount: 1 },
-  { name: 'video', maxCount: 1 }
+  { name: 'video', maxCount: 1 },
+  { name: 'subtitles', maxCount: 1 },
+  { name: 'subtitle', maxCount: 1 }
 ]);
 
 module.exports = {

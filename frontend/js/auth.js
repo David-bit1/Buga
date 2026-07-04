@@ -487,7 +487,7 @@ const handleAuthForm = async (form) => {
             title: mode === 'register' ? 'Cuenta creada' : 'Sesión iniciada',
             message: mode === 'register'
                 ? 'Tu cuenta premium quedó lista.'
-                : 'Bienvenido de vuelta a Buga.'
+                : 'Bienvenido de vuelta a UltraPelis.'
         });
         window.location.href = '/pages/profiles.html';
     } catch (error) {

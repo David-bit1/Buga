@@ -71,6 +71,8 @@ const buildTokenizedUrl = (url, token) => {
 
 const params = new URLSearchParams(window.location.search);
 const movieId = Number(params.get('id'));
+const mediaType = params.get('type') === 'tv' ? 'tv' : 'movie';
+const mediaLabel = mediaType === 'tv' ? 'Serie' : 'Película';
 let currentMovie = null;
 let hlsInstance = null;
 let lastWatchSaveAt = 0;
@@ -100,13 +102,18 @@ const parseYear = (value) => (value ? String(value).slice(0, 4) : 'N/A');
 
 const normalizeMovie = (movie) => ({
     id: movie.id,
-    title: movie.title || movie.original_title || `Película ${movie.id}`,
+    mediaType,
+    title: mediaType === 'tv'
+        ? movie.name || movie.original_name || `Serie ${movie.id}`
+        : movie.title || movie.original_title || `Película ${movie.id}`,
     description: movie.overview || movie.description || 'Descripción no disponible.',
     tagline: movie.tagline || '',
     poster: movie.poster_path ? `${MOVIE_SHARED.POSTER_BASE_URL}${movie.poster_path}` : movie.poster || MOVIE_SHARED.FALLBACK_POSTER,
     backdrop: movie.backdrop_path ? `${MOVIE_SHARED.IMAGE_BASE_URL_W780}${movie.backdrop_path}` : movie.backdrop || '',
-    release_date: movie.release_date || '',
-    runtime: movie.runtime || 0,
+    release_date: mediaType === 'tv' ? movie.first_air_date || movie.release_date || '' : movie.release_date || movie.first_air_date || '',
+    runtime: mediaType === 'tv'
+        ? Number(Array.isArray(movie.episode_run_time) ? movie.episode_run_time[0] : movie.runtime) || 0
+        : movie.runtime || 0,
     genres: Array.isArray(movie.genres) ? movie.genres : [],
     videoSrc: movie.videoSrc || '',
     hlsSrc: movie.hlsSrc || '',
@@ -433,10 +440,12 @@ const setVideoSource = async (movie) => {
     }
 
     let streamInfo = null;
-    try {
-        streamInfo = await fetchStreamInfo(movie.id);
-    } catch (error) {
-        console.warn('Stream info unavailable', error);
+    if (movie.mediaType !== 'tv') {
+        try {
+            streamInfo = await fetchStreamInfo(movie.id);
+        } catch (error) {
+            console.warn('Stream info unavailable', error);
+        }
     }
 
     const manifestUrl = streamInfo?.manifestUrl || sources.hls;
@@ -562,12 +571,14 @@ const toggleFullscreen = async () => {
 const applyMovie = (movie) => {
     currentMovie = movie;
 
-    document.title = `${movie.title} | Buga`;
+    document.title = `${movie.title} | UltraPelis`;
     movieTitle.textContent = movie.title;
     movieDescription.textContent = movie.description || 'Descripción no disponible.';
-    movieTagline.textContent = movie.tagline || 'Un clásico con una estética oscura y elegante.';
+    movieTagline.textContent = movie.tagline || (mediaType === 'tv'
+        ? 'Una serie con una estética oscura y elegante.'
+        : 'Un clásico con una estética oscura y elegante.');
     moviePoster.src = movie.poster || MOVIE_SHARED.FALLBACK_POSTER;
-    moviePoster.alt = `Poster de ${movie.title}`;
+    moviePoster.alt = `${mediaLabel} de ${movie.title}`;
 
     const backdropUrl = movie.backdrop || movie.poster;
     if (movieBackdrop) {
@@ -578,7 +589,7 @@ const applyMovie = (movie) => {
 
     const year = parseYear(movie.release_date);
     const runtimeLabel = movie.runtime ? formatRuntime(movie.runtime) : 'Duración no disponible';
-    const genres = Array.isArray(movie.genres) && movie.genres.length ? movie.genres.map((genre) => genre.name).join(' • ') : 'Cine';
+    const genres = Array.isArray(movie.genres) && movie.genres.length ? movie.genres.map((genre) => genre.name).join(' • ') : (mediaType === 'tv' ? 'Serie' : 'Cine');
 
     movieYear.textContent = year;
     movieRuntime.textContent = runtimeLabel;
@@ -589,7 +600,8 @@ const applyMovie = (movie) => {
 };
 
 const fetchMovieFromTMDB = async (id) => {
-    const response = await fetch(`${MOVIE_SHARED.TMDB_BASE_URL}/movie/${id}?api_key=${MOVIE_SHARED.API_KEY}&language=es-ES`);
+    const endpoint = mediaType === 'tv' ? 'tv' : 'movie';
+    const response = await fetch(`${MOVIE_SHARED.TMDB_BASE_URL}/${endpoint}/${id}?api_key=${MOVIE_SHARED.API_KEY}&language=es-ES`);
 
     if (!response.ok) {
         throw new Error(`TMDB responded with ${response.status}`);
@@ -764,9 +776,9 @@ const bootstrap = async () => {
     });
 
     if (!Number.isFinite(movieId)) {
-        movieTitle.textContent = 'Película no encontrada';
-        movieDescription.textContent = 'El ID de la película no es válido.';
-        updateMeta(['N/A', 'N/A', 'Cine']);
+        movieTitle.textContent = mediaType === 'tv' ? 'Serie no encontrada' : 'Película no encontrada';
+        movieDescription.textContent = 'El ID proporcionado no es válido.';
+        updateMeta(['N/A', 'N/A', mediaType === 'tv' ? 'Serie' : 'Cine']);
         updateFavoriteState();
         hideMoviePageLoader();
         return;
@@ -813,14 +825,17 @@ const bootstrap = async () => {
 
         const fallbackMovie = {
             id: movieId,
-            title: `Película ${movieId}`,
+            title: mediaType === 'tv' ? `Serie ${movieId}` : `Película ${movieId}`,
             description: 'No se pudo cargar la información desde TMDB.',
-            tagline: 'Contenido temporal mientras se resuelve la conexión.',
+            tagline: mediaType === 'tv'
+                ? 'Contenido temporal de serie mientras se resuelve la conexión.'
+                : 'Contenido temporal mientras se resuelve la conexión.',
             poster: '',
             backdrop: '',
             release_date: '',
             runtime: 0,
-            genres: []
+            genres: [],
+            mediaType
         };
 
         applyMovie(fallbackMovie);

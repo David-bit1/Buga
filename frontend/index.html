@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="theme-color" content="#08040f">
-    <title>Buga | Streaming Premium</title>
+    <title>UltraPelis | Streaming Premium</title>
     <link rel="icon" type="image/svg+xml" href="/assets/icons/favicon.svg">
     <link rel="stylesheet" href="/css/style.css">
     <link rel="stylesheet" href="/css/recommendations.css">
@@ -22,8 +22,8 @@
     <header class="site-header">
         <div class="header-inner">
             <div class="header-top">
-                <a class="brand-area" href="/index.html" aria-label="Ir al inicio de Buga">
-                    <img class="brand-logo" src="/assets/images/logo-buga.png" alt="Logo BUGA">
+                <a class="brand-area" href="/index.html" aria-label="Ir al inicio de UltraPelis">
+                    <img class="brand-logo" src="/assets/images/logo-buga.png" alt="Logo UltraPelis">
                 </a>
 
                 <div class="header-actions">
@@ -47,7 +47,7 @@
                     <a href="#top">Inicio</a>
                     <a href="#movies">Películas</a>
                     <a href="/pages/genres.html">Géneros</a>
-                    <a href="#banner">Series</a>
+                    <a href="#series">Series</a>
                     <a href="/pages/favorites.html">Mi Lista</a>
                     <button class="nav-action-link" type="button" data-open-profile>Perfil</button>
                 </nav>
@@ -66,7 +66,7 @@
     </header>
 
     <main class="page-main">
-        <section class="banner hero" id="banner" aria-label="Hero dinámico de Buga">
+        <section class="banner hero" id="banner" aria-label="Hero dinámico de UltraPelis">
             <div class="hero-media" aria-hidden="true">
                 <div class="hero-backdrop hero-backdrop-a is-visible" id="heroBackdropA"></div>
                 <div class="hero-backdrop hero-backdrop-b" id="heroBackdropB"></div>
@@ -120,7 +120,7 @@
             <div class="container">
                 <div class="section-header section-header-row">
                     <div>
-                        <p class="section-kicker">Buga / Personalizado</p>
+                        <p class="section-kicker">UltraPelis / Personalizado</p>
                         <h2>Recomendado para ti</h2>
                         <p id="recommendationsSubtitle">Basado en tus favoritos, tu historial y lo último que viste.</p>
                     </div>
@@ -143,7 +143,7 @@
             <div class="container">
                 <div class="section-header section-header-row">
                     <div>
-                        <p class="section-kicker">Buga / Streaming premium</p>
+                        <p class="section-kicker">UltraPelis / Streaming premium</p>
                         <h2>Trending Hoy</h2>
                         <p>Lo más visto y lo más caliente del catálogo, renovado automáticamente.</p>
                     </div>
@@ -179,6 +179,29 @@
                 </div>
                 <div class="movies-carousel" aria-label="Carrusel de películas">
                     <div id="moviesGrid" class="movies-grid"></div>
+                </div>
+            </div>
+        </section>
+
+        <section class="movies-section series-section" id="series">
+            <div class="container">
+                <div class="section-header section-header-row">
+                    <div>
+                        <p class="section-kicker">UltraPelis / Televisión premium</p>
+                        <h2>Series destacadas</h2>
+                        <p>Explora series y temporadas populares con el mismo estilo cinematográfico.</p>
+                    </div>
+                    <div class="carousel-actions" aria-label="Controles de series">
+                        <button class="carousel-btn" type="button" data-series-carousel="prev" aria-label="Series anteriores">
+                            <span aria-hidden="true">‹</span>
+                        </button>
+                        <button class="carousel-btn" type="button" data-series-carousel="next" aria-label="Series siguientes">
+                            <span aria-hidden="true">›</span>
+                        </button>
+                    </div>
+                </div>
+                <div class="movies-carousel" aria-label="Carrusel de series">
+                    <div id="seriesGrid" class="movies-grid series-grid"></div>
                 </div>
             </div>
         </section>

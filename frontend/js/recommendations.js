@@ -86,6 +86,8 @@ const navigateToMovie = (movieId) => {
     }, 180);
 };
 
+const buildMovieHref = (movieId) => `/pages/movie.html?id=${movieId}`;
+
 const updateFavoriteButton = (button, movieId) => {
     const favorite = isRecommendationFavoriteMovie(movieId);
     button.classList.toggle('is-active', favorite);
@@ -169,7 +171,7 @@ const renderRecommendations = (items) => {
     if (!allowedItems.length) {
         renderEmptyState(
             'Aún no hay recomendaciones en tu catálogo',
-            'Las sugerencias solo muestran películas que ya están en Buga.'
+            'Las sugerencias solo muestran películas que ya están en UltraPelis.'
         );
         return;
     }
@@ -179,7 +181,8 @@ const renderRecommendations = (items) => {
         const poster = movie.poster || movie.backdrop || RECOMMENDATIONS_SHARED.FALLBACK_POSTER;
 
         return `
-            <article class="movie-card recommendation-card" data-movie-id="${movie.id}" data-movie-title="${escapeText(movie.title)}" tabindex="0" role="link" aria-label="Abrir ${escapeText(movie.title)}">
+        <article class="movie-card recommendation-card" data-movie-id="${movie.id}" data-movie-title="${escapeText(movie.title)}" tabindex="0" role="link" aria-label="Abrir ${escapeText(movie.title)}">
+                <a class="movie-card-link" href="${buildMovieHref(movie.id)}" aria-label="Abrir ${escapeText(movie.title)}"></a>
                 <div class="movie-card-media">
                     <span class="movie-card-tag">${escapeText(movie.reason || 'Te podría gustar')}</span>
                     <img class="movie-poster" src="${poster}" alt="Poster de ${escapeText(movie.title)}" loading="lazy" decoding="async">
@@ -230,7 +233,7 @@ const fetchRecommendations = async () => {
         if (catalogRecommendations.length === 0) {
             renderEmptyState(
                 'Aún estamos afinando tus gustos',
-                'Agrega favoritos, reproduce algunas películas y esta fila se llenará automáticamente con títulos que ya están en Buga.'
+                'Agrega favoritos, reproduce algunas películas y esta fila se llenará automáticamente con títulos que ya están en UltraPelis.'
             );
             return;
         }

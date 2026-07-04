@@ -61,6 +61,8 @@ const mapMovie = (movie) => ({
     year: formatYear(movie.release_date)
 });
 
+const buildMovieHref = (movieId) => `/pages/movie.html?id=${movieId}`;
+
 const shortenText = (text, limit = 110) => {
     if (!text || text.length <= limit) {
         return text || '';
@@ -75,6 +77,7 @@ const createCard = (movie) => {
 
     return `
         <article class="movie-card" data-movie-id="${movie.id}" data-movie-title="${movie.title}" tabindex="0" role="link" aria-label="Abrir ${movie.title}">
+            <a class="movie-card-link" href="${buildMovieHref(movie.id)}" aria-label="Abrir ${movie.title}"></a>
             <img class="movie-poster" src="${movie.poster || FAVORITES_SHARED.FALLBACK_POSTER}" alt="Poster de ${movie.title}" loading="lazy" decoding="async">
             <div class="movie-card-body">
                 <p class="movie-card-kicker">${genreLabel} • ${movie.year}</p>

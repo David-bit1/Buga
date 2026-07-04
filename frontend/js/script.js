@@ -4,6 +4,8 @@ const HOME_SHARED = window.BugaShared;
 const HERO_SLIDE_INTERVAL = 6500;
 const TRENDING_VISIBLE_COUNT = 8;
 const TRENDING_ROTATION_INTERVAL = 5400;
+const SERIES_VISIBLE_COUNT = 8;
+const SERIES_ROTATION_INTERVAL = 5400;
 const TRAILER_HOVER_DELAY = 240;
 const HOME_REQUEST_TIMEOUT_MS = HOME_SHARED.REQUEST_TIMEOUT_MS;
 
@@ -22,8 +24,10 @@ const heroBadge = document.getElementById('heroBadge');
 const heroKicker = document.getElementById('heroKicker');
 const heroContent = document.querySelector('.hero-content');
 const moviesGrid = document.getElementById('moviesGrid');
+const seriesGrid = document.getElementById('seriesGrid');
 const trendingGrid = document.getElementById('trendingGrid');
 const trendingSection = document.getElementById('trending');
+const seriesSection = document.getElementById('series');
 const continueWatchingSection = document.getElementById('continueWatchingSection');
 const continueWatchingGrid = document.getElementById('continueWatchingGrid');
 const pageLoader = document.getElementById('pageLoader');
@@ -36,11 +40,15 @@ const primaryNav = document.getElementById('primaryNav');
 const carousel = document.querySelector('.movies-carousel');
 const carouselButtons = document.querySelectorAll('[data-carousel]');
 const trendingCarouselButtons = document.querySelectorAll('[data-trending-carousel]');
+const seriesCarouselButtons = document.querySelectorAll('[data-series-carousel]');
 
 let featuredMoviesCache = [];
 let trendingMoviesCache = [];
+let seriesMoviesCache = [];
 let trendingWindowStart = 0;
+let seriesWindowStart = 0;
 let trendingAutoplayTimerId = null;
+let seriesAutoplayTimerId = null;
 let trailerHoverTimerId = null;
 let activeTrailerCard = null;
 let heroMoviesCache = [];
@@ -281,10 +289,24 @@ const createMovieCardMedia = (movie, tagLabel = '') => `
     </div>
 `;
 
-const getMovieDetails = async (movieId) => {
+const buildMediaHref = (movieId, mediaType = 'movie') => {
+    const params = new URLSearchParams({ id: String(movieId) });
+    if (mediaType && mediaType !== 'movie') {
+        params.set('type', mediaType);
+    }
+
+    return `/pages/movie.html?${params.toString()}`;
+};
+
+const createCardOverlayLink = (movieId, mediaType = 'movie', title = '') => `
+    <a class="movie-card-link" href="${buildMediaHref(movieId, mediaType)}" aria-label="Abrir ${title || 'contenido'}"></a>
+`;
+
+const getMediaDetails = async (mediaType, mediaId) => {
+    const type = mediaType === 'tv' ? 'tv' : 'movie';
     const response = await HOME_SHARED.requestWithTimeout(fetch(
-        `${HOME_SHARED.TMDB_BASE_URL}/movie/${movieId}?api_key=${HOME_SHARED.API_KEY}&language=es-ES`
-    ), HOME_REQUEST_TIMEOUT_MS, `tmdb movie ${movieId}`);
+        `${HOME_SHARED.TMDB_BASE_URL}/${type}/${mediaId}?api_key=${HOME_SHARED.API_KEY}&language=es-ES`
+    ), HOME_REQUEST_TIMEOUT_MS, `tmdb ${type} ${mediaId}`);
 
     if (!response.ok) {
         throw new Error(`TMDB responded with ${response.status}`);
@@ -293,15 +315,33 @@ const getMovieDetails = async (movieId) => {
     return response.json();
 };
 
-const mapMovie = (movie) => ({
-    id: movie.id,
-    title: movie.title || movie.original_title || 'Película',
-    poster: movie.poster_path ? `${HOME_SHARED.IMAGE_BASE_URL}${movie.poster_path}` : HOME_SHARED.FALLBACK_POSTER,
-    backdrop: movie.backdrop_path ? `${HOME_SHARED.IMAGE_BASE_URL}${movie.backdrop_path}` : '',
-    description: movie.overview || 'Descripción no disponible.',
-    genres: Array.isArray(movie.genres) ? movie.genres : [],
-    year: formatYear(movie.release_date)
-});
+const getMovieDetails = async (movieId) => getMediaDetails('movie', movieId);
+
+const getSeriesDetails = async (seriesId) => getMediaDetails('tv', seriesId);
+
+const mapMedia = (media, mediaType = 'movie') => {
+    const releaseDate = mediaType === 'tv'
+        ? media.first_air_date || media.release_date
+        : media.release_date || media.first_air_date;
+
+    const title = mediaType === 'tv'
+        ? media.name || media.original_name || 'Serie'
+        : media.title || media.original_title || 'Película';
+
+    return {
+        id: media.id,
+        mediaType,
+        title,
+        poster: media.poster_path ? `${HOME_SHARED.IMAGE_BASE_URL}${media.poster_path}` : media.poster || HOME_SHARED.FALLBACK_POSTER,
+        backdrop: media.backdrop_path ? `${HOME_SHARED.IMAGE_BASE_URL}${media.backdrop_path}` : media.backdrop || '',
+        description: media.overview || 'Descripción no disponible.',
+        genres: Array.isArray(media.genres) ? media.genres : [],
+        year: formatYear(releaseDate)
+    };
+};
+
+const mapMovie = (movie) => mapMedia(movie, 'movie');
+const mapSeries = (series) => mapMedia(series, 'tv');
 
 const buildYouTubeTrailerUrl = (videoKey) => {
     const params = new URLSearchParams({
@@ -333,16 +373,17 @@ const canEmbedYoutubePreview = () =>
 
 const trailerCache = new Map();
 
-const getTrailerVideoKey = async (movieId) => {
-    if (trailerCache.has(movieId)) {
-        return trailerCache.get(movieId);
+const getTrailerVideoKey = async (mediaId, mediaType = 'movie') => {
+    const cacheKey = `${mediaType}:${mediaId}`;
+    if (trailerCache.has(cacheKey)) {
+        return trailerCache.get(cacheKey);
     }
 
     const requestTrailerList = async (language = '') => {
         const languageQuery = language ? `&language=${language}` : '';
         const response = await HOME_SHARED.requestWithTimeout(fetch(
-            `${HOME_SHARED.TMDB_BASE_URL}/movie/${movieId}/videos?api_key=${HOME_SHARED.API_KEY}${languageQuery}`
-        ), HOME_REQUEST_TIMEOUT_MS, `tmdb trailer ${movieId}`);
+            `${HOME_SHARED.TMDB_BASE_URL}/${mediaType === 'tv' ? 'tv' : 'movie'}/${mediaId}/videos?api_key=${HOME_SHARED.API_KEY}${languageQuery}`
+        ), HOME_REQUEST_TIMEOUT_MS, `tmdb trailer ${mediaType}:${mediaId}`);
 
         if (!response.ok) {
             throw new Error(`TMDB responded with ${response.status}`);
@@ -364,27 +405,25 @@ const getTrailerVideoKey = async (movieId) => {
         return trailer?.key || null;
     })();
 
-    trailerCache.set(movieId, trailerPromise);
+    trailerCache.set(cacheKey, trailerPromise);
 
     const videoKey = await trailerPromise;
-    trailerCache.set(movieId, videoKey);
+    trailerCache.set(cacheKey, videoKey);
     return videoKey;
 };
 
-const prefetchTrailerKeys = (movies = []) => {
-    const uniqueMovieIds = [...new Set(
-        movies
-            .map((movie) => Number(movie?.id))
-            .filter((movieId) => Number.isFinite(movieId) && movieId > 0)
-    )];
+const prefetchTrailerKeys = (mediaItems = []) => {
+    const uniqueItems = mediaItems.filter((movie) => Number.isFinite(Number(movie?.id)) && Number(movie.id) > 0);
 
     const schedule = () => {
-        uniqueMovieIds.forEach((movieId) => {
-            if (trailerCache.has(movieId)) {
+        uniqueItems.forEach((movie) => {
+            const mediaType = movie?.mediaType || 'movie';
+            const cacheKey = `${mediaType}:${movie.id}`;
+            if (trailerCache.has(cacheKey)) {
                 return;
             }
 
-            getTrailerVideoKey(movieId).catch(() => null);
+            getTrailerVideoKey(movie.id, mediaType).catch(() => null);
         });
     };
 
@@ -418,13 +457,27 @@ const normalizeSearchText = (value) =>
 
 const filterFeaturedMovies = (query) => {
     const normalizedQuery = normalizeSearchText(query);
-
     return featuredMoviesCache.filter((movie) => {
         const searchableText = normalizeSearchText([
             movie.title,
             movie.description,
             movie.year,
             ...(movie.genres || []).map((genre) => genre.name).filter(Boolean)
+        ].join(' '));
+
+        return searchableText.includes(normalizedQuery);
+    });
+};
+
+const filterCatalogMedia = (query) => {
+    const normalizedQuery = normalizeSearchText(query);
+    return [...featuredMoviesCache, ...seriesMoviesCache].filter((movie) => {
+        const searchableText = normalizeSearchText([
+            movie.title,
+            movie.description,
+            movie.year,
+            ...(movie.genres || []).map((genre) => genre.name).filter(Boolean),
+            movie.mediaType === 'tv' ? 'serie' : 'pelicula'
         ].join(' '));
 
         return searchableText.includes(normalizedQuery);
@@ -448,11 +501,12 @@ const getSearchPanelContent = (state, movies = [], query = '') => {
         </div>
         ${movies
             .map((movie) => `
-                <button class="search-result-item" type="button" data-search-movie-id="${movie.id}" aria-label="Abrir ${movie.title}">
+                <button class="search-result-item" type="button" data-search-movie-id="${movie.id}" data-media-type="${movie.mediaType || 'movie'}" aria-label="Abrir ${movie.title}">
                     <img class="search-result-poster" src="${movie.poster || HOME_SHARED.FALLBACK_POSTER}" alt="" loading="lazy" decoding="async">
                     <div class="search-result-copy">
                         <strong>${movie.title}</strong>
                         <div class="search-result-meta">
+                            <span>${movie.mediaType === 'tv' ? 'Serie' : 'Película'}</span>
                             <span>${movie.year}</span>
                         </div>
                         <p>${shortenText(movie.description, 90)}</p>
@@ -466,9 +520,11 @@ const getSearchPanelContent = (state, movies = [], query = '') => {
 const createCard = (movie) => {
     const genreLabel = movie.genres?.[0]?.name || 'Cine';
     const favorite = isHomeFavoriteMovie(movie.id);
+    const mediaType = movie.mediaType || 'movie';
 
     return `
-        <article class="movie-card" data-movie-id="${movie.id}" tabindex="0" role="link" aria-label="Abrir ${movie.title}">
+        <article class="movie-card" data-movie-id="${movie.id}" data-media-type="${mediaType}" tabindex="0" role="link" aria-label="Abrir ${movie.title}">
+            ${createCardOverlayLink(movie.id, mediaType, movie.title)}
             ${createMovieCardMedia(movie)}
             <div class="movie-card-body">
                 <p class="movie-card-kicker">${genreLabel} • ${movie.year}</p>
@@ -479,6 +535,29 @@ const createCard = (movie) => {
                         <span class="favorite-icon" aria-hidden="true">${getHomeFavoriteIcon(favorite)}</span>
                     </button>
                     <button class="ver-btn" type="button" data-movie-id="${movie.id}" data-title="${movie.title}">Ver</button>
+                </div>
+            </div>
+        </article>
+    `;
+};
+
+const createSeriesCard = (series) => {
+    const genreLabel = series.genres?.[0]?.name || 'Serie';
+    const favorite = isHomeFavoriteMovie(series.id);
+
+    return `
+        <article class="movie-card series-card" data-movie-id="${series.id}" data-media-type="tv" tabindex="0" role="link" aria-label="Abrir ${series.title}">
+            ${createCardOverlayLink(series.id, 'tv', series.title)}
+            ${createMovieCardMedia(series, 'Serie')}
+            <div class="movie-card-body">
+                <p class="movie-card-kicker">${genreLabel} • ${series.year}</p>
+                <h3>${series.title}</h3>
+                <p>${shortenText(series.description, 110)}</p>
+                <div class="movie-card-actions">
+                    <button class="favorite-toggle ${favorite ? 'is-active' : ''}" type="button" data-favorite-toggle="${series.id}" data-movie-title="${series.title}" aria-pressed="${favorite}" aria-label="${favorite ? 'Quitar de favoritos' : 'Agregar a favoritos'}">
+                        <span class="favorite-icon" aria-hidden="true">${getHomeFavoriteIcon(favorite)}</span>
+                    </button>
+                    <button class="ver-btn" type="button" data-movie-id="${series.id}" data-media-type="tv" data-title="${series.title}">Ver</button>
                 </div>
             </div>
         </article>
@@ -532,6 +611,15 @@ const renderMovies = (movies) => {
     moviesGrid.innerHTML = movies.map(createCard).join('');
 };
 
+const renderSeries = (series = []) => {
+    if (!seriesGrid) {
+        return;
+    }
+
+    closeTrailerPreview();
+    seriesGrid.innerHTML = series.map(createSeriesCard).join('');
+};
+
 const normalizeWatchEntry = (entry) => ({
     id: Number(entry.id),
     title: entry.title || 'Película',
@@ -553,7 +641,8 @@ const getContinueWatchingItems = () => {
 };
 
 const createContinueWatchingCard = (entry) => `
-    <article class="movie-card continue-card" data-movie-id="${entry.id}" tabindex="0" role="link" aria-label="Continuar ${entry.title}">
+    <article class="movie-card continue-card" data-movie-id="${entry.id}" data-media-type="movie" tabindex="0" role="link" aria-label="Continuar ${entry.title}">
+        ${createCardOverlayLink(entry.id, 'movie', entry.title)}
         <div class="continue-card-media">
             ${createMovieCardMedia(entry)}
             <button class="continue-remove" type="button" data-remove-watch="${entry.id}" aria-label="Quitar de continuar viendo">×</button>
@@ -623,6 +712,7 @@ const openTrailerPreview = async (card) => {
     }
 
     const movieId = Number(card.dataset.movieId);
+    const mediaType = card.dataset.mediaType || 'movie';
     if (Number.isNaN(movieId)) {
         return;
     }
@@ -644,7 +734,7 @@ const openTrailerPreview = async (card) => {
     `;
 
     try {
-        const videoKey = await getTrailerVideoKey(movieId);
+        const videoKey = await getTrailerVideoKey(movieId, mediaType);
 
         if (!videoKey || activeTrailerCard !== card || !card.isConnected) {
             return;
@@ -955,7 +1045,7 @@ const renderHeroFallback = () => {
         year: 'N/A',
         genres: ['Streaming'],
         voteAverage: 0,
-        badge: 'Buga'
+        badge: 'UltraPelis'
     }];
 
     renderHeroIndicators();
@@ -975,7 +1065,7 @@ const loadHeroSlides = async () => {
             .map((movie, index) => ({
                 id: movie.id,
                 title: movie.title || 'Película destacada',
-                description: movie.description || 'Disfruta del catálogo de Buga.',
+                description: movie.description || 'Disfruta del catálogo de UltraPelis.',
                 backdrop: movie.backdrop || movie.poster || HOME_SHARED.FALLBACK_POSTER,
                 poster: movie.poster || HOME_SHARED.FALLBACK_POSTER,
                 year: movie.year || 'N/A',
@@ -983,7 +1073,7 @@ const loadHeroSlides = async () => {
                     ? movie.genres.map((genre) => genre?.name).filter(Boolean)
                     : [],
                 voteAverage: Number(movie.voteAverage || movie.vote_average) || 0,
-                badge: index === 0 ? 'Catálogo Buga' : 'Destacada'
+                badge: index === 0 ? 'Catálogo UltraPelis' : 'Destacada'
             }));
 
         if (!catalogMovies.length) {
@@ -1022,7 +1112,8 @@ const getTrendingWindow = () => {
 };
 
 const renderTrendingCard = (movie, index) => `
-    <article class="movie-card trending-card" data-movie-id="${movie.id}" tabindex="0" role="link" aria-label="Abrir ${movie.title}">
+    <article class="movie-card trending-card" data-movie-id="${movie.id}" data-media-type="movie" tabindex="0" role="link" aria-label="Abrir ${movie.title}">
+        ${createCardOverlayLink(movie.id, 'movie', movie.title)}
         ${createMovieCardMedia(movie, movie.badge || ['Trending', 'Hot', 'Popular'][index % 3])}
         <div class="movie-card-body">
             <p class="movie-card-kicker">${(movie.genres?.[0] || 'Cine')} • ${movie.year}</p>
@@ -1122,7 +1213,7 @@ const loadTrendingMovies = async () => {
                 title: movie.title || 'Tendencia',
                 poster: movie.poster || HOME_SHARED.FALLBACK_POSTER,
                 backdrop: movie.backdrop || movie.poster || HOME_SHARED.FALLBACK_POSTER,
-                description: movie.description || 'Lo más visto del catálogo de Buga.',
+                description: movie.description || 'Lo más visto del catálogo de UltraPelis.',
                 genres: Array.isArray(movie.genres)
                     ? movie.genres.map((genre) => genre?.name).filter(Boolean)
                     : [],
@@ -1146,6 +1237,42 @@ const loadTrendingMovies = async () => {
         });
         trendingMoviesCache = [];
         renderTrendingMovies();
+    }
+};
+
+const loadSeriesMovies = async () => {
+    if (!seriesGrid) {
+        return;
+    }
+
+    try {
+        const response = await HOME_SHARED.requestWithTimeout(fetch(
+            `${HOME_SHARED.TMDB_BASE_URL}/tv/popular?api_key=${HOME_SHARED.API_KEY}&language=es-ES&page=1`
+        ), HOME_REQUEST_TIMEOUT_MS, 'tmdb popular series');
+
+        if (!response.ok) {
+            throw new Error(`TMDB responded with ${response.status}`);
+        }
+
+        const data = await response.json();
+        seriesMoviesCache = (Array.isArray(data.results) ? data.results : [])
+            .map((series, index) => ({
+                ...mapSeries(series),
+                badge: index === 0 ? 'Serie' : index % 3 === 0 ? 'Top' : 'Popular'
+            }))
+            .slice(0, SERIES_VISIBLE_COUNT);
+
+        renderSeries(seriesMoviesCache);
+        prefetchTrailerKeys(seriesMoviesCache);
+    } catch (error) {
+        console.warn('Series movies failed', error);
+        notifyToast({
+            type: 'error',
+            title: 'Series no disponibles',
+            message: 'Hubo un problema al cargar la sección de series.'
+        });
+        seriesMoviesCache = [];
+        renderSeries(seriesMoviesCache);
     }
 };
 
@@ -1245,7 +1372,7 @@ const handleSearchInput = () => {
         return;
     }
 
-    const filteredMovies = filterFeaturedMovies(query);
+    const filteredMovies = filterCatalogMedia(query);
     const noResultsToastKey = `${query.toLowerCase()}`;
 
     renderSearchResults(filteredMovies.length ? 'results' : 'empty', filteredMovies, query);
@@ -1255,7 +1382,7 @@ const handleSearchInput = () => {
         notifyToast({
             type: 'info',
             title: 'Sin resultados',
-            message: 'No encontramos coincidencias en el catálogo de Buga.',
+            message: 'No encontramos coincidencias en el catálogo de UltraPelis.',
             key: `search:${noResultsToastKey}`
         });
         return;
@@ -1295,8 +1422,9 @@ const wireSearch = () => {
 
         const movieId = Number(resultButton.dataset.searchMovieId);
         if (!Number.isNaN(movieId)) {
+            const mediaType = resultButton.dataset.mediaType || 'movie';
             hideSearchResults();
-            navigateToMovie(movieId);
+            navigateToMedia(movieId, mediaType);
         }
     });
 
@@ -1446,13 +1574,18 @@ const wireMenu = () => {
     }
 };
 
-const navigateToMovie = (movieId) => {
-    const targetUrl = `/pages/movie.html?id=${movieId}`;
+const navigateToMedia = (mediaId, mediaType = 'movie') => {
+    const params = new URLSearchParams({ id: String(mediaId) });
+    if (mediaType && mediaType !== 'movie') {
+        params.set('type', mediaType);
+    }
+
+    const targetUrl = `/pages/movie.html?${params.toString()}`;
     document.body.classList.add('page-leaving');
-    window.setTimeout(() => {
-        window.location.href = targetUrl;
-    }, 180);
+    window.location.assign(targetUrl);
 };
+
+const navigateToMovie = (movieId) => navigateToMedia(movieId, 'movie');
 
 const wireMovieActions = () => {
     if (!moviesGrid) {
@@ -1596,6 +1729,77 @@ const wireTrendingMovieActions = () => {
     });
 };
 
+const wireSeriesActions = () => {
+    if (!seriesGrid) {
+        return;
+    }
+
+    seriesGrid.addEventListener('click', (event) => {
+        const favoriteButton = event.target.closest('[data-favorite-toggle]');
+        if (favoriteButton) {
+            event.preventDefault();
+            event.stopPropagation();
+            const movieId = Number(favoriteButton.dataset.favoriteToggle);
+            if (!Number.isNaN(movieId)) {
+                const action = toggleFavorite(movieId);
+                updateFavoriteButton(favoriteButton, movieId);
+                notifyToast({
+                    type: 'success',
+                    title: action === 'removed' ? 'Eliminado de favoritos' : 'Agregado a favoritos',
+                    message: favoriteButton.dataset.movieTitle
+                        ? `${favoriteButton.dataset.movieTitle} ${action === 'removed' ? 'salió' : 'se agregó'} de tu lista.`
+                        : action === 'removed'
+                            ? 'Se quitó de favoritos.'
+                            : 'Se agregó a favoritos.'
+                });
+                syncPreferenceEvent({
+                    type: 'favorite',
+                    action: action === 'removed' ? 'removed' : 'added',
+                    movieId,
+                    movie: {
+                        id: movieId,
+                        title: favoriteButton.dataset.movieTitle || favoriteButton.dataset.title || ''
+                    }
+                });
+            }
+            return;
+        }
+
+        const card = event.target.closest('.movie-card');
+        if (!card) {
+            return;
+        }
+
+        const button = event.target.closest('.ver-btn');
+        const movieId = Number(button?.dataset.movieId ?? card.dataset.movieId);
+
+        if (!Number.isNaN(movieId)) {
+            navigateToMedia(movieId, 'tv');
+        }
+    });
+
+    seriesGrid.addEventListener('keydown', (event) => {
+        if (event.key !== 'Enter' && event.key !== ' ') {
+            return;
+        }
+
+        const card = event.target.closest('.movie-card');
+        if (!card) {
+            return;
+        }
+
+        if (event.target.closest('[data-favorite-toggle]')) {
+            return;
+        }
+
+        event.preventDefault();
+        const movieId = Number(card.dataset.movieId);
+        if (!Number.isNaN(movieId)) {
+            navigateToMedia(movieId, 'tv');
+        }
+    });
+};
+
 const wireContinueWatchingActions = () => {
     if (!continueWatchingGrid) {
         return;
@@ -1724,6 +1928,24 @@ const wireCarouselControls = () => {
     });
 };
 
+const wireSeriesControls = () => {
+    if (!seriesGrid) {
+        return;
+    }
+
+    const scrollAmount = () => Math.max(260, Math.floor(seriesGrid.clientWidth * 0.8));
+
+    seriesCarouselButtons.forEach((button) => {
+        button.addEventListener('click', () => {
+            const direction = button.dataset.seriesCarousel === 'prev' ? -1 : 1;
+            seriesGrid.scrollBy({
+                left: direction * scrollAmount(),
+                behavior: 'smooth'
+            });
+        });
+    });
+};
+
 const bootstrap = async () => {
     let failSafeId = null;
     console.log('Catalog render start');
@@ -1740,12 +1962,15 @@ const bootstrap = async () => {
     wireHeroControls();
     wireMovieActions();
     wireTrendingMovieActions();
+    wireSeriesActions();
     wireContinueWatchingActions();
     wireCarouselControls();
     wireTrendingControls();
+    wireSeriesControls();
     wireSearch();
     wireTrailerPreviewToGrid(moviesGrid);
     wireTrailerPreviewToGrid(trendingGrid);
+    wireTrailerPreviewToGrid(seriesGrid);
     wireTrailerPreviewToGrid(continueWatchingGrid);
 
     renderContinueWatching();
@@ -1762,6 +1987,7 @@ const bootstrap = async () => {
         if (event.key === HOME_SHARED.getProfileStorageKey('buga-favorites')) {
             refreshFeaturedGrid(searchInput?.value || '');
             renderTrendingMovies();
+            renderSeries(seriesMoviesCache);
         }
     });
 
@@ -1769,6 +1995,7 @@ const bootstrap = async () => {
         await loadFeaturedMovies({ useLoader: false });
         await Promise.all([
             loadTrendingMovies(),
+            loadSeriesMovies(),
             loadHeroSlides()
         ]);
     } finally {

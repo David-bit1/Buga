@@ -11,7 +11,6 @@ const recommendationRoutes = require('./routes/recommendationRoutes');
 const adminRoutes = require('./routes/adminRoutes');
 const videoRoutes = require('./routes/videoRoutes');
 const movieRoutes = require('./routes/movieRoutes');
-const { connectMongo } = require('./config/mongo');
 
 const app = express();
 const port = process.env.PORT || 3000;
@@ -74,12 +73,6 @@ app.use((error, _req, res, _next) => {
 
 const start = async () => {
   try {
-    if (process.env.MONGO_URI) {
-      await connectMongo();
-    } else {
-      console.warn('MONGO_URI no configurado; el sistema de subida de películas quedará deshabilitado hasta configurarlo.');
-    }
-
     app.listen(port, () => {
       console.log(`Buga backend corriendo en http://localhost:${port}`);
     });
