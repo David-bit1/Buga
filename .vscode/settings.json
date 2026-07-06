@@ -1,0 +1,4 @@
+{
+  "livePreview.defaultPreviewDir": "frontend",
+  "livePreview.useLocalServer": true
+}
