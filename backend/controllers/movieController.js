@@ -1,12 +1,9 @@
-const fs = require('fs');
-const {
-  insertOne,
-  selectMany,
-  selectOne,
-  updateRows,
-  deleteRows
-} = require('../services/supabaseRepository');
-const { uploadFile, deleteFile } = require('../services/r2Service');
+const { insertOne, selectMany, selectOne, updateRows, deleteRows } = require('../services/supabaseRepository');
+
+const TMDB_API_KEY = process.env.TMDB_API_KEY || 'b24af203b14e23f8c91844baae37cfab';
+const TMDB_BASE_URL = 'https://api.themoviedb.org/3';
+const TMDB_LANGUAGE = 'es-ES';
+const TMDB_IMAGE_BASE = 'https://image.tmdb.org/t/p/w500';
 
 const normalizeGenres = (value) => {
   if (Array.isArray(value)) {
@@ -25,72 +22,121 @@ const toInteger = (value, fallback = 0) => {
 };
 
 const toBoolean = (value) =>
-  value === true ||
-  value === 'true' ||
-  value === 1 ||
-  value === '1' ||
-  value === 'on';
+  value === true || value === 'true' || value === 1 || value === '1' || value === 'on';
 
-const sanitizeFileName = (name) =>
-  String(name || 'file')
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .toLowerCase()
-    .replace(/[^a-z0-9.]+/g, '-');
+const parsePlaybackSources = (value) => {
+  if (Array.isArray(value)) {
+    return value
+      .map((entry) => {
+        if (!entry) {
+          return null;
+        }
 
-const cleanupUploadedFiles = async (files = {}) => {
-  const allFiles = Object.values(files).flat();
-  await Promise.all(allFiles.map((file) => fs.promises.unlink(file.path).catch(() => {})));
+        if (typeof entry === 'string') {
+          return { name: 'Servidor', url: entry.trim() };
+        }
+
+        const url = String(entry.url || entry.link || entry.value || '').trim();
+        if (!url) {
+          return null;
+        }
+
+        return {
+          name: String(entry.name || entry.label || 'Servidor').trim() || 'Servidor',
+          url
+        };
+      })
+      .filter(Boolean);
+  }
+
+  if (typeof value === 'string') {
+    const trimmed = value.trim();
+    if (!trimmed) {
+      return [];
+    }
+
+    try {
+      const parsed = JSON.parse(trimmed);
+      return parsePlaybackSources(parsed);
+    } catch {
+      return trimmed
+        .split(/\n|\r/)
+        .map((line) => line.trim())
+        .filter(Boolean)
+        .map((url) => ({ name: 'Servidor', url }));
+    }
+  }
+
+  return [];
 };
 
-const buildAssetKey = (movieId, field, originalName) => {
-  const safeName = sanitizeFileName(originalName);
-  return `movies/${movieId}/${field}/${Date.now()}-${safeName}`;
+const serializeMovie = (movie) => {
+  const playbackSources = parsePlaybackSources(movie?.source_file || movie?.video_source || movie?.video_url || '');
+  const fallbackPrimaryUrl = movie?.video_url || movie?.source_file || '';
+  const primaryPlayback = playbackSources[0]?.url || fallbackPrimaryUrl;
+
+  return {
+    id: movie.id,
+    tmdb_id: movie.tmdb_id || null,
+    title: movie.title,
+    description: movie.description || movie.overview || '',
+    genres: movie.genres || [],
+    release_year: movie.release_year || movie.release_year || 0,
+    runtime: movie.runtime || 0,
+    poster_url: movie.poster_url || movie.poster || '',
+    banner_url: movie.banner_url || movie.backdrop || '',
+    video_url: primaryPlayback,
+    playback_sources: playbackSources,
+    featured: Boolean(movie.featured),
+    status: movie.status,
+    processing_status: movie.processing_status,
+    video_source: movie.video_source,
+    created_by: movie.created_by,
+    created_at: movie.created_at,
+    updated_at: movie.updated_at
+  };
 };
 
-const uploadAsset = async (file, movieId) => {
-  if (!file) {
+const tmdbFetch = async (path) => {
+  const url = new URL(`${TMDB_BASE_URL}${path}`);
+  url.searchParams.set('api_key', TMDB_API_KEY);
+  url.searchParams.set('language', TMDB_LANGUAGE);
+
+  const response = await fetch(url);
+  if (!response.ok) {
+    throw new Error(`TMDB respondió con ${response.status}`);
+  }
+
+  return response.json();
+};
+
+const buildTmdbMoviePayload = async (tmdbId) => {
+  if (!tmdbId) {
     return null;
   }
 
-  const key = buildAssetKey(movieId, file.fieldname, file.originalname);
-  const publicUrl = await uploadFile({
-    key,
-    body: fs.createReadStream(file.path),
-    contentType: file.mimetype
-  });
+  const movie = await tmdbFetch(`/movie/${tmdbId}`);
+  const genres = Array.isArray(movie.genres)
+    ? movie.genres.map((genre) => genre.name).filter(Boolean)
+    : [];
+  const posterUrl = movie.poster_path ? `${TMDB_IMAGE_BASE}${movie.poster_path}` : '';
+  const bannerUrl = movie.backdrop_path ? `${TMDB_IMAGE_BASE}${movie.backdrop_path}` : '';
 
-  return { url: publicUrl, key };
+  return {
+    tmdb_id: Number(tmdbId),
+    title: String(movie.title || movie.original_title || '').trim(),
+    description: String(movie.overview || '').trim(),
+    release_year: toInteger(String(movie.release_date || '').slice(0, 4), 0),
+    runtime: toInteger(movie.runtime, 0),
+    genres,
+    poster_url: posterUrl,
+    banner_url: bannerUrl
+  };
 };
-
-const deleteAssetKeys = async (keys = []) => {
-  await Promise.all(keys.filter(Boolean).map((key) => deleteFile(key)));
-};
-
-const serializeMovie = (movie) => ({
-  id: movie.id,
-  title: movie.title,
-  description: movie.description,
-  genres: movie.genres || [],
-  release_year: movie.release_year || 0,
-  poster_url: movie.poster_url || '',
-  banner_url: movie.banner_url || '',
-  video_url: movie.video_url || '',
-  subtitle_url: movie.subtitle_url || '',
-  featured: Boolean(movie.featured),
-  status: movie.status,
-  processing_status: movie.processing_status,
-  video_source: movie.video_source,
-  created_by: movie.created_by,
-  created_at: movie.created_at,
-  updated_at: movie.updated_at
-});
 
 const listMovies = async (_req, res, next) => {
   try {
-    const movies = await selectMany('movies', {
-      order: { column: 'created_at', ascending: false }
-    });
+    const movies = await selectMany('movies', { order: { column: 'created_at', ascending: false } });
     return res.json({ movies: movies.map(serializeMovie) });
   } catch (error) {
     return next(error);
@@ -99,9 +145,7 @@ const listMovies = async (_req, res, next) => {
 
 const getMovie = async (req, res, next) => {
   try {
-    const movie = await selectOne('movies', {
-      filters: [{ type: 'eq', column: 'id', value: req.params.movieId }]
-    });
+    const movie = await selectOne('movies', { filters: [{ type: 'eq', column: 'id', value: req.params.movieId }] });
 
     if (!movie) {
       return res.status(404).json({ message: 'Película no encontrada' });
@@ -113,86 +157,93 @@ const getMovie = async (req, res, next) => {
   }
 };
 
-const uploadMovie = async (req, res, next) => {
-  let assetUploads = [];
+const getMovieByTmdbId = async (req, res, next) => {
+  try {
+    const tmdbId = Number(req.params.tmdbId || req.query.tmdbId);
+    if (!Number.isFinite(tmdbId) || tmdbId <= 0) {
+      return res.status(400).json({ message: 'tmdbId inválido' });
+    }
 
+    const movie = await selectOne('movies', { filters: [{ type: 'eq', column: 'tmdb_id', value: tmdbId }] });
+    if (movie) {
+      return res.json({ movie: serializeMovie(movie) });
+    }
+
+    const tmdbPayload = await buildTmdbMoviePayload(tmdbId);
+    if (!tmdbPayload) {
+      return res.status(404).json({ message: 'Película no encontrada' });
+    }
+
+    return res.json({ movie: { ...serializeMovie({ ...tmdbPayload, id: null }), tmdb: true } });
+  } catch (error) {
+    return next(error);
+  }
+};
+
+const createMovie = async (req, res, next) => {
   try {
     const {
+      tmdb_id,
       title,
       description = '',
       genres = '',
       release_year = 0,
+      runtime = 0,
+      poster_url = '',
+      banner_url = '',
+      playback_sources = [],
       featured = false,
       status = 'published'
     } = req.body;
 
-    if (!title) {
-      await cleanupUploadedFiles(req.files);
+    const resolvedTitle = String(title || '').trim();
+    if (!resolvedTitle) {
       return res.status(400).json({ message: 'El título es obligatorio' });
     }
 
-    const posterFile = req.files?.poster?.[0] || null;
-    const bannerFile = req.files?.banner?.[0] || null;
-    const videoFile = req.files?.video?.[0] || null;
-
-    if (!posterFile || !bannerFile || !videoFile) {
-      await cleanupUploadedFiles(req.files);
-      return res.status(400).json({ message: 'Debes subir poster, banner y video' });
+    let tmdbPayload = null;
+    if (tmdb_id || req.body.tmdbId) {
+      tmdbPayload = await buildTmdbMoviePayload(req.body.tmdbId || tmdb_id);
     }
 
-    const movieId = `${Date.now()}-${Math.random().toString(16).slice(2, 10)}`;
-    const posterAsset = await uploadAsset(posterFile, movieId);
-    const bannerAsset = await uploadAsset(bannerFile, movieId);
-    const videoAsset = await uploadAsset(videoFile, movieId);
-    const subtitleFile = req.files?.subtitles?.[0] || req.files?.subtitle?.[0] || null;
-    const subtitleAsset = subtitleFile ? await uploadAsset(subtitleFile, movieId) : null;
-
-    assetUploads = [posterAsset, bannerAsset, videoAsset, subtitleAsset];
+    const normalizedGenres = normalizeGenres(genres);
+    const resolvedPlaybackSources = parsePlaybackSources(playback_sources);
+    const primaryPlaybackUrl = resolvedPlaybackSources[0]?.url || '';
 
     const movie = await insertOne('movies', {
-      title: String(title).trim(),
-      description: String(description || '').trim(),
-      genres: normalizeGenres(genres),
-      release_year: toInteger(release_year, 0),
-      poster_url: posterAsset.url,
-      banner_url: bannerAsset.url,
-      video_url: videoAsset.url,
-      subtitle_url: subtitleAsset?.url || '',
-      poster_key: posterAsset.key,
-      banner_key: bannerAsset.key,
-      video_key: videoAsset.key,
-      subtitle_key: subtitleAsset?.key || '',
-      video_source: 'r2',
-      source_file: videoAsset.url,
-      processing_status: 'idle',
+      tmdb_id: toInteger(req.body.tmdbId || tmdb_id, null),
+      title: resolvedTitle,
+      description: String(description || tmdbPayload?.description || '').trim(),
+      genres: normalizedGenres.length ? normalizedGenres : (tmdbPayload?.genres || []),
+      release_year: toInteger(release_year || tmdbPayload?.release_year || 0, 0),
+      runtime: toInteger(runtime || tmdbPayload?.runtime || 0, 0),
+      poster_url: String(poster_url || tmdbPayload?.poster_url || '').trim(),
+      banner_url: String(banner_url || tmdbPayload?.banner_url || '').trim(),
+      video_url: primaryPlaybackUrl,
+      video_source: 'external',
+      source_file: JSON.stringify(resolvedPlaybackSources),
+      processing_status: 'ready',
       featured: toBoolean(featured),
       status: String(status || 'published'),
       created_by: req.user?.id || null
     });
 
-    await cleanupUploadedFiles(req.files);
-
-    return res.status(201).json({
-      message: 'Película subida correctamente',
-      movie: serializeMovie(movie)
-    });
+    return res.status(201).json({ message: 'Película guardada correctamente', movie: serializeMovie(movie) });
   } catch (error) {
-    await cleanupUploadedFiles(req.files).catch(() => {});
-    await deleteAssetKeys(assetUploads.map((asset) => asset?.key));
+    if (String(error.code || '').includes('23505') || String(error.message || '').includes('duplicate')) {
+      return res.status(409).json({ message: 'Ya existe una película con ese TMDB ID' });
+    }
     return next(error);
   }
 };
 
 const updateMovie = async (req, res, next) => {
-  let updatedAssets = [];
-
   try {
     const movie = await selectOne('movies', {
       filters: [{ type: 'eq', column: 'id', value: req.params.movieId }]
     });
 
     if (!movie) {
-      await cleanupUploadedFiles(req.files);
       return res.status(404).json({ message: 'Película no encontrada' });
     }
 
@@ -201,6 +252,10 @@ const updateMovie = async (req, res, next) => {
       description,
       genres,
       release_year,
+      runtime,
+      poster_url,
+      banner_url,
+      playback_sources,
       featured,
       status
     } = req.body;
@@ -211,69 +266,26 @@ const updateMovie = async (req, res, next) => {
     if (description !== undefined) updatePayload.description = String(description).trim();
     if (genres !== undefined) updatePayload.genres = normalizeGenres(genres);
     if (release_year !== undefined) updatePayload.release_year = toInteger(release_year, movie.release_year);
+    if (runtime !== undefined) updatePayload.runtime = toInteger(runtime, movie.runtime);
+    if (poster_url !== undefined) updatePayload.poster_url = String(poster_url).trim();
+    if (banner_url !== undefined) updatePayload.banner_url = String(banner_url).trim();
+    if (playback_sources !== undefined) {
+      const resolvedPlaybackSources = parsePlaybackSources(playback_sources);
+      updatePayload.video_url = resolvedPlaybackSources[0]?.url || '';
+      updatePayload.video_source = 'external';
+      updatePayload.source_file = JSON.stringify(resolvedPlaybackSources);
+    }
     if (featured !== undefined) updatePayload.featured = toBoolean(featured);
     if (status !== undefined) updatePayload.status = String(status);
 
-    const posterFile = req.files?.poster?.[0] || null;
-    const bannerFile = req.files?.banner?.[0] || null;
-    const videoFile = req.files?.video?.[0] || null;
-    const subtitleFile = req.files?.subtitles?.[0] || req.files?.subtitle?.[0] || null;
-
-    if (posterFile) {
-      const posterAsset = await uploadAsset(posterFile, movie.id);
-      updatedAssets.push(posterAsset);
-      updatePayload.poster_url = posterAsset.url;
-      updatePayload.poster_key = posterAsset.key;
-    }
-
-    if (bannerFile) {
-      const bannerAsset = await uploadAsset(bannerFile, movie.id);
-      updatedAssets.push(bannerAsset);
-      updatePayload.banner_url = bannerAsset.url;
-      updatePayload.banner_key = bannerAsset.key;
-    }
-
-    if (videoFile) {
-      const videoAsset = await uploadAsset(videoFile, movie.id);
-      updatedAssets.push(videoAsset);
-      updatePayload.video_url = videoAsset.url;
-      updatePayload.video_key = videoAsset.key;
-      updatePayload.source_file = videoAsset.url;
-    }
-
-    if (subtitleFile) {
-      const subtitleAsset = await uploadAsset(subtitleFile, movie.id);
-      updatedAssets.push(subtitleAsset);
-      updatePayload.subtitle_url = subtitleAsset.url;
-      updatePayload.subtitle_key = subtitleAsset.key;
-    }
-
     if (Object.keys(updatePayload).length === 0) {
-      await cleanupUploadedFiles(req.files);
       return res.status(400).json({ message: 'No se enviaron datos para actualizar' });
     }
 
-    const updatedRows = await updateRows(
-      'movies',
-      [{ type: 'eq', column: 'id', value: req.params.movieId }],
-      updatePayload
-    );
+    const updatedRows = await updateRows('movies', [{ type: 'eq', column: 'id', value: req.params.movieId }], updatePayload);
 
-    await cleanupUploadedFiles(req.files);
-    await deleteAssetKeys([
-      posterFile ? movie.poster_key : null,
-      bannerFile ? movie.banner_key : null,
-      videoFile ? movie.video_key : null,
-      subtitleFile ? movie.subtitle_key : null
-    ]);
-
-    return res.json({
-      message: 'Película actualizada correctamente',
-      movie: serializeMovie(updatedRows[0] || movie)
-    });
+    return res.json({ message: 'Película actualizada correctamente', movie: serializeMovie(updatedRows[0] || movie) });
   } catch (error) {
-    await cleanupUploadedFiles(req.files).catch(() => {});
-    await deleteAssetKeys(updatedAssets.map((asset) => asset?.key));
     return next(error);
   }
 };
@@ -288,15 +300,7 @@ const deleteMovie = async (req, res, next) => {
       return res.status(404).json({ message: 'Película no encontrada' });
     }
 
-    await deleteAssetKeys([
-      movie.poster_key,
-      movie.banner_key,
-      movie.video_key,
-      movie.subtitle_key
-    ]);
-
     await deleteRows('movies', [{ type: 'eq', column: 'id', value: req.params.movieId }]);
-
     return res.json({ message: 'Película eliminada correctamente' });
   } catch (error) {
     return next(error);
@@ -306,7 +310,8 @@ const deleteMovie = async (req, res, next) => {
 module.exports = {
   listMovies,
   getMovie,
-  uploadMovie,
+  getMovieByTmdbId,
+  createMovie,
   updateMovie,
   deleteMovie
 };
