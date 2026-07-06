@@ -3,29 +3,26 @@ const UPLOAD_SHARED = window.BugaShared;
 const MOVIES_API = UPLOAD_SHARED.API_BASES.movies;
 const uploadForm = document.getElementById('movieUploadForm');
 const movieIdInput = document.getElementById('movieId');
+const movieTmdbId = document.getElementById('movieTmdbId');
 const movieTitle = document.getElementById('movieTitle');
 const movieDescription = document.getElementById('movieDescription');
 const movieGenres = document.getElementById('movieGenres');
 const movieYear = document.getElementById('movieYear');
 const movieDuration = document.getElementById('movieDuration');
-const movieClassification = document.getElementById('movieClassification');
 const movieStatus = document.getElementById('movieStatus');
 const movieFeatured = document.getElementById('movieFeatured');
-const moviePoster = document.getElementById('moviePoster');
-const movieBanner = document.getElementById('movieBanner');
-const movieVideo = document.getElementById('movieVideo');
-const posterMeta = document.getElementById('posterMeta');
-const bannerMeta = document.getElementById('bannerMeta');
-const videoMeta = document.getElementById('videoMeta');
-const progressBar = document.getElementById('progressBar');
-const progressLabel = document.getElementById('progressLabel');
-const progressBox = document.querySelector('.upload-progress');
+const moviePosterUrl = document.getElementById('moviePosterUrl');
+const movieBannerUrl = document.getElementById('movieBannerUrl');
+const moviePosterFile = document.getElementById('moviePosterFile');
+const movieBannerFile = document.getElementById('movieBannerFile');
+const useTmdbImages = document.getElementById('useTmdbImages');
+const serverRows = document.getElementById('serverRows');
+const addServerButton = document.getElementById('addServerButton');
 const movieTable = document.getElementById('moviesTable');
 const clearFormButton = document.getElementById('clearForm');
 const refreshMoviesButton = document.getElementById('refreshMovies');
 const movieSubmit = document.getElementById('movieSubmit');
 const formTitle = document.getElementById('formTitle');
-const dropzones = document.querySelectorAll('.upload-dropzone');
 const pageLoader = document.getElementById('pageLoader');
 
 let moviesCache = [];
@@ -67,7 +64,8 @@ const fetchJson = async (url, options = {}) => {
         ...options,
         headers: {
             ...(options.headers || {}),
-            ...authHeaders()
+            ...authHeaders(),
+            ...(options.body instanceof FormData ? {} : { 'Content-Type': 'application/json' })
         }
     }), UPLOAD_SHARED.REQUEST_TIMEOUT_MS, `upload movies ${options.method || 'GET'}`);
 
@@ -79,96 +77,92 @@ const fetchJson = async (url, options = {}) => {
     return data;
 };
 
-const getFileMetaText = (file, fallback) => file ? file.name : fallback;
-
-const updateDropzoneState = (input, metaElement, fallbackText) => {
-    const dropzone = input.closest('.upload-dropzone');
-    if (!dropzone) {
+const readFileAsDataUrl = (file) => new Promise((resolve, reject) => {
+    if (!file) {
+        resolve('');
         return;
     }
 
-    const hasFile = Boolean(input.files?.[0]);
-    dropzone.classList.toggle('has-file', hasFile);
-    metaElement.textContent = getFileMetaText(input.files?.[0], fallbackText);
-};
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result || ''));
+    reader.onerror = () => reject(new Error('No se pudo leer el archivo'));
+    reader.readAsDataURL(file);
+});
 
-const bindDropzone = (input, metaElement, fallbackText) => {
-    const dropzone = input.closest('.upload-dropzone');
-    if (!dropzone) {
-        return;
-    }
+const createServerRow = (name = '', url = '') => {
+    const row = document.createElement('div');
+    row.className = 'admin-server-row';
+    row.innerHTML = `
+        <label><span>Nombre</span><input type="text" class="server-name" placeholder="Servidor 1" value="${name}"></label>
+        <label><span>Enlace</span><input type="url" class="server-url" placeholder="https://..." value="${url}"></label>
+        <button class="admin-secondary" type="button">Eliminar</button>
+    `;
 
-    dropzone.addEventListener('click', () => input.click());
-
-    ['dragenter', 'dragover'].forEach((eventName) => {
-        dropzone.addEventListener(eventName, (event) => {
-            event.preventDefault();
-            dropzone.classList.add('is-dragover');
-        });
-    });
-
-    ['dragleave', 'drop'].forEach((eventName) => {
-        dropzone.addEventListener(eventName, (event) => {
-            event.preventDefault();
-            dropzone.classList.remove('is-dragover');
-        });
-    });
-
-    dropzone.addEventListener('drop', (event) => {
-        const file = event.dataTransfer?.files?.[0];
-        if (file) {
-            input.files = event.dataTransfer.files;
-            updateDropzoneState(input, metaElement, fallbackText);
+    row.querySelector('button').addEventListener('click', () => {
+        row.remove();
+        if (!serverRows?.querySelector('.admin-server-row')) {
+            createServerRow('Servidor 1', '');
         }
     });
 
-    input.addEventListener('change', () => updateDropzoneState(input, metaElement, fallbackText));
+    serverRows?.appendChild(row);
 };
 
-const resetProgress = () => {
-    if (progressBar) {
-        progressBar.style.width = '0%';
+const resetServerRows = (sources = []) => {
+    if (!serverRows) {
+        return;
     }
 
-    if (progressLabel) {
-        progressLabel.textContent = '0%';
+    serverRows.innerHTML = '';
+    const fallbackSources = sources.length ? sources : [{ name: 'Servidor 1', url: '' }];
+    fallbackSources.forEach((source) => createServerRow(source.name || 'Servidor 1', source.url || ''));
+};
+
+const getServerRows = () => {
+    if (!serverRows) {
+        return [];
     }
 
-    if (progressBox) {
-        progressBox.hidden = true;
-    }
+    return Array.from(serverRows.querySelectorAll('.admin-server-row'))
+        .map((row) => ({
+            name: row.querySelector('.server-name')?.value?.trim() || '',
+            url: row.querySelector('.server-url')?.value?.trim() || ''
+        }))
+        .filter((server) => server.name && server.url);
 };
 
 const fillForm = (movie) => {
     movieIdInput.value = movie?.id || '';
+    movieTmdbId.value = movie?.tmdb_id || movie?.tmdbId || '';
     movieTitle.value = movie?.title || '';
-    movieDescription.value = movie?.description || '';
-    movieGenres.value = Array.isArray(movie?.genres) ? movie.genres.join(', ') : '';
-    movieYear.value = movie?.year || '';
-    movieDuration.value = movie?.duration || '';
-    movieClassification.value = movie?.classification || 'PG-13';
+    movieDescription.value = movie?.description || movie?.overview || '';
+    movieGenres.value = Array.isArray(movie?.genres) ? movie.genres.map((item) => typeof item === 'string' ? item : item.name || '').filter(Boolean).join(', ') : '';
+    movieYear.value = movie?.release_year || movie?.year || '';
+    movieDuration.value = movie?.runtime || movie?.duration || '';
     movieStatus.value = movie?.status || 'published';
     movieFeatured.checked = Boolean(movie?.featured);
-    moviePoster.value = '';
-    movieBanner.value = '';
-    movieVideo.value = '';
-    posterMeta.textContent = movie?.posterPath ? `Actual: ${movie.posterPath}` : 'PNG/JPG recomendado';
-    bannerMeta.textContent = movie?.bannerPath ? `Actual: ${movie.bannerPath}` : 'Imagen panorámica';
-    videoMeta.textContent = movie?.videoPath ? `Actual: ${movie.videoPath}` : 'MP4 / MOV / WEBM';
+    moviePosterUrl.value = movie?.poster_url || '';
+    movieBannerUrl.value = movie?.banner_url || '';
+    moviePosterFile.value = '';
+    movieBannerFile.value = '';
+    useTmdbImages.checked = Boolean(movie?.useTmdbImages ?? true);
+    resetServerRows(Array.isArray(movie?.playback_sources) ? movie.playback_sources : (movie?.video_url ? [{ name: 'Servidor 1', url: movie.video_url }] : []));
     formTitle.textContent = movie ? 'Editar película' : 'Nueva película';
-    movieSubmit.textContent = movie ? 'Actualizar película' : 'Subir película';
-    resetProgress();
+    movieSubmit.textContent = movie ? 'Actualizar película' : 'Guardar película';
 };
 
 const clearForm = () => {
-    fillForm(null);
     uploadForm?.reset();
     movieIdInput.value = '';
-    posterMeta.textContent = 'PNG/JPG recomendado';
-    bannerMeta.textContent = 'Imagen panorámica';
-    videoMeta.textContent = 'MP4 / MOV / WEBM';
-    dropzones.forEach((zone) => zone.classList.remove('has-file', 'is-dragover'));
-    resetProgress();
+    movieTmdbId.value = '';
+    moviePosterUrl.value = '';
+    movieBannerUrl.value = '';
+    moviePosterFile.value = '';
+    movieBannerFile.value = '';
+    useTmdbImages.checked = true;
+    resetServerRows([{ name: 'Servidor 1', url: '' }]);
+    formTitle.textContent = 'Nueva película';
+    movieSubmit.textContent = 'Guardar película';
 };
 
 const renderMovies = () => {
@@ -183,8 +177,8 @@ const renderMovies = () => {
                     <strong>${movie.title}</strong>
                     <div class="admin-small">${movie.description ? movie.description.slice(0, 70) : 'Sin descripción'}</div>
                 </td>
-                <td>${movie.year || '—'}</td>
-                <td>${Array.isArray(movie.genres) ? movie.genres.join(' • ') : '—'}</td>
+                <td>${movie.release_year || movie.year || '—'}</td>
+                <td>${Array.isArray(movie.playback_sources) ? movie.playback_sources.length : 0}</td>
                 <td><span class="admin-pill ${movie.status || 'published'}">${movie.status || 'published'}</span></td>
                 <td>
                     <div class="admin-row-actions">
@@ -194,7 +188,7 @@ const renderMovies = () => {
                 </td>
             </tr>
         `).join('')
-        : '<tr><td colspan="5">Todavía no hay películas subidas.</td></tr>';
+        : '<tr><td colspan="5">Todavía no hay películas guardadas.</td></tr>';
 };
 
 const loadMovies = async () => {
@@ -214,53 +208,50 @@ const loadMovies = async () => {
     }
 };
 
-const submitViaXHR = (formData, movieId) => new Promise((resolve, reject) => {
-    const xhr = new XMLHttpRequest();
-    const endpoint = movieId ? `${MOVIES_API}/${movieId}` : `${MOVIES_API}/upload`;
-    xhr.open(movieId ? 'PUT' : 'POST', endpoint);
-
-    const token = window.BugaAuth?.getAuthToken?.();
-    if (token) {
-        xhr.setRequestHeader('Authorization', `Bearer ${token}`);
+const autoFillFromTmdb = async () => {
+    const tmdbId = movieTmdbId.value.trim();
+    if (!tmdbId) {
+        return;
     }
 
-    xhr.upload.addEventListener('progress', (event) => {
-        if (!event.lengthComputable) {
+    try {
+        const response = await fetch(`${MOVIES_API}/tmdb/${encodeURIComponent(tmdbId)}`);
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok || !data.movie) {
             return;
         }
 
-        const percent = Math.round((event.loaded / event.total) * 100);
-        if (progressBox) {
-            progressBox.hidden = false;
+        const movie = data.movie;
+        if (!movieTitle.value.trim()) {
+            movieTitle.value = movie.title || '';
         }
-        if (progressBar) {
-            progressBar.style.width = `${percent}%`;
+        if (!movieDescription.value.trim()) {
+            movieDescription.value = movie.description || '';
         }
-        if (progressLabel) {
-            progressLabel.textContent = `${percent}%`;
+        if (!movieGenres.value.trim()) {
+            movieGenres.value = Array.isArray(movie.genres) ? movie.genres.join(', ') : '';
         }
-    });
-
-    xhr.addEventListener('load', () => {
-        let data = {};
-        try {
-            data = JSON.parse(xhr.responseText || '{}');
-        } catch {
-            data = {};
+        if (!movieYear.value) {
+            movieYear.value = movie.release_year || '';
         }
-
-        if (xhr.status >= 200 && xhr.status < 300) {
-            resolve(data);
-            return;
+        if (!movieDuration.value) {
+            movieDuration.value = movie.runtime || '';
         }
-
-        reject(new Error(data.message || 'No se pudo subir la película'));
-    });
-
-    xhr.addEventListener('error', () => reject(new Error('Error de red al subir la película')));
-    xhr.addEventListener('abort', () => reject(new Error('La subida fue cancelada')));
-    xhr.send(formData);
-});
+        if (!moviePosterUrl.value && movie.poster_url) {
+            moviePosterUrl.value = movie.poster_url;
+        }
+        if (!movieBannerUrl.value && movie.banner_url) {
+            movieBannerUrl.value = movie.banner_url;
+        }
+        notify({
+            type: 'info',
+            title: 'Datos de TMDb cargados',
+            message: movie.title || 'La información se completó automáticamente.'
+        });
+    } catch (error) {
+        console.warn('TMDb autofill failed', error);
+    }
+};
 
 const handleSubmit = async (event) => {
     event.preventDefault();
@@ -271,78 +262,61 @@ const handleSubmit = async (event) => {
     const genres = movieGenres.value.trim();
     const year = movieYear.value.trim();
     const duration = movieDuration.value.trim();
-    const classification = movieClassification.value;
+    const playbackSources = getServerRows();
 
-    if (!title || !description || !genres || !year || !duration || !classification) {
-        notify({
-            type: 'error',
-            title: 'Campos obligatorios',
-            message: 'Completa título, descripción, géneros, año, duración y clasificación.'
-        });
+    if (!title) {
+        notify({ type: 'error', title: 'Título obligatorio', message: 'Ingresa un título o usa el ID de TMDb.' });
         return;
     }
 
-    const isEditing = Boolean(movieId);
-    const formData = new FormData();
-    formData.append('title', title);
-    formData.append('description', description);
-    formData.append('genres', genres);
-    formData.append('year', year);
-    formData.append('duration', duration);
-    formData.append('classification', classification);
-    formData.append('status', movieStatus.value);
-    formData.append('featured', movieFeatured.checked ? 'true' : 'false');
-
-    if (moviePoster.files?.[0]) {
-        formData.append('poster', moviePoster.files[0]);
-    }
-
-    if (movieBanner.files?.[0]) {
-        formData.append('banner', movieBanner.files[0]);
-    }
-
-    if (movieVideo.files?.[0]) {
-        formData.append('video', movieVideo.files[0]);
-    }
-
-    if (!isEditing && (!moviePoster.files?.[0] || !movieBanner.files?.[0] || !movieVideo.files?.[0])) {
-        notify({
-            type: 'error',
-            title: 'Archivos incompletos',
-            message: 'Debes seleccionar poster, banner y video para crear una nueva película.'
-        });
+    if (!playbackSources.length) {
+        notify({ type: 'error', title: 'Sin enlaces', message: 'Agrega al menos un enlace de reproducción.' });
         return;
     }
 
     movieSubmit.disabled = true;
-    movieSubmit.textContent = isEditing ? 'Actualizando...' : 'Subiendo...';
-    if (progressBox) {
-        progressBox.hidden = false;
-    }
+    movieSubmit.textContent = movieId ? 'Actualizando...' : 'Guardando...';
 
     try {
-        await submitViaXHR(formData, movieId || null);
+        const [posterDataUrl, bannerDataUrl] = await Promise.all([
+            readFileAsDataUrl(moviePosterFile.files?.[0]),
+            readFileAsDataUrl(movieBannerFile.files?.[0])
+        ]);
+
+        const payload = {
+            tmdbId: movieTmdbId.value ? Number(movieTmdbId.value) : null,
+            title,
+            description,
+            genres,
+            release_year: year || null,
+            runtime: duration || null,
+            poster_url: moviePosterUrl.value.trim() || (posterDataUrl ? posterDataUrl : ''),
+            banner_url: movieBannerUrl.value.trim() || (bannerDataUrl ? bannerDataUrl : ''),
+            playback_sources: playbackSources,
+            featured: movieFeatured.checked,
+            status: movieStatus.value,
+            useTmdbImages: Boolean(useTmdbImages.checked)
+        };
+
+        const endpoint = movieId ? `${MOVIES_API}/${movieId}` : MOVIES_API;
+        const method = movieId ? 'PUT' : 'POST';
+        await fetchJson(endpoint, {
+            method,
+            body: JSON.stringify(payload)
+        });
+
         notify({
             type: 'success',
-            title: isEditing ? 'Película actualizada' : 'Película subida',
+            title: movieId ? 'Película actualizada' : 'Película guardada',
             message: title
         });
         clearForm();
         await loadMovies();
     } catch (error) {
-        notify({
-            type: 'error',
-            title: 'No se pudo subir',
-            message: error.message || 'Intenta nuevamente.'
-        });
+        notify({ type: 'error', title: 'No se pudo guardar', message: error.message || 'Intenta nuevamente.' });
     } finally {
         movieSubmit.disabled = false;
-        movieSubmit.textContent = movieId ? 'Actualizar película' : 'Subir película';
-        setTimeout(() => {
-            if (!movieIdInput.value) {
-                resetProgress();
-            }
-        }, 800);
+        movieSubmit.textContent = movieId ? 'Actualizar película' : 'Guardar película';
     }
 };
 
@@ -374,18 +348,10 @@ const handleTableAction = async (event) => {
 
         try {
             await fetchJson(`${MOVIES_API}/${movieId}`, { method: 'DELETE' });
-            notify({
-                type: 'success',
-                title: 'Película eliminada',
-                message: movie.title
-            });
+            notify({ type: 'success', title: 'Película eliminada', message: movie.title });
             await loadMovies();
         } catch (error) {
-            notify({
-                type: 'error',
-                title: 'No se pudo eliminar',
-                message: error.message || 'Intenta nuevamente.'
-            });
+            notify({ type: 'error', title: 'No se pudo eliminar', message: error.message || 'Intenta nuevamente.' });
         }
     }
 };
@@ -395,10 +361,9 @@ const bootstrap = async () => {
         return;
     }
 
-    bindDropzone(moviePoster, posterMeta, 'PNG/JPG recomendado');
-    bindDropzone(movieBanner, bannerMeta, 'Imagen panorámica');
-    bindDropzone(movieVideo, videoMeta, 'MP4 / MOV / WEBM');
-
+    clearForm();
+    movieTmdbId?.addEventListener('blur', autoFillFromTmdb);
+    addServerButton?.addEventListener('click', () => createServerRow('Servidor 2', ''));
     uploadForm?.addEventListener('submit', handleSubmit);
     movieTable?.addEventListener('click', handleTableAction);
     clearFormButton?.addEventListener('click', clearForm);

@@ -1,22 +1,27 @@
 const express = require('express');
 const { protect, requireAdmin } = require('../middleware/authMiddleware');
-const { uploadMovieFiles } = require('../middleware/uploadMiddleware');
+const { uploadMovieImages } = require('../middleware/uploadMiddleware');
 const {
   listMovies,
   getMovie,
-  uploadMovie,
+  getMovieByTmdbId,
+  createMovie,
   updateMovie,
   deleteMovie
 } = require('../controllers/movieController');
 
 const router = express.Router();
 
+router.get('/tmdb/:tmdbId', getMovieByTmdbId);
+router.get('/public/:tmdbId', getMovieByTmdbId);
+
 router.use(protect, requireAdmin);
 
 router.get('/', listMovies);
 router.get('/:movieId', getMovie);
-router.post('/upload', uploadMovieFiles, uploadMovie);
-router.put('/:movieId', uploadMovieFiles, updateMovie);
+router.post('/', createMovie);
+router.post('/upload', uploadMovieImages, createMovie);
+router.put('/:movieId', uploadMovieImages, updateMovie);
 router.delete('/:movieId', deleteMovie);
 
 module.exports = router;

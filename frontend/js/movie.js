@@ -17,6 +17,8 @@ const favoriteButton = document.getElementById('favoriteButton');
 const playButton = document.getElementById('playButton');
 const backLink = document.querySelector('.movie-back-link');
 const movieVideo = document.getElementById('movieVideo');
+const externalPlayer = document.getElementById('externalPlayer');
+const serverSelect = document.getElementById('serverSelect');
 const moviePageLoader = document.getElementById('moviePageLoader');
 const playerLoader = document.getElementById('playerLoader');
 const playerStage = document.querySelector('.player-stage');
@@ -108,16 +110,19 @@ const normalizeMovie = (movie) => ({
         : movie.title || movie.original_title || `Película ${movie.id}`,
     description: movie.overview || movie.description || 'Descripción no disponible.',
     tagline: movie.tagline || '',
-    poster: movie.poster_path ? `${MOVIE_SHARED.POSTER_BASE_URL}${movie.poster_path}` : movie.poster || MOVIE_SHARED.FALLBACK_POSTER,
-    backdrop: movie.backdrop_path ? `${MOVIE_SHARED.IMAGE_BASE_URL_W780}${movie.backdrop_path}` : movie.backdrop || '',
-    release_date: mediaType === 'tv' ? movie.first_air_date || movie.release_date || '' : movie.release_date || movie.first_air_date || '',
+    poster: movie.poster_path ? `${MOVIE_SHARED.POSTER_BASE_URL}${movie.poster_path}` : movie.poster_url || movie.poster || MOVIE_SHARED.FALLBACK_POSTER,
+    backdrop: movie.backdrop_path ? `${MOVIE_SHARED.IMAGE_BASE_URL_W780}${movie.backdrop_path}` : movie.banner_url || movie.backdrop || '',
+    release_date: mediaType === 'tv' ? movie.first_air_date || movie.release_date || '' : movie.release_date || movie.first_air_date || String(movie.release_year || ''),
     runtime: mediaType === 'tv'
         ? Number(Array.isArray(movie.episode_run_time) ? movie.episode_run_time[0] : movie.runtime) || 0
         : movie.runtime || 0,
-    genres: Array.isArray(movie.genres) ? movie.genres : [],
-    videoSrc: movie.videoSrc || '',
+    genres: Array.isArray(movie.genres) ? movie.genres.map((genre) => (typeof genre === 'string' ? { name: genre } : genre)).filter(Boolean) : [],
+    videoSrc: movie.videoSrc || movie.video_url || '',
     hlsSrc: movie.hlsSrc || '',
-    subtitlesSrc: movie.subtitlesSrc || ''
+    subtitlesSrc: movie.subtitlesSrc || '',
+    playbackSources: Array.isArray(movie.playback_sources)
+        ? movie.playback_sources
+        : (movie.video_url ? [{ name: 'Servidor 1', url: movie.video_url }] : [])
 });
 
 const getMovieFavorites = () => {
@@ -384,6 +389,50 @@ const getPlaybackSources = (movie) => ({
     subtitles: movie?.subtitlesSrc || ''
 });
 
+const populateServerSelect = (movie) => {
+    if (!serverSelect) {
+        return;
+    }
+
+    const sources = Array.isArray(movie?.playbackSources) ? movie.playbackSources : [];
+    if (!sources.length) {
+        serverSelect.innerHTML = '';
+        serverSelect.hidden = true;
+        serverSelect.disabled = true;
+        return;
+    }
+
+    serverSelect.innerHTML = sources.map((source, index) => `<option value="${index}">${source.name || `Servidor ${index + 1}`}</option>`).join('');
+    serverSelect.hidden = false;
+    serverSelect.disabled = false;
+    serverSelect.value = '0';
+};
+
+const isExternalPlaybackUrl = (url = '') => {
+    const target = String(url).trim().toLowerCase();
+    return target.includes('youtube.com/embed') || target.includes('youtube.com/watch') || target.includes('youtu.be') || target.includes('player.vimeo.com') || target.includes('dailymotion.com/embed') || target.includes('embed') || target.includes('vidsrc');
+};
+
+const showExternalPlayer = (url) => {
+    if (movieVideo) {
+        movieVideo.pause();
+        movieVideo.removeAttribute('src');
+        movieVideo.load();
+    }
+
+    if (externalPlayer) {
+        externalPlayer.hidden = false;
+        externalPlayer.src = url;
+    }
+};
+
+const hideExternalPlayer = () => {
+    if (externalPlayer) {
+        externalPlayer.hidden = true;
+        externalPlayer.removeAttribute('src');
+    }
+};
+
 const populateQualitySelect = (qualities = [], hasHls = false) => {
     if (!qualitySelect) {
         return;
@@ -421,6 +470,7 @@ const setVideoSource = async (movie) => {
 
     destroyHls();
     showPlayerLoader();
+    populateServerSelect(movie);
 
     const sources = getPlaybackSources(movie);
     movieVideo.pause();
@@ -428,6 +478,7 @@ const setVideoSource = async (movie) => {
     movieVideo.load();
     movieVideo.poster = movie.poster || '';
     movieVideo.dataset.movieId = String(movie.id);
+    hideExternalPlayer();
 
     if (qualitySelect) {
         qualitySelect.innerHTML = '';
@@ -437,6 +488,16 @@ const setVideoSource = async (movie) => {
 
     if (captionsButton) {
         captionsButton.hidden = !sources.subtitles;
+    }
+
+    const selectedSource = Array.isArray(movie.playbackSources) && movie.playbackSources.length
+        ? movie.playbackSources[Number(serverSelect?.value || 0)] || movie.playbackSources[0]
+        : null;
+
+    if (selectedSource?.url && isExternalPlaybackUrl(selectedSource.url)) {
+        showExternalPlayer(selectedSource.url);
+        hidePlayerLoader();
+        return;
     }
 
     let streamInfo = null;
@@ -449,7 +510,7 @@ const setVideoSource = async (movie) => {
     }
 
     const manifestUrl = streamInfo?.manifestUrl || sources.hls;
-    const fallbackMp4 = streamInfo?.fallbackMp4 || sources.mp4;
+    const fallbackMp4 = streamInfo?.fallbackMp4 || selectedSource?.url || sources.mp4;
     const qualities = Array.isArray(streamInfo?.qualities) ? streamInfo.qualities : [];
     const hlsAvailable = Boolean(manifestUrl);
 
@@ -708,6 +769,13 @@ const wirePlayer = () => {
         updateVolumeChrome();
     });
 
+    serverSelect?.addEventListener('change', async () => {
+        if (!currentMovie) {
+            return;
+        }
+        await setVideoSource(currentMovie);
+    });
+
     qualitySelect?.addEventListener('change', async () => {
         if (!currentMovie) {
             return;
@@ -751,6 +819,20 @@ const wirePlayer = () => {
     });
 };
 
+const fetchLocalMovie = async (id) => {
+    try {
+        const response = await fetch(`${MOVIE_SHARED.API_BASES.movies}/public/${encodeURIComponent(id)}`);
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok || !data.movie) {
+            return null;
+        }
+        return data.movie;
+    } catch (error) {
+        console.warn('Local movie fetch failed', error);
+        return null;
+    }
+};
+
 const bootstrap = async () => {
     setReady();
     wirePlayer();
@@ -785,7 +867,8 @@ const bootstrap = async () => {
     }
 
     try {
-        const movie = normalizeMovie(await fetchMovieFromTMDB(movieId));
+        const localMovie = await fetchLocalMovie(movieId);
+        const movie = normalizeMovie(localMovie || await fetchMovieFromTMDB(movieId));
         applyMovie(movie);
         syncPreferenceEvent({
             type: 'view',
