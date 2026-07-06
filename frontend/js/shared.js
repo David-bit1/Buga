@@ -1,33 +1,6 @@
 (function () {
     const shared = window.BugaShared || {};
 
-    const getSitePrefix = () => {
-        const pathname = window.location.pathname || '/';
-        const segments = pathname.split('/').filter(Boolean);
-        const frontendIndex = segments.indexOf('frontend');
-
-        if (frontendIndex >= 0) {
-            return `/${segments.slice(0, frontendIndex + 1).join('/')}`;
-        }
-
-        return '';
-    };
-
-    const resolveSitePath = (targetPath = '/') => {
-        if (!targetPath) {
-            return targetPath;
-        }
-
-        if (/^(https?:)?\/\//.test(targetPath) || /^[a-z]+:/i.test(targetPath) || targetPath.startsWith('data:')) {
-            return targetPath;
-        }
-
-        const normalizedTarget = targetPath.startsWith('/') ? targetPath : `/${targetPath}`;
-        const prefix = getSitePrefix();
-
-        return `${prefix}${normalizedTarget}`;
-    };
-
     const sharedConfig = {
         API_ORIGIN: 'https://buga.onrender.com',
         API_KEY: 'b24af203b14e23f8c91844baae37cfab',
@@ -77,7 +50,6 @@
         ...shared,
         ...sharedConfig,
         requestWithTimeout,
-        getProfileStorageKey,
-        resolveSitePath
+        getProfileStorageKey
     };
 })();
