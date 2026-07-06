@@ -1,49 +1,10 @@
 const fs = require('fs/promises');
 const fsSync = require('fs');
 const path = require('path');
-const multer = require('multer');
 const {
-  selectOne,
-  insertOne,
-  updateRows
+  selectOne
 } = require('../services/supabaseRepository');
-const { generateHlsPackage, getManifestPath, getAssetPath, transformPlaylist, HLS_QUALITIES } = require('../services/hlsService');
-
-const uploadStorage = multer.diskStorage({
-  destination: async (_req, _file, callback) => {
-    const tempRoot = path.join(__dirname, '..', 'uploads', 'tmp');
-    fsSync.mkdirSync(tempRoot, { recursive: true });
-    callback(null, tempRoot);
-  },
-  filename: (_req, file, callback) => {
-    const safeName = String(file.originalname || 'video.mp4')
-      .toLowerCase()
-      .replace(/[^a-z0-9.]+/g, '-');
-    callback(null, `${Date.now()}-${safeName}`);
-  }
-});
-
-const upload = multer({
-  storage: uploadStorage,
-  fileFilter: (_req, file, callback) => {
-    if (!file.mimetype.startsWith('video/')) {
-      callback(new Error('Solo se permiten archivos de video'));
-      return;
-    }
-
-    callback(null, true);
-  },
-  limits: {
-    fileSize: 1024 * 1024 * 1024
-  }
-});
-
-const parseGenres = (value) =>
-  String(value || '')
-    .split(',')
-    .map((item) => item.trim())
-    .filter(Boolean)
-    .map((name, index) => ({ id: index + 1, name }));
+const { getManifestPath, getAssetPath, transformPlaylist, HLS_QUALITIES } = require('../services/hlsService');
 
 const sanitizeMovie = (movie) => ({
   id: movie.id,
@@ -67,104 +28,6 @@ const sanitizeMovie = (movie) => ({
   createdAt: movie.created_at,
   updatedAt: movie.updated_at
 });
-
-const uploadVideo = async (req, res, next) => {
-  try {
-    if (!req.file) {
-      return res.status(400).json({ message: 'Debes subir un archivo de video' });
-    }
-
-    const {
-      tmdbId,
-      title,
-      overview = '',
-      poster = '',
-      backdrop = '',
-      releaseDate = '',
-      runtime = 0,
-      genres = '',
-      featured = false,
-      status = 'published'
-    } = req.body;
-
-    if (!tmdbId || !title) {
-      return res.status(400).json({ message: 'tmdbId y title son obligatorios' });
-    }
-
-    let movie = await selectOne('movies', {
-      filters: [{ type: 'eq', column: 'tmdb_id', value: Number(tmdbId) }]
-    });
-
-    if (!movie) {
-      movie = await insertOne('movies', {
-        tmdb_id: Number(tmdbId),
-        title,
-        overview,
-        poster,
-        backdrop,
-        release_date: releaseDate,
-        runtime: Number(runtime || 0),
-        genres: parseGenres(genres),
-        featured: Boolean(featured),
-        status,
-        created_by: req.user.id,
-        processing_status: 'processing'
-      });
-    } else {
-      const [updatedMovie] = await updateRows(
-        'movies',
-        [{ type: 'eq', column: 'id', value: movie.id }],
-        {
-          tmdb_id: Number(tmdbId),
-          title,
-          overview,
-          poster,
-          backdrop,
-          release_date: releaseDate,
-          runtime: Number(runtime || 0),
-          genres: parseGenres(genres),
-          featured: Boolean(featured),
-          status,
-          processing_status: 'processing',
-          created_by: req.user.id
-        }
-      );
-      movie = updatedMovie;
-    }
-
-    const packageData = await generateHlsPackage({
-      movieKey: movie.tmdb_id,
-      inputPath: req.file.path
-    });
-
-    const [processedMovie] = await updateRows(
-      'movies',
-      [{ type: 'eq', column: 'id', value: movie.id }],
-      {
-        source_file: packageData.sourceFile,
-        hls_directory: packageData.hlsDirectory,
-        hls_manifest: packageData.hlsManifest,
-        hls_qualities: packageData.hlsQualities,
-        processing_status: 'ready',
-        video_source: packageData.sourceFile
-      }
-    );
-
-    await fs.unlink(req.file.path).catch(() => {});
-
-    return res.status(201).json({
-      message: 'Video procesado a HLS correctamente',
-      movie: sanitizeMovie(processedMovie),
-      qualities: HLS_QUALITIES
-    });
-  } catch (error) {
-    if (req.file?.path) {
-      await fs.unlink(req.file.path).catch(() => {});
-    }
-    console.error('uploadVideo error', error);
-    return next(error);
-  }
-};
 
 const getStreamInfo = async (req, res, next) => {
   try {
@@ -228,9 +91,8 @@ const getVideoAsset = async (req, res, next) => {
 };
 
 module.exports = {
-  upload,
-  uploadVideo,
   getStreamInfo,
   getMasterPlaylist,
   getVideoAsset
 };
+

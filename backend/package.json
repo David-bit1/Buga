@@ -1,7 +1,7 @@
 {
   "name": "buga-backend",
   "version": "1.0.0",
-  "description": "Backend API con Supabase y Cloudflare R2",
+  "description": "Backend API con Supabase - Sistema de películas basado en TMDb + enlaces de reproducción",
   "main": "server.js",
   "type": "commonjs",
   "scripts": {
@@ -9,7 +9,6 @@
     "dev": "nodemon server.js"
   },
   "dependencies": {
-    "@aws-sdk/client-s3": "^3.0.0",
     "@supabase/supabase-js": "^2.56.1",
     "bcrypt": "^5.1.1",
     "cors": "^2.8.5",
