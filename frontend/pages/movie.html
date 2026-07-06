@@ -96,6 +96,14 @@
                             crossorigin="anonymous"
                         ></video>
 
+                        <iframe
+                            id="externalPlayer"
+                            class="movie-video"
+                            hidden
+                            title="Reproductor externo"
+                            loading="lazy"
+                        ></iframe>
+
                         <div class="player-loader" id="playerLoader" aria-live="polite" aria-label="Cargando reproductor">
                             <div class="page-loader-spinner" aria-hidden="true"></div>
                             <p>Cargando reproductor…</p>
@@ -124,6 +132,11 @@
                                 <button class="player-control-button" id="captionsButton" type="button" aria-label="Activar o desactivar subtítulos" hidden>
                                     <span aria-hidden="true">CC</span>
                                 </button>
+
+                                <label class="player-quality" for="serverSelect">
+                                    <span>Servidor</span>
+                                    <select id="serverSelect" aria-label="Seleccionar servidor" hidden></select>
+                                </label>
 
                                 <label class="player-quality" for="qualitySelect">
                                     <span>Calidad</span>
