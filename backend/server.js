@@ -1,86 +1,46 @@
-const dotenv = require('dotenv');
-
-dotenv.config();
-
+require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
 const authRoutes = require('./routes/authRoutes');
 const profileRoutes = require('./routes/profileRoutes');
-const recommendationRoutes = require('./routes/recommendationRoutes');
-const adminRoutes = require('./routes/adminRoutes');
-const videoRoutes = require('./routes/videoRoutes');
 const movieRoutes = require('./routes/movieRoutes');
+const adminRoutes = require('./routes/adminRoutes');
+const recommendationRoutes = require('./routes/recommendationRoutes');
+const { protect, admin } = require('./middleware/authMiddleware');
 
 const app = express();
-const port = process.env.PORT || 3000;
-const allowedOrigins = String(process.env.CLIENT_ORIGIN || '')
-  .split(',')
-  .map((origin) => origin.trim())
-  .filter(Boolean);
+const PORT = process.env.PORT || 3000;
 
-const isAllowedOrigin = (origin) => {
-  if (!origin) {
-    return true;
-  }
+// Middleware
+app.use(cors({ origin: process.env.CLIENT_ORIGIN || '*' }));
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
-  if (allowedOrigins.includes(origin)) {
-    return true;
-  }
-
-  if (origin.endsWith('.vercel.app')) {
-    return true;
-  }
-
-  return false;
-};
-
-app.use(cors({
-  origin(origin, callback) {
-    if (isAllowedOrigin(origin)) {
-      return callback(null, true);
-    }
-
-    return callback(new Error(`Origen no permitido por CORS: ${origin}`));
-  }
-}));
-app.use(express.json());
-app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
-app.use(express.static(path.join(__dirname, 'frontend')));
-
+// API Routes
 app.use('/api/auth', authRoutes);
-app.use('/api/profiles', profileRoutes);
-app.use('/api/recommendations', recommendationRoutes);
-app.use('/api/admin', adminRoutes);
-app.use('/api/videos', videoRoutes);
-app.use('/api/movies', movieRoutes);
+app.use('/api/profiles', protect, profileRoutes);
+app.use('/api/movies', movieRoutes); // Includes public and protected routes inside
+app.use('/api/admin', protect, admin, adminRoutes);
+app.use('/api/recommendations', protect, recommendationRoutes);
 
-app.get('/health', (_req, res) => {
-  res.json({ ok: true });
+// --- Static Files ---
+// Serve the frontend directory from the root. This must be AFTER all API routes.
+const frontendPath = path.join(__dirname, '../frontend');
+app.use(express.static(frontendPath));
+
+// Error Handling Middleware (simple version)
+app.use((err, req, res, next) => {
+  console.error(err.stack);
+  res.status(500).send('Something broke!');
 });
 
-app.use('/api', (_req, res) => {
-  res.status(404).json({
-    message: 'Ruta API no encontrada'
-  });
+app.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
 });
 
-app.use((error, _req, res, _next) => {
-  console.error(error);
-  res.status(500).json({
-    message: error.message || 'Error interno del servidor'
-  });
+// Fallback to index.html for Single Page Application (SPA) behavior
+// This MUST be the last GET route.
+app.get('*', (req, res) => {
+  res.sendFile(path.join(frontendPath, 'index.html'));
 });
-
-const start = async () => {
-  try {
-    app.listen(port, () => {
-      console.log(`Buga backend corriendo en http://localhost:${port}`);
-    });
-  } catch (error) {
-    console.error('No se pudo iniciar el backend:', error.message);
-    process.exit(1);
-  }
-};
-
-start();

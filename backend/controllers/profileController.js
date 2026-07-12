@@ -55,13 +55,16 @@ const ensureInitialProfile = async (userId) => {
 const getProfiles = async (req, res, next) => {
   try {
     const { id: userId } = req.user;
-
-    await ensureInitialProfile(userId);
-
-    const profiles = await selectMany('profiles', {
+    
+    let profiles = await selectMany('profiles', {
       filters: [{ type: 'eq', column: 'user_id', value: userId }],
       order: { column: 'created_at', ascending: true }
     });
+
+    if (profiles.length === 0) {
+      await ensureInitialProfile(userId);
+      profiles = await selectMany('profiles', { filters: [{ type: 'eq', column: 'user_id', value: userId }] });
+    }
 
     return res.json({
       limit: MAX_PROFILES_PER_USER,

@@ -1,6 +1,5 @@
 const express = require('express');
 const { protect, requireAdmin } = require('../middleware/authMiddleware');
-const { uploadMovieImages } = require('../middleware/uploadMiddleware');
 const {
   listMovies,
   getMovie,
@@ -20,8 +19,7 @@ router.use(protect, requireAdmin);
 router.get('/', listMovies);
 router.get('/:movieId', getMovie);
 router.post('/', createMovie);
-router.post('/upload', uploadMovieImages, createMovie);
-router.put('/:movieId', uploadMovieImages, updateMovie);
+router.put('/:movieId', updateMovie);
 router.delete('/:movieId', deleteMovie);
 
 module.exports = router;
