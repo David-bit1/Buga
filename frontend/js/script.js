@@ -304,9 +304,9 @@ const createCardOverlayLink = (movieId, mediaType = 'movie', title = '') => `
 
 const getMediaDetails = async (mediaType, mediaId) => {
     const type = mediaType === 'tv' ? 'tv' : 'movie';
-    const response = await HOME_SHARED.requestWithTimeout(fetch(
-        `${HOME_SHARED.TMDB_BASE_URL}/${type}/${mediaId}?api_key=${HOME_SHARED.API_KEY}&language=es-ES`
-    ), HOME_REQUEST_TIMEOUT_MS, `tmdb ${type} ${mediaId}`);
+    // Assuming TMDB calls are proxied through the backend to hide the API key.
+    // If not, this should point to the TMDB API directly.
+    const response = await HOME_SHARED.requestWithTimeout(fetch(`/api/tmdb/${type}/${mediaId}`), HOME_REQUEST_TIMEOUT_MS, `tmdb ${type} ${mediaId}`);
 
     if (!response.ok) {
         throw new Error(`TMDB responded with ${response.status}`);
@@ -381,9 +381,7 @@ const getTrailerVideoKey = async (mediaId, mediaType = 'movie') => {
 
     const requestTrailerList = async (language = '') => {
         const languageQuery = language ? `&language=${language}` : '';
-        const response = await HOME_SHARED.requestWithTimeout(fetch(
-            `${HOME_SHARED.TMDB_BASE_URL}/${mediaType === 'tv' ? 'tv' : 'movie'}/${mediaId}/videos?api_key=${HOME_SHARED.API_KEY}${languageQuery}`
-        ), HOME_REQUEST_TIMEOUT_MS, `tmdb trailer ${mediaType}:${mediaId}`);
+        const response = await HOME_SHARED.requestWithTimeout(fetch(`/api/tmdb/${mediaType === 'tv' ? 'tv' : 'movie'}/${mediaId}/videos?${languageQuery}`), HOME_REQUEST_TIMEOUT_MS, `tmdb trailer ${mediaType}:${mediaId}`);
 
         if (!response.ok) {
             throw new Error(`TMDB responded with ${response.status}`);
@@ -1045,7 +1043,7 @@ const renderHeroFallback = () => {
         year: 'N/A',
         genres: ['Streaming'],
         voteAverage: 0,
-        badge: 'UltraPelis'
+        badge: 'Buga'
     }];
 
     renderHeroIndicators();
@@ -1065,7 +1063,7 @@ const loadHeroSlides = async () => {
             .map((movie, index) => ({
                 id: movie.id,
                 title: movie.title || 'Película destacada',
-                description: movie.description || 'Disfruta del catálogo de UltraPelis.',
+                description: movie.description || 'Disfruta del catálogo de Buga.',
                 backdrop: movie.backdrop || movie.poster || HOME_SHARED.FALLBACK_POSTER,
                 poster: movie.poster || HOME_SHARED.FALLBACK_POSTER,
                 year: movie.year || 'N/A',
@@ -1073,7 +1071,7 @@ const loadHeroSlides = async () => {
                     ? movie.genres.map((genre) => genre?.name).filter(Boolean)
                     : [],
                 voteAverage: Number(movie.voteAverage || movie.vote_average) || 0,
-                badge: index === 0 ? 'Catálogo UltraPelis' : 'Destacada'
+                badge: index === 0 ? 'Catálogo Buga' : 'Destacada'
             }));
 
         if (!catalogMovies.length) {
@@ -1213,7 +1211,7 @@ const loadTrendingMovies = async () => {
                 title: movie.title || 'Tendencia',
                 poster: movie.poster || HOME_SHARED.FALLBACK_POSTER,
                 backdrop: movie.backdrop || movie.poster || HOME_SHARED.FALLBACK_POSTER,
-                description: movie.description || 'Lo más visto del catálogo de UltraPelis.',
+                description: movie.description || 'Lo más visto del catálogo de Buga.',
                 genres: Array.isArray(movie.genres)
                     ? movie.genres.map((genre) => genre?.name).filter(Boolean)
                     : [],
@@ -1246,9 +1244,7 @@ const loadSeriesMovies = async () => {
     }
 
     try {
-        const response = await HOME_SHARED.requestWithTimeout(fetch(
-            `${HOME_SHARED.TMDB_BASE_URL}/tv/popular?api_key=${HOME_SHARED.API_KEY}&language=es-ES&page=1`
-        ), HOME_REQUEST_TIMEOUT_MS, 'tmdb popular series');
+        const response = await HOME_SHARED.requestWithTimeout(fetch(`/api/tmdb/tv/popular?language=es-ES&page=1`), HOME_REQUEST_TIMEOUT_MS, 'tmdb popular series');
 
         if (!response.ok) {
             throw new Error(`TMDB responded with ${response.status}`);
@@ -1382,7 +1378,7 @@ const handleSearchInput = () => {
         notifyToast({
             type: 'info',
             title: 'Sin resultados',
-            message: 'No encontramos coincidencias en el catálogo de UltraPelis.',
+            message: 'No encontramos coincidencias en el catálogo de Buga.',
             key: `search:${noResultsToastKey}`
         });
         return;

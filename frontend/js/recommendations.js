@@ -171,7 +171,7 @@ const renderRecommendations = (items) => {
     if (!allowedItems.length) {
         renderEmptyState(
             'Aún no hay recomendaciones en tu catálogo',
-            'Las sugerencias solo muestran películas que ya están en UltraPelis.'
+            'Las sugerencias solo muestran películas que ya están en Buga.'
         );
         return;
     }
@@ -233,7 +233,7 @@ const fetchRecommendations = async () => {
         if (catalogRecommendations.length === 0) {
             renderEmptyState(
                 'Aún estamos afinando tus gustos',
-                'Agrega favoritos, reproduce algunas películas y esta fila se llenará automáticamente con títulos que ya están en UltraPelis.'
+                'Agrega favoritos, reproduce algunas películas y esta fila se llenará automáticamente con títulos que ya están en Buga.'
             );
             return;
         }

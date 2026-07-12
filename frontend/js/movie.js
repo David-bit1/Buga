@@ -108,7 +108,9 @@ const normalizeMovie = (movie) => ({
     title: mediaType === 'tv'
         ? movie.name || movie.original_name || `Serie ${movie.id}`
         : movie.title || movie.original_title || `Película ${movie.id}`,
+    original_title: movie.original_title || '',
     description: movie.overview || movie.description || 'Descripción no disponible.',
+    overview: movie.overview || movie.description || '',
     tagline: movie.tagline || '',
     poster: movie.poster_path ? `${MOVIE_SHARED.POSTER_BASE_URL}${movie.poster_path}` : movie.poster_url || movie.poster || MOVIE_SHARED.FALLBACK_POSTER,
     backdrop: movie.backdrop_path ? `${MOVIE_SHARED.IMAGE_BASE_URL_W780}${movie.backdrop_path}` : movie.banner_url || movie.backdrop || '',
@@ -117,12 +119,15 @@ const normalizeMovie = (movie) => ({
         ? Number(Array.isArray(movie.episode_run_time) ? movie.episode_run_time[0] : movie.runtime) || 0
         : movie.runtime || 0,
     genres: Array.isArray(movie.genres) ? movie.genres.map((genre) => (typeof genre === 'string' ? { name: genre } : genre)).filter(Boolean) : [],
-    videoSrc: movie.videoSrc || movie.video_url || '',
-    hlsSrc: movie.hlsSrc || '',
-    subtitlesSrc: movie.subtitlesSrc || '',
-    playbackSources: Array.isArray(movie.playback_sources)
-        ? movie.playback_sources
-        : (movie.video_url ? [{ name: 'Servidor 1', url: movie.video_url }] : [])
+    rating: movie.content_rating || '',
+    cast: Array.isArray(movie.credits?.cast) ? movie.credits.cast.slice(0, 10).map(cast => cast.name) : [],
+    director: (Array.isArray(movie.credits?.crew) ? movie.credits.crew : [])
+        .find(person => person.job === 'Director')?.name || '',
+    trailer: movie.trailer || '',
+    servers: Array.isArray(movie.playback_sources) ? movie.playback_sources : [],
+    featured: movie.popularity > 0,
+    status: movie.status || 'published',
+    popularity: movie.popularity || 0
 });
 
 const getMovieFavorites = () => {
@@ -383,29 +388,154 @@ const destroyHls = () => {
     }
 };
 
-const getPlaybackSources = (movie) => ({
-    mp4: movie?.videoSrc || MOVIE_SHARED.DEFAULT_VIDEO_SOURCE,
-    hls: movie?.hlsSrc || '',
-    subtitles: movie?.subtitlesSrc || ''
-});
-
-const populateServerSelect = (movie) => {
-    if (!serverSelect) {
+const setVideoSource = async (movie) => {
+    if (!movieVideo || !movie) {
         return;
     }
 
-    const sources = Array.isArray(movie?.playbackSources) ? movie.playbackSources : [];
-    if (!sources.length) {
-        serverSelect.innerHTML = '';
-        serverSelect.hidden = true;
-        serverSelect.disabled = true;
+    destroyHls();
+    showPlayerLoader();
+    populateServerSelect(movie);
+
+    movieVideo.pause();
+    movieVideo.removeAttribute('src');
+    movieVideo.load();
+    movieVideo.poster = movie.poster || '';
+    movieVideo.dataset.movieId = String(movie.id);
+    hideExternalPlayer();
+
+    if (qualitySelect) {
+        qualitySelect.innerHTML = '';
+        qualitySelect.disabled = true;
+        qualitySelect.hidden = true;
+    }
+
+    if (captionsButton) {
+        // We're not handling subtitles in this version for simplicity
+        captionsButton.hidden = true;
+    }
+
+    // Handle external players (YouTube, Vimeo, etc.) first
+    const validServers = Array.isArray(movie.servers) ? movie.servers : [];
+    const externalServer = validServers.find(server => 
+        server.url && 
+        (server.url.includes('youtube.com/embed') || 
+         server.url.includes('youtube.com/watch') || 
+         server.url.includes('youtu.be') || 
+         server.url.includes('player.vimeo.com') || 
+         server.url.includes('dailymotion.com/embed') || 
+         server.url.includes('embed') || 
+         server.url.includes('vidsrc'))
+    );
+
+    if (externalServer) {
+        showExternalPlayer(externalServer.url);
+        hidePlayerLoader();
         return;
     }
 
-    serverSelect.innerHTML = sources.map((source, index) => `<option value="${index}">${source.name || `Servidor ${index + 1}`}</option>`).join('');
-    serverSelect.hidden = false;
-    serverSelect.disabled = false;
-    serverSelect.value = '0';
+    // For now, we'll just play the first valid URL from servers
+    // In a more sophisticated implementation, we'd have quality selection etc.
+    const playableServer = validServers.find(server => 
+        server.url && 
+        (server.url.endsWith('.m3u8') || 
+         server.url.endsWith('.mp4') || 
+         server.url.endsWith('.webm') ||
+         !server.url.startsWith('http')) // Allow iframe/embed codes that aren't URLs
+    );
+
+    if (playableServer && playableServer.url) {
+        if (playableServer.url.endsWith('.m3u8')) {
+            // Handle HLS
+            if (typeof window.Hls !== 'undefined' && !movieVideo.canPlayType('application/vnd.apple.mpegurl')) {
+                hlsInstance = new window.Hls();
+                hlsInstance.loadSource(playableServer.url);
+                hlsInstance.attachMedia(movieVideo);
+                
+                hlsInstance.on(window.Hls.Events.MANIFEST_PARSED, () => {
+                    // Update quality options if available
+                    if (qualitySelect && hlsInstance.levels && hlsInstance.levels.length > 0) {
+                        const levels = hlsInstance.levels.filter(l => l.height > 0);
+                        if (levels.length > 0) {
+                            const options = ['<option value="auto">Auto</option>'];
+                            options.push(...levels.map(level => 
+                                `<option value="${level.height}">${level.height}p</option>`
+                            ));
+                            qualitySelect.innerHTML = options.join('');
+                            qualitySelect.disabled = false;
+                            qualitySelect.hidden = false;
+                        }
+                    }
+                });
+                
+                hlsInstance.on(window.Hls.Events.ERROR, (event, data) => {
+                    if (data.fatal) {
+                        switch (data.type) {
+                            case window.Hls.ErrorTypes.NETWORK_ERROR:
+                                console.warn('Fatal network error occurred');
+                                break;
+                            case window.Hls.ErrorTypes.MEDIA_ERROR:
+                                console.warn('Fatal media error occurred');
+                                break;
+                            default:
+                                break;
+                        }
+                    }
+                });
+            } else if (movieVideo.canPlayType('application/vnd.apple.mpegurl')) {
+                movieVideo.src = playableServer.url;
+                movieVideo.load();
+            }
+        } else if (playableServer.url.endsWith('.mp4') || playableServer.url.endsWith('.webm')) {
+            // Direct MP4/WebM playback
+            movieVideo.src = playableServer.url;
+            movieVideo.load();
+        } else {
+            // Assume it's an embed code or URL that should go in iframe
+            showExternalPlayer(playableServer.url);
+        }
+        hidePlayerLoader();
+        return;
+    }
+
+    // Fallback - try to play first available URL
+    const fallbackServer = validServers.find(s => s.url);
+    if (fallbackServer && fallbackServer.url) {
+        if (fallbackServer.url.endsWith('.m3u8')) {
+            // Handle HLS as above
+            if (typeof window.Hls !== 'undefined' && !movieVideo.canPlayType('application/vnd.apple.mpegurl')) {
+                hlsInstance = new window.Hls();
+                hlsInstance.loadSource(fallbackServer.url);
+                hlsInstance.attachMedia(movieVideo);
+                
+                hlsInstance.on(window.Hls.Events.MANIFEST_PARSED, () => {
+                    // Update quality options
+                });
+                
+                hlsInstance.on(window.Hls.Events.ERROR, (event, data) => {
+                    if (data.fatal) {
+                        // Handle error
+                    }
+                });
+            } else if (movieVideo.canPlayType('application/vnd.apple.mpegurl')) {
+                movieVideo.src = fallbackServer.url;
+                movieVideo.load();
+            }
+        } else if (fallbackServer.url.endsWith('.mp4') || fallbackServer.url.endsWith('.webm')) {
+            movieVideo.src = fallbackServer.url;
+            movieVideo.load();
+        } else {
+            showExternalPlayer(fallbackServer.url);
+        }
+    } else {
+        // No playable sources found
+        hidePlayerLoader();
+        if (playerStatus) {
+            playerStatus.textContent = 'No se pudieron cargar los servidores de reproducción';
+        }
+    }
+
+    movieVideo.addEventListener('loadedmetadata', restoreWatchProgress, { once: true });
 };
 
 const isExternalPlaybackUrl = (url = '') => {
@@ -463,116 +593,28 @@ const fetchStreamInfo = async (tmdbId) => {
     return fetchAuthJson(`/api/videos/${tmdbId}/stream?token=${encodeURIComponent(token)}`);
 };
 
-const setVideoSource = async (movie) => {
-    if (!movieVideo || !movie) {
+const populateServerSelect = (movie) => {
+    if (!serverSelect) {
         return;
     }
 
-    destroyHls();
-    showPlayerLoader();
-    populateServerSelect(movie);
-
-    const sources = getPlaybackSources(movie);
-    movieVideo.pause();
-    movieVideo.removeAttribute('src');
-    movieVideo.load();
-    movieVideo.poster = movie.poster || '';
-    movieVideo.dataset.movieId = String(movie.id);
-    hideExternalPlayer();
-
-    if (qualitySelect) {
-        qualitySelect.innerHTML = '';
-        qualitySelect.disabled = true;
-        qualitySelect.hidden = true;
-    }
-
-    if (captionsButton) {
-        captionsButton.hidden = !sources.subtitles;
-    }
-
-    const selectedSource = Array.isArray(movie.playbackSources) && movie.playbackSources.length
-        ? movie.playbackSources[Number(serverSelect?.value || 0)] || movie.playbackSources[0]
-        : null;
-
-    if (selectedSource?.url && isExternalPlaybackUrl(selectedSource.url)) {
-        showExternalPlayer(selectedSource.url);
-        hidePlayerLoader();
+    const servers = Array.isArray(movie.servers) ? movie.servers : [];
+    if (!servers.length) {
+        serverSelect.innerHTML = '';
+        serverSelect.hidden = true;
+        serverSelect.disabled = true;
         return;
     }
 
-    let streamInfo = null;
-    if (movie.mediaType !== 'tv') {
-        try {
-            streamInfo = await fetchStreamInfo(movie.id);
-        } catch (error) {
-            console.warn('Stream info unavailable', error);
-        }
-    }
-
-    const manifestUrl = streamInfo?.manifestUrl || sources.hls;
-    const fallbackMp4 = streamInfo?.fallbackMp4 || selectedSource?.url || sources.mp4;
-    const qualities = Array.isArray(streamInfo?.qualities) ? streamInfo.qualities : [];
-    const hlsAvailable = Boolean(manifestUrl);
-
-    populateQualitySelect(qualities, hlsAvailable);
-
-    if (manifestUrl) {
-        const canPlayNativeHls = movieVideo.canPlayType('application/vnd.apple.mpegurl');
-        const hasHlsJs = typeof window.Hls !== 'undefined';
-
-        if (hasHlsJs && !canPlayNativeHls) {
-            hlsInstance = new window.Hls({
-                startLevel: -1
-            });
-            hlsInstance.on(window.Hls.Events.MANIFEST_PARSED, () => {
-                if (qualitySelect) {
-                    const levelOptions = hlsInstance.levels
-                        .map((level, index) => ({ index, height: level.height || 0 }))
-                        .filter((item) => item.height > 0);
-                    if (levelOptions.length > 0) {
-                        const currentOptions = ['<option value="auto">Auto</option>'];
-                        currentOptions.push(...levelOptions.map((level) => `<option value="${level.height}">${level.height}p</option>`));
-                        qualitySelect.innerHTML = currentOptions.join('');
-                    }
-                }
-            });
-            hlsInstance.loadSource(manifestUrl);
-            hlsInstance.attachMedia(movieVideo);
-            hlsInstance.on(window.Hls.Events.ERROR, (_, data) => {
-                if (data?.fatal) {
-                    console.warn('HLS fatal error', data);
-                    movieVideo.src = fallbackMp4;
-                    movieVideo.load();
-                }
-            });
-        } else if (canPlayNativeHls) {
-            movieVideo.src = manifestUrl;
-            movieVideo.load();
-        } else {
-            movieVideo.src = fallbackMp4;
-            movieVideo.load();
-        }
-    } else {
-        movieVideo.src = fallbackMp4;
-        movieVideo.load();
-    }
-
-    if (sources.subtitles) {
-        const existingTrack = movieVideo.querySelector('track');
-        if (existingTrack) {
-            existingTrack.remove();
-        }
-
-        const track = document.createElement('track');
-        track.kind = 'subtitles';
-        track.label = 'Español';
-        track.srclang = 'es';
-        track.src = sources.subtitles;
-        track.default = true;
-        movieVideo.appendChild(track);
-    }
-
-    movieVideo.addEventListener('loadedmetadata', restoreWatchProgress, { once: true });
+    serverSelect.innerHTML = servers.map((server, index) => {
+        const serverName = server.name || `Servidor ${index + 1}`;
+        // Show type in parentheses for clarity
+        const typeLabel = server.type.toUpperCASE();
+        return `<option value="${index}">${serverName} (${typeLabel})</option>`;
+    }).join('');
+    serverSelect.hidden = false;
+    serverSelect.disabled = false;
+    serverSelect.value = '0';
 };
 
 const togglePlayback = async () => {
@@ -632,7 +674,7 @@ const toggleFullscreen = async () => {
 const applyMovie = (movie) => {
     currentMovie = movie;
 
-    document.title = `${movie.title} | UltraPelis`;
+    document.title = `${movie.title} | Buga`;
     movieTitle.textContent = movie.title;
     movieDescription.textContent = movie.description || 'Descripción no disponible.';
     movieTagline.textContent = movie.tagline || (mediaType === 'tv'
@@ -783,7 +825,11 @@ const wirePlayer = () => {
 
         if (!hlsInstance) {
             if (qualitySelect.value === 'mp4') {
-                movieVideo.src = currentMovie.videoSrc || MOVIE_SHARED.DEFAULT_VIDEO_SOURCE;
+                // Find first MP4 URL from servers or use default
+                const mp4Server = currentMovie.servers?.find(server => 
+                    server.url && (server.url.endsWith('.mp4') || server.url.endsWith('.webm'))
+                );
+                movieVideo.src = mp4Server ? mp4Server.url : MOVIE_SHARED.DEFAULT_VIDEO_SOURCE;
                 movieVideo.load();
             }
             return;
@@ -821,7 +867,7 @@ const wirePlayer = () => {
 
 const fetchLocalMovie = async (id) => {
     try {
-        const response = await fetch(`${MOVIE_SHARED.API_BASES.movies}/public/${encodeURIComponent(id)}`);
+        const response = await fetch(`/api/movies/public/${encodeURIComponent(id)}`);
         const data = await response.json().catch(() => ({}));
         if (!response.ok || !data.movie) {
             return null;
