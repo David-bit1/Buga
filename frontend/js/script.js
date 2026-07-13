@@ -330,8 +330,8 @@ const mapMedia = (media, mediaType = 'movie') => {
         id: media.id,
         mediaType,
         title,
-        poster: media.poster_path ? `${HOME_SHARED.IMAGE_BASE_URL}${media.poster_path}` : media.poster || HOME_SHARED.FALLBACK_POSTER,
-        backdrop: media.backdrop_path ? `${HOME_SHARED.IMAGE_BASE_URL}${media.backdrop_path}` : media.backdrop || '',
+        poster: media.poster_path ? `${HOME_SHARED.IMAGE_BASE_URL}${media.poster_path}` : media.poster_url || HOME_SHARED.FALLBACK_POSTER,
+        backdrop: media.backdrop_path ? `${HOME_SHARED.IMAGE_BASE_URL}${media.backdrop_path}` : media.banner_url || '',
         description: media.overview || 'Descripción no disponible.',
         genres: Array.isArray(media.genres) ? media.genres : [],
         year: formatYear(releaseDate)
