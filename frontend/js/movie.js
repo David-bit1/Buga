@@ -797,7 +797,7 @@ const wirePlayer = () => {
 
 const fetchLocalMovie = async (id) => {
     try {
-        const response = await fetch(`/api/movies/public/${encodeURIComponent(id)}`);
+        const response = await fetch(`/api/movies/${encodeURIComponent(id)}`);
         const data = await response.json().catch(() => ({}));
         if (!response.ok || !data.movie) {
             return null;

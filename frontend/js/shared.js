@@ -22,10 +22,10 @@
             WATCH_HISTORY: 'Buga-watch-history'
         },
         API_BASES: {
-            auth: 'https://Buga.onrender.com/api/auth',
-            recommendations: 'https://buga.onrender.com/api/recommendations',
-            profiles: 'https://buga.onrender.com/api/profiles',
-            movies: 'https://buga.onrender.com/api/movies',
+            auth: '/api/auth',
+            recommendations: '/api/recommendations',
+            profiles: '/api/profiles',
+            movies: '/api/movies',
             admin: '/api/admin'
         }
     };
