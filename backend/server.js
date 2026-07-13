@@ -17,6 +17,13 @@ app.use(cors({ origin: process.env.CLIENT_ORIGIN || '*' }));
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
+// Debug logs for route imports
+console.log('authRoutes:', authRoutes);
+console.log('profileRoutes:', profileRoutes);
+console.log('movieRoutes:', movieRoutes);
+console.log('adminRoutes:', adminRoutes);
+console.log('recommendationRoutes:', recommendationRoutes);
+
 // API Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/profiles', protect, profileRoutes);
