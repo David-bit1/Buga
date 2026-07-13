@@ -326,7 +326,9 @@ const resetMovieForm = () => {
     row.className = 'admin-server-row';
     row.innerHTML = `<label><span>Nombre</span><input type="text" class="server-name" placeholder="Servidor 1" value="Servidor 1"></label><label><span>Tipo</span><select class="server-type"><option value="iframe">iframe</option><option value="embed">embed</option><option value="m3u8">m3u8</option><option value="mp4">mp4</option></select></label><label><span>Enlace/Código</span><input type="text" class="server-url" placeholder="https://... o código iframe"></label><label><span>Estado</span><select class="server-status"><option value="active">Activo</option><option value="inactive">Inactivo</option></select></label><label><span>Orden</span><input type="number" class="server-order" value="0" min="0"></label><button class="admin-secondary" type="button" data-remove-server>Eliminar</button>`;
     serverRows.appendChild(row);
-    movieFeatured.checked = false;
+    if (movieFeatured) {
+        movieFeatured.checked = false;
+    }
     movieStatus.value = 'published';
     movieSubmit.textContent = 'Guardar película';
 };

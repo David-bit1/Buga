@@ -334,7 +334,16 @@ const mapMedia = (media, mediaType = 'movie') => {
     };
 };
 
-const mapMovie = (movie) => mapMedia(movie, 'movie');
+const mapMovie = (movie) => {
+    // Re-use the logic from mapMedia which is more robust
+    const media = mapMedia(movie, 'movie');
+    return {
+        ...media,
+        // Ensure local fields are also mapped if they exist
+        poster: movie.poster_url || media.poster,
+        backdrop: movie.banner_url || media.backdrop
+    };
+};
 const mapSeries = (series) => mapMedia(series, 'tv');
 
 const buildYouTubeTrailerUrl = (videoKey) => {
