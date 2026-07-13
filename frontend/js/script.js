@@ -304,9 +304,7 @@ const createCardOverlayLink = (movieId, mediaType = 'movie', title = '') => `
 
 const getMediaDetails = async (mediaType, mediaId) => {
     const type = mediaType === 'tv' ? 'tv' : 'movie';
-    // Assuming TMDB calls are proxied through the backend to hide the API key.
-    // If not, this should point to the TMDB API directly.
-    const response = await HOME_SHARED.requestWithTimeout(fetch(`/api/tmdb/${type}/${mediaId}`), HOME_REQUEST_TIMEOUT_MS, `tmdb ${type} ${mediaId}`);
+    const response = await HOME_SHARED.requestWithTimeout(fetch(`/api/movies/tmdb/${mediaId}?type=${type}`), HOME_REQUEST_TIMEOUT_MS, `tmdb ${type} ${mediaId}`);
 
     if (!response.ok) {
         throw new Error(`TMDB responded with ${response.status}`);
