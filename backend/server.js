@@ -7,7 +7,7 @@ const profileRoutes = require('./routes/profileRoutes');
 const movieRoutes = require('./routes/movieRoutes');
 const adminRoutes = require('./routes/adminRoutes');
 const recommendationRoutes = require('./routes/recommendationRoutes');
-const { protect, admin } = require('./middleware/authMiddleware');
+const { protect, requireAdmin: admin } = require('./middleware/authMiddleware');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
