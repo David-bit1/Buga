@@ -8,8 +8,8 @@ const RECOMMENDATIONS_SUBTITLE = document.getElementById('recommendationsSubtitl
 const RECOMMENDATIONS_PREV = document.querySelector('[data-recommendation-carousel="prev"]');
 const RECOMMENDATIONS_NEXT = document.querySelector('[data-recommendation-carousel="next"]');
 
-const RECOMMENDATION_FAVORITES_KEY = RECOMMENDATIONS_SHARED.getProfileStorageKey('buga-favorites');
-const RECOMMENDATION_HISTORY_KEY = RECOMMENDATIONS_SHARED.getProfileStorageKey('buga-watch-history');
+const RECOMMENDATION_FAVORITES_KEY = RECOMMENDATIONS_SHARED.getProfileStorageKey('Buga-favorites');
+const RECOMMENDATION_HISTORY_KEY = RECOMMENDATIONS_SHARED.getProfileStorageKey('Buga-watch-history');
 const RECOMMENDATION_ALLOWED_IDS = new Set((RECOMMENDATIONS_SHARED.FEATURED_MOVIE_IDS || []).map(Number));
 
 const recommendationAuthFetch = (url, options = {}) => {

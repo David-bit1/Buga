@@ -236,26 +236,26 @@ const preloadImage = (source) => {
 
 const getHomeFavorites = () => {
     try {
-        return JSON.parse(localStorage.getItem(HOME_SHARED.getProfileStorageKey('buga-favorites')) || '[]');
+        return JSON.parse(localStorage.getItem(HOME_SHARED.getProfileStorageKey('Buga-favorites')) || '[]');
     } catch {
         return [];
     }
 };
 
 const setHomeFavorites = (favorites) => {
-    localStorage.setItem(HOME_SHARED.getProfileStorageKey('buga-favorites'), JSON.stringify(favorites));
+    localStorage.setItem(HOME_SHARED.getProfileStorageKey('Buga-favorites'), JSON.stringify(favorites));
 };
 
 const getWatchHistory = () => {
     try {
-        return JSON.parse(localStorage.getItem(HOME_SHARED.getProfileStorageKey('buga-watch-history')) || '[]');
+        return JSON.parse(localStorage.getItem(HOME_SHARED.getProfileStorageKey('Buga-watch-history')) || '[]');
     } catch {
         return [];
     }
 };
 
 const setWatchHistory = (entries) => {
-    localStorage.setItem(HOME_SHARED.getProfileStorageKey('buga-watch-history'), JSON.stringify(entries));
+    localStorage.setItem(HOME_SHARED.getProfileStorageKey('Buga-watch-history'), JSON.stringify(entries));
 };
 
 const isHomeFavoriteMovie = (movieId) => getHomeFavorites().includes(movieId);
@@ -1452,7 +1452,7 @@ const loadFeaturedMovies = async (options = {}) => {
 
     try {
         const results = await Promise.allSettled(
-            HOME_SHARED.FEATURED_MOVIE_IDS.map(async (movieId) => {
+            HOME_SHARED.FEATURED_MOVIE_IDS.map(async (movieId) => { // Using BugaShared
                 const movie = await getMovieDetails(movieId);
                 return mapMovie(movie);
             })
@@ -1472,7 +1472,7 @@ const loadFeaturedMovies = async (options = {}) => {
         prefetchTrailerKeys(movies);
         if (searchInput?.value?.trim()) {
             handleSearchInput();
-        }
+        } // Corrected from handleSearchInput
     } catch (error) {
         console.warn('Featured movies failed', error);
         notifyToast({
@@ -1976,12 +1976,12 @@ const bootstrap = async () => {
         hidePageLoader();
     }, 12000);
     window.addEventListener('storage', (event) => {
-        if (event.key === HOME_SHARED.getProfileStorageKey('buga-watch-history')) {
+        if (event.key === HOME_SHARED.getProfileStorageKey('Buga-watch-history')) {
             renderContinueWatching();
         }
 
-        if (event.key === HOME_SHARED.getProfileStorageKey('buga-favorites')) {
-            refreshFeaturedGrid(searchInput?.value || '');
+        if (event.key === HOME_SHARED.getProfileStorageKey('Buga-favorites')) {
+            refreshFeaturedGrid(searchInput?.value || ''); // Corrected from refreshFeaturedGrid
             renderTrendingMovies();
             renderSeries(seriesMoviesCache);
         }

@@ -1,7 +1,7 @@
 (function () {
 const MOVIE_SHARED = window.BugaShared;
-const MOVIE_FAVORITES_KEY = MOVIE_SHARED.getProfileStorageKey('buga-favorites');
-const WATCH_HISTORY_KEY = MOVIE_SHARED.getProfileStorageKey('buga-watch-history');
+const MOVIE_FAVORITES_KEY = MOVIE_SHARED.getProfileStorageKey('Buga-favorites');
+const WATCH_HISTORY_KEY = MOVIE_SHARED.getProfileStorageKey('Buga-watch-history');
 
 const movieHero = document.getElementById('movieHero');
 const movieBackdrop = document.getElementById('movieBackdrop');
@@ -388,20 +388,26 @@ const destroyHls = () => {
     }
 };
 
-const setVideoSource = async (movie) => {
-    if (!movieVideo || !movie) {
+const setVideoSource = async (serverIndex) => {
+    if (!movieVideo || !currentMovie) {
         return;
     }
 
-    destroyHls();
-    showPlayerLoader();
-    populateServerSelect(movie);
+    const servers = Array.isArray(currentMovie.servers) ? currentMovie.servers : [];
+    const server = servers[serverIndex];
 
+    if (!server || !server.url) {
+        notifyToast({ type: 'error', title: 'Servidor no válido', message: 'El servidor seleccionado no tiene una URL válida.' });
+        hidePlayerLoader();
+        return;
+    }
+
+    showPlayerLoader();
+    destroyHls();
     movieVideo.pause();
     movieVideo.removeAttribute('src');
     movieVideo.load();
-    movieVideo.poster = movie.poster || '';
-    movieVideo.dataset.movieId = String(movie.id);
+    movieVideo.poster = currentMovie.poster || '';
     hideExternalPlayer();
 
     if (qualitySelect) {
@@ -410,131 +416,52 @@ const setVideoSource = async (movie) => {
         qualitySelect.hidden = true;
     }
 
-    if (captionsButton) {
-        // We're not handling subtitles in this version for simplicity
-        captionsButton.hidden = true;
-    }
+    const serverType = server.type || 'iframe';
+    const serverUrl = server.url;
 
-    // Handle external players (YouTube, Vimeo, etc.) first
-    const validServers = Array.isArray(movie.servers) ? movie.servers : [];
-    const externalServer = validServers.find(server => 
-        server.url && 
-        (server.url.includes('youtube.com/embed') || 
-         server.url.includes('youtube.com/watch') || 
-         server.url.includes('youtu.be') || 
-         server.url.includes('player.vimeo.com') || 
-         server.url.includes('dailymotion.com/embed') || 
-         server.url.includes('embed') || 
-         server.url.includes('vidsrc'))
-    );
-
-    if (externalServer) {
-        showExternalPlayer(externalServer.url);
+    if (serverType === 'iframe' || serverType === 'embed') {
+        showExternalPlayer(serverUrl);
         hidePlayerLoader();
-        return;
-    }
-
-    // For now, we'll just play the first valid URL from servers
-    // In a more sophisticated implementation, we'd have quality selection etc.
-    const playableServer = validServers.find(server => 
-        server.url && 
-        (server.url.endsWith('.m3u8') || 
-         server.url.endsWith('.mp4') || 
-         server.url.endsWith('.webm') ||
-         !server.url.startsWith('http')) // Allow iframe/embed codes that aren't URLs
-    );
-
-    if (playableServer && playableServer.url) {
-        if (playableServer.url.endsWith('.m3u8')) {
-            // Handle HLS
-            if (typeof window.Hls !== 'undefined' && !movieVideo.canPlayType('application/vnd.apple.mpegurl')) {
-                hlsInstance = new window.Hls();
-                hlsInstance.loadSource(playableServer.url);
-                hlsInstance.attachMedia(movieVideo);
-                
-                hlsInstance.on(window.Hls.Events.MANIFEST_PARSED, () => {
-                    // Update quality options if available
-                    if (qualitySelect && hlsInstance.levels && hlsInstance.levels.length > 0) {
-                        const levels = hlsInstance.levels.filter(l => l.height > 0);
-                        if (levels.length > 0) {
-                            const options = ['<option value="auto">Auto</option>'];
-                            options.push(...levels.map(level => 
-                                `<option value="${level.height}">${level.height}p</option>`
-                            ));
-                            qualitySelect.innerHTML = options.join('');
-                            qualitySelect.disabled = false;
-                            qualitySelect.hidden = false;
-                        }
-                    }
-                });
-                
-                hlsInstance.on(window.Hls.Events.ERROR, (event, data) => {
-                    if (data.fatal) {
-                        switch (data.type) {
-                            case window.Hls.ErrorTypes.NETWORK_ERROR:
-                                console.warn('Fatal network error occurred');
-                                break;
-                            case window.Hls.ErrorTypes.MEDIA_ERROR:
-                                console.warn('Fatal media error occurred');
-                                break;
-                            default:
-                                break;
-                        }
-                    }
-                });
-            } else if (movieVideo.canPlayType('application/vnd.apple.mpegurl')) {
-                movieVideo.src = playableServer.url;
-                movieVideo.load();
-            }
-        } else if (playableServer.url.endsWith('.mp4') || playableServer.url.endsWith('.webm')) {
-            // Direct MP4/WebM playback
-            movieVideo.src = playableServer.url;
-            movieVideo.load();
+    } else if (serverType === 'm3u8') {
+        if (typeof window.Hls !== 'undefined' && window.Hls.isSupported()) {
+            hlsInstance = new window.Hls();
+            hlsInstance.loadSource(serverUrl);
+            hlsInstance.attachMedia(movieVideo);
+            hlsInstance.on(window.Hls.Events.MANIFEST_PARSED, () => {
+                hidePlayerLoader();
+                if (qualitySelect && hlsInstance.levels && hlsInstance.levels.length > 1) {
+                    const options = ['<option value="-1">Auto</option>'];
+                    options.push(...hlsInstance.levels.map((level, index) =>
+                        `<option value="${index}">${level.height}p</option>`
+                    ));
+                    qualitySelect.innerHTML = options.join('');
+                    qualitySelect.disabled = false;
+                    qualitySelect.hidden = false;
+                }
+            });
+            hlsInstance.on(window.Hls.Events.ERROR, (event, data) => {
+                if (data.fatal) {
+                    console.error('Error fatal de HLS:', data);
+                    notifyToast({ type: 'error', title: 'Error de reproducción', message: 'No se pudo cargar el stream HLS.' });
+                    hidePlayerLoader();
+                }
+            });
+        } else if (movieVideo.canPlayType('application/vnd.apple.mpegurl')) {
+            movieVideo.src = serverUrl;
+            movieVideo.addEventListener('loadedmetadata', () => hidePlayerLoader(), { once: true });
         } else {
-            // Assume it's an embed code or URL that should go in iframe
-            showExternalPlayer(playableServer.url);
+            notifyToast({ type: 'error', title: 'Incompatible', message: 'Tu navegador no soporta HLS.' });
+            hidePlayerLoader();
         }
-        hidePlayerLoader();
-        return;
-    }
-
-    // Fallback - try to play first available URL
-    const fallbackServer = validServers.find(s => s.url);
-    if (fallbackServer && fallbackServer.url) {
-        if (fallbackServer.url.endsWith('.m3u8')) {
-            // Handle HLS as above
-            if (typeof window.Hls !== 'undefined' && !movieVideo.canPlayType('application/vnd.apple.mpegurl')) {
-                hlsInstance = new window.Hls();
-                hlsInstance.loadSource(fallbackServer.url);
-                hlsInstance.attachMedia(movieVideo);
-                
-                hlsInstance.on(window.Hls.Events.MANIFEST_PARSED, () => {
-                    // Update quality options
-                });
-                
-                hlsInstance.on(window.Hls.Events.ERROR, (event, data) => {
-                    if (data.fatal) {
-                        // Handle error
-                    }
-                });
-            } else if (movieVideo.canPlayType('application/vnd.apple.mpegurl')) {
-                movieVideo.src = fallbackServer.url;
-                movieVideo.load();
-            }
-        } else if (fallbackServer.url.endsWith('.mp4') || fallbackServer.url.endsWith('.webm')) {
-            movieVideo.src = fallbackServer.url;
-            movieVideo.load();
-        } else {
-            showExternalPlayer(fallbackServer.url);
-        }
+    } else if (serverType === 'mp4') {
+        movieVideo.src = serverUrl;
+        movieVideo.addEventListener('loadedmetadata', () => hidePlayerLoader(), { once: true });
     } else {
-        // No playable sources found
+        notifyToast({ type: 'error', title: 'Servidor desconocido', message: `El tipo de servidor "${serverType}" no es soportado.` });
         hidePlayerLoader();
-        if (playerStatus) {
-            playerStatus.textContent = 'No se pudieron cargar los servidores de reproducción';
-        }
     }
 
+    movieVideo.dataset.movieId = String(currentMovie.id);
     movieVideo.addEventListener('loadedmetadata', restoreWatchProgress, { once: true });
 };
 
@@ -609,7 +536,7 @@ const populateServerSelect = (movie) => {
     serverSelect.innerHTML = servers.map((server, index) => {
         const serverName = server.name || `Servidor ${index + 1}`;
         // Show type in parentheses for clarity
-        const typeLabel = server.type.toUpperCASE();
+        const typeLabel = (server.type || 'iframe').toUpperCase();
         return `<option value="${index}">${serverName} (${typeLabel})</option>`;
     }).join('');
     serverSelect.hidden = false;
@@ -815,7 +742,10 @@ const wirePlayer = () => {
         if (!currentMovie) {
             return;
         }
-        await setVideoSource(currentMovie);
+        const selectedIndex = parseInt(serverSelect.value, 10);
+        if (!isNaN(selectedIndex)) {
+            await setVideoSource(selectedIndex);
+        }
     });
 
     qualitySelect?.addEventListener('change', async () => {
@@ -920,7 +850,8 @@ const bootstrap = async () => {
             type: 'view',
             movie
         });
-        await setVideoSource(movie);
+        populateServerSelect(movie);
+        await setVideoSource(0); // Cargar el primer servidor por defecto
 
         if (movieVideo) {
             movieVideo.currentTime = 0;
@@ -968,7 +899,7 @@ const bootstrap = async () => {
         };
 
         applyMovie(fallbackMovie);
-        await setVideoSource(fallbackMovie);
+        populateServerSelect(fallbackMovie);
         updateProgressChrome();
         updateVolumeChrome();
         updatePlayerChrome();

@@ -1,6 +1,6 @@
 (function () {
 const FAVORITES_SHARED = window.BugaShared;
-const FAVORITES_PAGE_STORAGE_KEY = FAVORITES_SHARED.getProfileStorageKey('buga-favorites');
+const FAVORITES_PAGE_STORAGE_KEY = FAVORITES_SHARED.getProfileStorageKey('Buga-favorites');
 
 const favoritesGrid = document.getElementById('favoritesGrid');
 const pageLoader = document.getElementById('pageLoader');

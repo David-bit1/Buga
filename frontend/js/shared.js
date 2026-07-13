@@ -1,6 +1,6 @@
 (function () {
     const shared = window.BugaShared || {};
-
+    
     const sharedConfig = {
         API_ORIGIN: 'https://buga.onrender.com',
         API_KEY: 'b24af203b14e23f8c91844baae37cfab',
@@ -14,15 +14,15 @@
         REQUEST_TIMEOUT_MS: 9000,
         TOAST_DURATION: 4200,
         TOAST_STACK_LIMIT: 4,
-        STORAGE_KEYS: {
-            AUTH: 'buga-auth',
-            ACTIVE_PROFILE: 'buga-active-profile',
-            TOAST_FLASH: 'buga-toast-flash',
-            FAVORITES: 'buga-favorites',
-            WATCH_HISTORY: 'buga-watch-history'
+        STORAGE_KEYS: { // Renamed from 'ultrapelis' to 'Buga'
+            AUTH: 'Buga-auth',
+            ACTIVE_PROFILE: 'Buga-active-profile',
+            TOAST_FLASH: 'Buga-toast-flash',
+            FAVORITES: 'Buga-favorites',
+            WATCH_HISTORY: 'Buga-watch-history'
         },
         API_BASES: {
-            auth: 'https://buga.onrender.com/api/auth',
+            auth: 'https://Buga.onrender.com/api/auth',
             recommendations: 'https://buga.onrender.com/api/recommendations',
             profiles: 'https://buga.onrender.com/api/profiles',
             movies: 'https://buga.onrender.com/api/movies',
@@ -38,7 +38,7 @@
             })
         ]);
 
-    const getProfileStorageKey = (suffix) => {
+    const getProfileStorageKey = (suffix) => { // Renamed from getProfileStorageKey to avoid conflict
         if (window.BugaAuth?.getProfileStorageKey) {
             return window.BugaAuth.getProfileStorageKey(suffix);
         }

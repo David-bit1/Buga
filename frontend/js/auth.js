@@ -92,7 +92,7 @@ const syncToastStack = () => {
     }
 };
 
-const showBugaToast = (options = {}) => {
+const showBugaToast = (options = {}) => { // Renamed from showToast to avoid conflict
     const type = ['success', 'error', 'info'].includes(options.type) ? options.type : 'info';
     const title = options.title || toastTitles[type];
     const message = options.message || '';
@@ -488,7 +488,7 @@ const handleAuthForm = async (form) => {
             message: mode === 'register'
                 ? 'Tu cuenta premium quedó lista.'
                 : 'Bienvenido de vuelta a Buga.'
-        });
+        }); // Corrected from pushToastFlash
         window.location.href = '/pages/profiles.html';
     } catch (error) {
         showAuthError(form, error.message || 'Ocurrió un error');

@@ -283,7 +283,6 @@ const createMovie = async (req, res, next) => {
       cast: normalizedCast.length ? normalizedCast : [],
       director: String(director || '').trim(),
       trailer: String(trailer || tmdbPayload?.trailer || '').trim(),
-      servers: JSON.stringify(parsedServers.length ? parsedServers : []),
       servers: parsedServers,
       featured: toBoolean(featured),
       status: String(status || 'published'),
@@ -350,7 +349,6 @@ const updateMovie = async (req, res, next) => {
     if (trailer !== undefined) updatePayload.trailer = String(trailer).trim();
     if (servers !== undefined) {
       const parsedServers = parseServers(servers);
-      updatePayload.servers = JSON.stringify(parsedServers);
       updatePayload.servers = parsedServers;
     }
     if (featured !== undefined) updatePayload.featured = toBoolean(featured);

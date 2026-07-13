@@ -1,7 +1,7 @@
 (function () {
 const GENRES_SHARED = window.BugaShared;
 const FEATURED_MOVIE_IDS = GENRES_SHARED.FEATURED_MOVIE_IDS;
-const GENRES_FAVORITES_KEY = GENRES_SHARED.getProfileStorageKey('buga-favorites');
+const GENRES_FAVORITES_KEY = GENRES_SHARED.getProfileStorageKey('Buga-favorites');
 
 const genreMoviesGrid = document.getElementById('genreMoviesGrid');
 const genreChips = document.getElementById('genreChips');
