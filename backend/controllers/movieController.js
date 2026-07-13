@@ -182,6 +182,17 @@ const buildTmdbMoviePayload = async (tmdbId) => {
   };
 };
 
+const getPopular = async (req, res, next) => {
+  try {
+    const type = req.params.type === 'tv' ? 'tv' : 'movie';
+    const page = req.query.page || '1';
+    const data = await tmdbFetch(`/${type}/popular?page=${page}`);
+    return res.json(data);
+  } catch (error) {
+    return next(error);
+  }
+};
+
 const listMovies = async (_req, res, next) => {
   try {
     const movies = await selectMany('movies', { order: { column: 'created_at', ascending: false } });
@@ -389,5 +400,6 @@ module.exports = {
   getMovieByTmdbId,
   createMovie,
   updateMovie,
-  deleteMovie
+  deleteMovie,
+  getPopular
 };

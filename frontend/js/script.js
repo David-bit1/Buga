@@ -1238,7 +1238,7 @@ const loadSeriesMovies = async () => {
     }
 
     try {
-        const response = await HOME_SHARED.requestWithTimeout(fetch(`/api/tmdb/tv/popular?language=es-ES&page=1`), HOME_REQUEST_TIMEOUT_MS, 'tmdb popular series');
+        const response = await HOME_SHARED.requestWithTimeout(fetch(`/api/movies/popular/tv?language=es-ES&page=1`), HOME_REQUEST_TIMEOUT_MS, 'tmdb popular series');
 
         if (!response.ok) {
             throw new Error(`TMDB responded with ${response.status}`);
