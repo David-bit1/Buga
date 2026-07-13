@@ -125,10 +125,6 @@ const dismissToast = (toast, key, timeoutId) => {
 };
 
 const notifyToast = (options) => {
-    if (typeof window.BugaToast?.show === 'function') {
-        return window.BugaToast.show(options);
-    }
-
     const payload = typeof options === 'string'
         ? { type: 'info', message: options }
         : { ...options };

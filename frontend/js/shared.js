@@ -8,7 +8,7 @@
         IMAGE_BASE_URL: 'https://image.tmdb.org/t/p/w500',
         IMAGE_BASE_URL_W780: 'https://image.tmdb.org/t/p/w780',
         POSTER_BASE_URL: 'https://image.tmdb.org/t/p/w500',
-        FALLBACK_POSTER: 'https://via.placeholder.com/500x750?text=No+Poster',
+        FALLBACK_POSTER: 'https://via.placeholder.com/500x750.png?text=No+Poster',
         DEFAULT_VIDEO_SOURCE: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4',
         FEATURED_MOVIE_IDS: [653, 19, 962, 961, 10098, 643, 22596, 40574, 701, 23282],
         REQUEST_TIMEOUT_MS: 9000,
