@@ -31,7 +31,7 @@ const sanitizeMovie = (movie) => ({
   id: movie.id,
   tmdbId: movie.tmdb_id,
   title: movie.title,
-  description: movie.description,
+  description: movie.description || movie.overview,
   poster_url: movie.poster_url,
   banner_url: movie.banner_url,
   release_year: movie.release_year,
