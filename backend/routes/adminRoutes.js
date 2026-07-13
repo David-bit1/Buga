@@ -51,3 +51,5 @@ router.route('/settings')
   .put(updateSettings);
 
 module.exports = router;
+
+module.exports = router;
