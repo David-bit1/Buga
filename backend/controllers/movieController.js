@@ -228,9 +228,16 @@ const getPopular = async (req, res, next) => {
 const listMovies = async (_req, res, next) => {
   try {
     const movies = await selectMany('movies', { order: { column: 'created_at', ascending: false } });
-    const serialized = movies.map(serializeMovie);
     console.log('===== MOVIES RAW FROM SUPABASE =====');
     console.dir(movies, { depth: null });
+    const serialized = movies.map((movie) => {
+      console.log('--- BEFORE SERIALIZE ---');
+      console.log('RAW movie:', movie);
+      const result = serializeMovie(movie);
+      console.log('--- AFTER SERIALIZE ---');
+      console.log('SERIALIZED:', result);
+      return result;
+    });
     console.log('===== MOVIES SENT TO FRONTEND =====');
     console.dir(serialized, { depth: null });
     return res.json({ movies: serialized });
@@ -247,9 +254,13 @@ const getMovie = async (req, res, next) => {
       return res.status(404).json({ message: 'Película no encontrada' });
     }
 
-    const serialized = serializeMovie(movie);
     console.log('===== MOVIE RAW FROM SUPABASE =====');
     console.dir(movie, { depth: null });
+    console.log('--- BEFORE SERIALIZE ---');
+    console.log('RAW movie:', movie);
+    const serialized = serializeMovie(movie);
+    console.log('--- AFTER SERIALIZE ---');
+    console.log('SERIALIZED:', serialized);
     console.log('===== MOVIE SENT TO FRONTEND =====');
     console.dir(serialized, { depth: null });
     return res.json({ movie: serialized });

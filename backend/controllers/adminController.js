@@ -186,7 +186,17 @@ const createMovie = async (req, res, next) => {
       created_by: req.user.id
     });
 
-    console.log('Admin createMovie - inserted:', JSON.stringify(movie, null, 2));
+    console.log('Admin createMovie - PAYLOAD TO INSERT:', JSON.stringify({
+      tmdb_id: Number(tmdbId),
+      title: String(title || tmdbPayload?.title || '').trim(),
+      overview: String(overview || tmdbPayload?.overview || '').trim(),
+      poster_url: String(poster_url || tmdbPayload?.poster_url || '').trim(),
+      banner_url: String(banner_url || tmdbPayload?.banner_url || '').trim(),
+      release_year: toInteger(releaseYear || tmdbPayload?.release_year || 0, 0),
+      runtime: toInteger(runtime || tmdbPayload?.runtime || 0, 0),
+      genres: normalizedGenres
+    }, null, 2));
+    console.log('Admin createMovie - INSERT RESULT:', JSON.stringify(movie, null, 2));
 
     return res.status(201).json({
       message: 'Película creada correctamente',
