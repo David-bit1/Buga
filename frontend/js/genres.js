@@ -57,22 +57,19 @@ const hidePageLoader = () => {
     pageLoader?.setAttribute('aria-busy', 'false');
 };
 
-const getMovieDetails = async (movieId) => {
-    const response = await fetch(
-        `${GENRES_SHARED.TMDB_BASE_URL}/movie/${movieId}?api_key=${GENRES_SHARED.API_KEY}&language=es-ES`
-    );
-
+const fetchMoviesFromApi = async () => {
+    const response = await fetch('/api/movies');
     if (!response.ok) {
-        throw new Error(`TMDB responded with ${response.status}`);
+        throw new Error(`API responded with ${response.status}`);
     }
-
-    return response.json();
+    const data = await response.json();
+    return Array.isArray(data.movies) ? data.movies : [];
 };
 
 const mapMovie = (movie) => ({
     id: movie.id,
     title: movie.title || movie.original_title || 'Película',
-    poster: movie.poster_path ? `${GENRES_SHARED.IMAGE_BASE_URL}${movie.poster_path}` : GENRES_SHARED.FALLBACK_POSTER,
+    poster: movie.poster_url || (movie.poster_path ? `${GENRES_SHARED.IMAGE_BASE_URL}${movie.poster_path}` : GENRES_SHARED.FALLBACK_POSTER),
     description: movie.overview || 'Descripción no disponible.',
     genres: Array.isArray(movie.genres) ? movie.genres : [],
     year: formatYear(movie.release_date)
@@ -403,13 +400,7 @@ const loadGenresPage = async () => {
     renderSkeleton();
 
     try {
-        const results = await Promise.allSettled(
-            FEATURED_MOVIE_IDS.map(async (movieId) => mapMovie(await getMovieDetails(movieId)))
-        );
-
-        moviesCache = results
-            .filter((result) => result.status === 'fulfilled' && result.value)
-            .map((result) => result.value);
+        moviesCache = (await fetchMoviesFromApi()).map(mapMovie);
 
         genresCache = buildGenres(moviesCache);
         activeGenreId = 'all';
