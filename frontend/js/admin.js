@@ -32,7 +32,6 @@ const movieCast = document.getElementById('movieCast');
 const movieDirector = document.getElementById('movieDirector');
 const movieTrailer = document.getElementById('movieTrailer');
 const moviePopularity = document.getElementById('moviePopularity');
-const movieFeatured = document.getElementById('movieFeatured');
 const movieStatus = document.getElementById('movieStatus');
 const serverRows = document.getElementById('serverRows');
 const addServerButton = document.getElementById('addServerButton');
@@ -326,9 +325,6 @@ const resetMovieForm = () => {
     row.className = 'admin-server-row';
     row.innerHTML = `<label><span>Nombre</span><input type="text" class="server-name" placeholder="Servidor 1" value="Servidor 1"></label><label><span>Tipo</span><select class="server-type"><option value="iframe">iframe</option><option value="embed">embed</option><option value="m3u8">m3u8</option><option value="mp4">mp4</option></select></label><label><span>Enlace/Código</span><input type="text" class="server-url" placeholder="https://... o código iframe"></label><label><span>Estado</span><select class="server-status"><option value="active">Activo</option><option value="inactive">Inactivo</option></select></label><label><span>Orden</span><input type="number" class="server-order" value="0" min="0"></label><button class="admin-secondary" type="button" data-remove-server>Eliminar</button>`;
     serverRows.appendChild(row);
-    if (movieFeatured) {
-        movieFeatured.checked = false;
-    }
     movieStatus.value = 'published';
     movieSubmit.textContent = 'Guardar película';
 };
@@ -379,7 +375,6 @@ const fillMovieForm = (movie) => {
         });
     }
     
-    movieFeatured.checked = Boolean(movie.featured);
     movieStatus.value = movie.status || 'published';
     movieSubmit.textContent = movieId.value ? 'Actualizar película' : 'Guardar película';
 };
@@ -442,8 +437,7 @@ const handleMovieSubmit = async (event) => {
         tmdbId: movieTmdbId.value ? Number(movieTmdbId.value) : null,
         title: movieTitle.value.trim(),
         original_title: movieOriginalTitle.value.trim(),
-        description: movieOverview.value.trim(),
-        overview: movieOverview.value.trim(), // Duplicated for compatibility with API
+        description: movieOverview.value.trim(), // Use overview as the main description
         poster_url: moviePosterUrl.value.trim(), // Corrected from moviePosterUrl
         banner_url: movieBannerUrl.value.trim(),
         release_year: movieReleaseYear.value ? Number(movieReleaseYear.value) : 0,
@@ -456,7 +450,6 @@ const handleMovieSubmit = async (event) => {
         director: movieDirector.value.trim(),
         trailer: movieTrailer.value.trim(),
         servers: servers,
-        featured: movieFeatured.checked,
         status: movieStatus.value,
         popularity: moviePopularity.value ? parseFloat(moviePopularity.value) : 0
     };
