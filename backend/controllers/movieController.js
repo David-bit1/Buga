@@ -213,7 +213,6 @@ const buildTmdbMoviePayload = async (tmdbId) => {
     popularity: Number(movie.popularity || 0)
   };
 };
-console.log('TMDB buildTmdbMoviePayload result:', JSON.stringify(payload, null, 2));
 
 const getPopular = async (req, res, next) => {
   try {
@@ -229,9 +228,12 @@ const getPopular = async (req, res, next) => {
 const listMovies = async (_req, res, next) => {
   try {
     const movies = await selectMany('movies', { order: { column: 'created_at', ascending: false } });
-    console.log('Movies desde Supabase (crudo):', JSON.stringify(movies, null, 2));
-    console.log('Backend /api/movies response:', JSON.stringify(movies.map(serializeMovie), null, 2));
-    return res.json({ movies: movies.map(serializeMovie) });
+    const serialized = movies.map(serializeMovie);
+    console.log('===== MOVIES RAW FROM SUPABASE =====');
+    console.dir(movies, { depth: null });
+    console.log('===== MOVIES SENT TO FRONTEND =====');
+    console.dir(serialized, { depth: null });
+    return res.json({ movies: serialized });
   } catch (error) {
     return next(error);
   }
@@ -245,9 +247,11 @@ const getMovie = async (req, res, next) => {
       return res.status(404).json({ message: 'Película no encontrada' });
     }
 
-    console.log('Movie desde Supabase (crudo):', JSON.stringify(movie, null, 2));
     const serialized = serializeMovie(movie);
-    console.log('Backend /api/movies/:id response:', JSON.stringify(serialized, null, 2));
+    console.log('===== MOVIE RAW FROM SUPABASE =====');
+    console.dir(movie, { depth: null });
+    console.log('===== MOVIE SENT TO FRONTEND =====');
+    console.dir(serialized, { depth: null });
     return res.json({ movie: serialized });
   } catch (error) {
     return next(error);
