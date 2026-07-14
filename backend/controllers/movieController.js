@@ -196,6 +196,7 @@ const getPopular = async (req, res, next) => {
 const listMovies = async (_req, res, next) => {
   try {
     const movies = await selectMany('movies', { order: { column: 'created_at', ascending: false } });
+    console.log('Backend /api/movies response:', JSON.stringify(movies.map(serializeMovie), null, 2));
     return res.json({ movies: movies.map(serializeMovie) });
   } catch (error) {
     return next(error);
@@ -210,7 +211,9 @@ const getMovie = async (req, res, next) => {
       return res.status(404).json({ message: 'Película no encontrada' });
     }
 
-    return res.json({ movie: serializeMovie(movie) });
+    const serialized = serializeMovie(movie);
+    console.log('Backend /api/movies/:id response:', JSON.stringify(serialized, null, 2));
+    return res.json({ movie: serialized });
   } catch (error) {
     return next(error);
   }

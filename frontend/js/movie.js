@@ -600,6 +600,12 @@ const toggleFullscreen = async () => {
 
 const applyMovie = (movie) => {
     currentMovie = movie;
+    console.log('applyMovie - Movie completa:', movie);
+    console.log('applyMovie - poster:', movie.poster);
+    console.log('applyMovie - poster_url:', movie.poster_url);
+    console.log('applyMovie - backdrop:', movie.backdrop);
+    console.log('applyMovie - banner_url:', movie.banner_url);
+    console.log('applyMovie - title:', movie.title);
 
     document.title = `${movie.title} | Buga`;
     movieTitle.textContent = movie.title;
@@ -797,9 +803,9 @@ const wirePlayer = () => {
 
 const fetchLocalMovie = async (id) => {
     try {
-        // This endpoint now correctly uses the TMDB ID passed from the catalog
-        const response = await fetch(`/api/movies/tmdb/${encodeURIComponent(id)}`); 
+        const response = await fetch(`/api/movies/tmdb/${encodeURIComponent(id)}`);
         const data = await response.json().catch(() => ({}));
+        console.log('Movie detail raw response:', JSON.stringify(data, null, 2));
         if (!response.ok || !data.movie) {
             return null;
         }

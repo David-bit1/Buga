@@ -520,6 +520,13 @@ const getSearchPanelContent = (state, movies = [], query = '') => {
 };
 
 const createCard = (movie) => {
+    console.log('Movie completa:', movie);
+    console.log('poster:', movie.poster);
+    console.log('poster_url:', movie.poster_url);
+    console.log('backdrop:', movie.backdrop);
+    console.log('banner_url:', movie.banner_url);
+    console.log('title:', movie.title);
+
     const genreLabel = movie.genres?.[0]?.name || 'Cine';
     const favorite = isHomeFavoriteMovie(movie.id);
     const mediaType = movie.mediaType || 'movie';
