@@ -8,6 +8,8 @@ const {
   upsertOne
 } = require('../services/supabaseRepository');
 
+const { buildTmdbMoviePayload, toInteger, normalizeGenres } = require('../controllers/movieController');
+
 const slugify = (value) =>
   String(value || '')
     .normalize('NFD')
@@ -130,6 +132,7 @@ const getDashboard = async (_req, res, next) => {
 const listMovies = async (_req, res, next) => {
   try {
     const movies = await selectMany('movies', { order: { column: 'created_at', ascending: false } });
+    console.log('Admin listMovies from Supabase:', JSON.stringify(movies, null, 2));
     return res.json({ movies: movies.map(sanitizeMovie) });
   } catch (error) {
     return next(error);
@@ -156,20 +159,32 @@ const createMovie = async (req, res, next) => {
       return res.status(400).json({ message: 'tmdbId y título son obligatorios' });
     }
 
+    let tmdbPayload = null;
+    try {
+      tmdbPayload = await buildTmdbMoviePayload(Number(tmdbId));
+    } catch (error) {
+      console.warn('TMDB sync failed on createMovie', error);
+    }
+
+    const normalizedGenres = normalizeGenres(genres || tmdbPayload?.genres || []);
+    const releaseYear = releaseDate ? String(releaseDate).slice(0, 4) : undefined;
+
     const movie = await insertOne('movies', {
       tmdb_id: Number(tmdbId),
-      title,
-      overview,
-      poster_url: poster_url,
-      banner_url: banner_url,
-      release_date: releaseDate,
-      runtime: Number(runtime || 0),
-      genres: Array.isArray(genres) ? genres : [],
+      title: String(title || tmdbPayload?.title || '').trim(),
+      overview: String(overview || tmdbPayload?.overview || '').trim(),
+      poster_url: String(poster_url || tmdbPayload?.poster_url || '').trim(),
+      banner_url: String(banner_url || tmdbPayload?.banner_url || '').trim(),
+      release_year: toInteger(releaseYear || tmdbPayload?.release_year || 0, 0),
+      runtime: toInteger(runtime || tmdbPayload?.runtime || 0, 0),
+      genres: normalizedGenres,
       video_source: videoSource,
       featured: Boolean(featured),
-      status,
+      status: String(status || 'published'),
       created_by: req.user.id
     });
+
+    console.log('Admin createMovie - inserted:', JSON.stringify(movie, null, 2));
 
     return res.status(201).json({
       message: 'Película creada correctamente',
@@ -195,17 +210,19 @@ const updateMovie = async (req, res, next) => {
     }
 
     const payload = {};
-    const fields = ['tmdbId', 'title', 'overview', 'poster', 'backdrop', 'releaseDate', 'runtime', 'videoSource', 'featured', 'status', 'processingStatus', 'sourceFile', 'hlsDirectory', 'hlsManifest'];
+    const fields = ['tmdbId', 'title', 'description', 'overview', 'poster', 'backdrop', 'poster_url', 'banner_url', 'releaseDate', 'runtime', 'videoSource', 'featured', 'status', 'processingStatus', 'sourceFile', 'hlsDirectory', 'hlsManifest'];
     fields.forEach((field) => {
       if (req.body[field] !== undefined) {
         const map = {
           tmdbId: 'tmdb_id',
-          releaseDate: 'release_date',
+          releaseDate: 'release_year',
           videoSource: 'video_source',
           processingStatus: 'processing_status',
           sourceFile: 'source_file',
           hlsDirectory: 'hls_directory',
-          hlsManifest: 'hls_manifest'
+          hlsManifest: 'hls_manifest',
+          poster: 'poster_url',
+          backdrop: 'banner_url'
         };
         const target = map[field] || field;
         payload[target] = field === 'runtime' || field === 'tmdbId' ? Number(req.body[field]) : req.body[field];
@@ -216,7 +233,12 @@ const updateMovie = async (req, res, next) => {
       payload.genres = req.body.genres;
     }
 
+    if (Object.keys(payload).length === 0) {
+      return res.status(400).json({ message: 'No se enviaron datos para actualizar' });
+    }
+
     const [updatedMovie] = await updateRows('movies', [{ type: 'eq', column: 'id', value: movieId }], payload);
+    console.log('Admin updateMovie - updated:', JSON.stringify(updatedMovie, null, 2));
     return res.json({
       message: 'Película actualizada correctamente',
       movie: sanitizeMovie(updatedMovie)

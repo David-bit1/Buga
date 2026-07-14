@@ -91,6 +91,9 @@ const parseServers = (value) => {
 };
 
 const serializeMovie = (movie) => {
+  const releaseYear = movie.release_year || (movie.release_date ? String(movie.release_date).slice(0, 4) : 0);
+  const parsedYear = toInteger(String(releaseYear), 0);
+
   return {
     id: movie.id,
     tmdb_id: movie.tmdb_id || null,
@@ -100,7 +103,7 @@ const serializeMovie = (movie) => {
     overview: movie.overview || '',
     poster_url: movie.poster_url || '',
     banner_url: movie.banner_url || '',
-    release_year: movie.release_year || 0,
+    release_year: parsedYear,
     runtime: movie.runtime || 0,
     country: movie.country || '',
     language: movie.language || '',
@@ -133,6 +136,7 @@ const tmdbFetch = async (path) => {
 };
 
 const buildTmdbMoviePayload = async (tmdbId) => {
+  console.log('TMDB sync - buildTmdbMoviePayload called with tmdbId:', tmdbId, 'API_KEY prefix:', String(TMDB_API_KEY || '').slice(0, 8));
   if (!tmdbId) {
     return null;
   }
@@ -406,5 +410,13 @@ module.exports = {
   createMovie,
   updateMovie,
   deleteMovie,
-  getPopular
+  getPopular,
+  serializeMovie,
+  buildTmdbMoviePayload,
+  tmdbFetch,
+  toInteger,
+  normalizeGenres,
+  normalizeCast,
+  parseServers,
+  toBoolean
 };
