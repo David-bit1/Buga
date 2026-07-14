@@ -77,14 +77,12 @@ const fetchJson = async (url, options = {}) => {
     }), UPLOAD_SHARED.REQUEST_TIMEOUT_MS, `upload movies ${options.method || 'GET'}`);
 
     const data = await response.json().catch(() => ({}));
-if (!response.ok) {
-         throw new Error(data.message || 'La operación no pudo completarse');
-     }
- 
-     return data;
- };
- 
- const createServerRow = (name = '', type = 'iframe', url = '', status = 'active', order = 0) => {
+    if (!response.ok) {
+        throw new Error(data.message || 'La operación no pudo completarse');
+    }
+    return data;
+};
+const createServerRow = (name = '', type = 'iframe', url = '', status = 'active', order = 0) => {
     const row = document.createElement('div');
     row.className = 'admin-server-row';
     row.innerHTML = `
@@ -430,28 +428,6 @@ const handleSubmit = async (event) => {
     }
 };
 
-        const endpoint = movieId ? `${MOVIES_API}/${movieId}` : MOVIES_API;
-        const method = movieId ? 'PUT' : 'POST';
-        await fetchJson(endpoint, {
-            method,
-            body: JSON.stringify(payload)
-        });
-
-        notify({
-            type: 'success',
-            title: movieId ? 'Película actualizada' : 'Película guardada',
-            message: title
-        });
-        clearForm();
-        await loadMovies();
-    } catch (error) {
-        notify({ type: 'error', title: 'No se pudo guardar', message: error.message || 'Intenta nuevamente.' });
-    } finally {
-        movieSubmit.disabled = false;
-        movieSubmit.textContent = movieId ? 'Actualizar película' : 'Guardar película';
-    }
-};
-
 const handleTableAction = async (event) => {
     const editButton = event.target.closest('[data-edit-movie]');
     const deleteButton = event.target.closest('[data-delete-movie]');
@@ -530,39 +506,6 @@ const bootstrap = async () => {
     uploadForm?.addEventListener('submit', handleSubmit);
     movieTable?.addEventListener('click', handleTableAction);
     clearFormButton?.addEventListener('click', clearForm);
-    refreshMoviesButton?.addEventListener('click', loadMovies);
-    addServerButton?.addEventListener('click', () => {
-        const row = document.createElement('div');
-        row.className = 'admin-server-row';
-        row.innerHTML = `
-            <label><span>Nombre</span><input type="text" class="server-name" placeholder="Servidor 1" value="Servidor 1"></label>
-            <label><span>Tipo</span><select class="server-type">
-                <option value="iframe">iframe</option>
-                <option value="embed">embed</option>
-                <option value="m3u8">m3u8</option>
-                <option value="mp4">mp4</option>
-            </select></label>
-            <label><span>Enlace/Código</span><input type="text" class="server-url" placeholder="https://... o código iframe"></label>
-            <label><span>Estado</span><select class="server-status">
-                <option value="active">Activo</option>
-                <option value="inactive">Inactivo</option>
-            </select></label>
-            <label><span>Orden</span><input type="number" class="server-order" value="0" min="0"></label>
-            <button class="admin-secondary" type="button">Eliminar</button>
-        `;
-        
-        // Add remove button functionality
-        const removeBtn = row.querySelector('.admin-secondary');
-        removeBtn.addEventListener('click', () => {
-            row.remove();
-            // Ensure at least one server row remains
-            if (serverRows.querySelectorAll('.admin-server-row').length === 0) {
-                addServerButton.click();
-            }
-        });
-        
-        serverRows.appendChild(row);
-    });
 
     showLoader();
     await loadMovies();
