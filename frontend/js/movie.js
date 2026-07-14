@@ -797,7 +797,8 @@ const wirePlayer = () => {
 
 const fetchLocalMovie = async (id) => {
     try {
-        const response = await fetch(`/api/movies/tmdb/${encodeURIComponent(id)}`);
+        // This endpoint now correctly uses the TMDB ID passed from the catalog
+        const response = await fetch(`/api/movies/tmdb/${encodeURIComponent(id)}`); 
         const data = await response.json().catch(() => ({}));
         if (!response.ok || !data.movie) {
             return null;
