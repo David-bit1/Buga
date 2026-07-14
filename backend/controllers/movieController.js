@@ -5,6 +5,8 @@ const TMDB_BASE_URL = 'https://api.themoviedb.org/3';
 const TMDB_LANGUAGE = 'es-ES';
 const TMDB_IMAGE_BASE = 'https://image.tmdb.org/t/p/w500';
 
+console.log('TMDB_API_KEY env:', process.env.TMDB_API_KEY ? 'OK' : 'UNDEFINED', 'fallback prefix:', String(TMDB_API_KEY || '').slice(0, 8));
+
 const normalizeGenres = (value) => {
   if (Array.isArray(value)) {
     return value.map((item) => String(item).trim()).filter(Boolean);
@@ -128,11 +130,16 @@ const tmdbFetch = async (path) => {
   url.searchParams.set('language', TMDB_LANGUAGE);
 
   const response = await fetch(url);
+  console.log('TMDB request:', url.toString(), 'status:', response.status);
   if (!response.ok) {
+    const text = await response.text().catch(() => '');
+    console.error('TMDB error body:', text);
     throw new Error(`TMDB respondió con ${response.status}`);
   }
 
-  return response.json();
+  const data = await response.json();
+  console.log('TMDB response keys:', Object.keys(data || {}).slice(0, 20).join(', '));
+  return data;
 };
 
 const buildTmdbMoviePayload = async (tmdbId) => {
@@ -141,9 +148,30 @@ const buildTmdbMoviePayload = async (tmdbId) => {
     return null;
   }
 
-  const movie = await tmdbFetch(`/movie/${tmdbId}`);
-  const credits = await tmdbFetch(`/movie/${tmdbId}/credits`);
-  const videos = await tmdbFetch(`/movie/${tmdbId}/videos`);
+  let movie, credits, videos;
+  try {
+    movie = await tmdbFetch(`/movie/${tmdbId}`);
+    console.log('TMDB sync - movie status OK, title:', movie?.title, 'poster_path:', movie?.poster_path, 'backdrop_path:', movie?.backdrop_path);
+  } catch (error) {
+    console.error('TMDB sync - movie fetch failed:', error.message);
+    throw error;
+  }
+
+  try {
+    credits = await tmdbFetch(`/movie/${tmdbId}/credits`);
+    console.log('TMDB sync - credits status OK, cast count:', credits?.cast?.length || 0);
+  } catch (error) {
+    console.error('TMDB sync - credits fetch failed:', error.message);
+    throw error;
+  }
+
+  try {
+    videos = await tmdbFetch(`/movie/${tmdbId}/videos`);
+    console.log('TMDB sync - videos status OK, results count:', videos?.results?.length || 0);
+  } catch (error) {
+    console.error('TMDB sync - videos fetch failed:', error.message);
+    throw error;
+  }
 
   const genres = Array.isArray(movie.genres)
     ? movie.genres.map((genre) => genre.name).filter(Boolean)

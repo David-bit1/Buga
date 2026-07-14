@@ -161,9 +161,11 @@ const createMovie = async (req, res, next) => {
 
     let tmdbPayload = null;
     try {
+      console.log('Admin createMovie - syncing TMDb for tmdbId:', tmdbId);
       tmdbPayload = await buildTmdbMoviePayload(Number(tmdbId));
+      console.log('Admin createMovie - TMDb sync result title:', tmdbPayload?.title, 'poster_url:', tmdbPayload?.poster_url, 'banner_url:', tmdbPayload?.banner_url, 'genres count:', tmdbPayload?.genres?.length || 0);
     } catch (error) {
-      console.warn('TMDB sync failed on createMovie', error);
+      console.warn('Admin createMovie - TMDB sync failed:', error.message);
     }
 
     const normalizedGenres = normalizeGenres(genres || tmdbPayload?.genres || []);
