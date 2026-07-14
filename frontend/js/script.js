@@ -570,7 +570,7 @@ const renderLoadingState = () => {
         return;
     }
 
-    moviesGrid.innerHTML = HOME_SHARED.FEATURED_MOVIE_IDS
+    moviesGrid.innerHTML = Array.from({ length: 10 }) // Create a fixed number of skeletons
         .map(() => `
             <article class="movie-card movie-card-skeleton" aria-hidden="true">
                 <div class="movie-poster movie-poster-skeleton"></div>
