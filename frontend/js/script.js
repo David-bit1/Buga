@@ -1241,40 +1241,6 @@ const loadTrendingMovies = async () => {
     }
 };
 
-const loadSeriesMovies = async () => {
-    if (!seriesGrid) {
-        return;
-    }
-
-    try {
-        const response = await HOME_SHARED.requestWithTimeout(fetch(`/api/movies/popular/tv?language=es-ES&page=1`), HOME_REQUEST_TIMEOUT_MS, 'tmdb popular series');
-
-        if (!response.ok) {
-            throw new Error(`TMDB responded with ${response.status}`);
-        }
-
-        const data = await response.json();
-        seriesMoviesCache = (Array.isArray(data.results) ? data.results : [])
-            .map((series, index) => ({
-                ...mapSeries(series),
-                badge: index === 0 ? 'Serie' : index % 3 === 0 ? 'Top' : 'Popular'
-            }))
-            .slice(0, SERIES_VISIBLE_COUNT);
-
-        renderSeries(seriesMoviesCache);
-        prefetchTrailerKeys(seriesMoviesCache);
-    } catch (error) {
-        console.warn('Series movies failed', error);
-        notifyToast({
-            type: 'error',
-            title: 'Series no disponibles',
-            message: 'Hubo un problema al cargar la sección de series.'
-        });
-        seriesMoviesCache = [];
-        renderSeries(seriesMoviesCache);
-    }
-};
-
 const removeContinueWatching = (movieId) => {
     const history = getWatchHistory().filter((entry) => Number(entry.id) !== Number(movieId));
     setWatchHistory(history);
@@ -1454,16 +1420,12 @@ const loadFeaturedMovies = async (options = {}) => {
     renderLoadingState();
 
     try {
-        const results = await Promise.allSettled(
-            HOME_SHARED.FEATURED_MOVIE_IDS.map(async (movieId) => { // Using BugaShared
-                const movie = await getMovieDetails(movieId);
-                return mapMovie(movie);
-            })
-        );
-
-        const movies = results
-            .filter((result) => result.status === 'fulfilled' && result.value)
-            .map((result) => result.value);
+        const response = await HOME_SHARED.requestWithTimeout(fetch('/api/movies'), HOME_REQUEST_TIMEOUT_MS, 'catalog movies');
+        if (!response.ok) {
+            throw new Error(`API responded with ${response.status}`);
+        }
+        const data = await response.json();
+        const movies = (Array.isArray(data.movies) ? data.movies : []).map(mapMovie);
 
         if (movies.length === 0) {
             moviesGrid.innerHTML = '<p class="movie-error">No se pudieron cargar las películas.</p>';
@@ -1994,7 +1956,6 @@ const bootstrap = async () => {
         await loadFeaturedMovies({ useLoader: false });
         await Promise.all([
             loadTrendingMovies(),
-            loadSeriesMovies(),
             loadHeroSlides()
         ]);
     } finally {
