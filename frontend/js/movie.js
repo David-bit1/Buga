@@ -118,13 +118,13 @@ const normalizeMovie = (movie) => ({
     runtime: mediaType === 'tv'
         ? Number(Array.isArray(movie.episode_run_time) ? movie.episode_run_time[0] : movie.runtime) || 0
         : movie.runtime || 0,
-    genres: Array.isArray(movie.genres) ? movie.genres.map((genre) => (typeof genre === 'string' ? { name: genre } : genre)).filter(Boolean) : [],
+    genres: Array.isArray(movie.genres) ? movie.genres.map((genre) => (typeof genre === 'string' ? { name: genre } : (genre.name ? genre : { name: '' }))).filter(g => g.name) : [],
     rating: movie.content_rating || '',
     cast: Array.isArray(movie.credits?.cast) ? movie.credits.cast.slice(0, 10).map(cast => cast.name) : [],
     director: (Array.isArray(movie.credits?.crew) ? movie.credits.crew : [])
         .find(person => person.job === 'Director')?.name || '',
     trailer: movie.trailer || '',
-    servers: Array.isArray(movie.playback_sources) ? movie.playback_sources : [],
+    servers: Array.isArray(movie.servers) ? movie.servers : (Array.isArray(movie.playback_sources) ? movie.playback_sources : []),
     featured: movie.popularity > 0,
     status: movie.status || 'published',
     popularity: movie.popularity || 0
@@ -797,7 +797,7 @@ const wirePlayer = () => {
 
 const fetchLocalMovie = async (id) => {
     try {
-        const response = await fetch(`/api/movies/${encodeURIComponent(id)}`);
+        const response = await fetch(`/api/movies/tmdb/${encodeURIComponent(id)}`);
         const data = await response.json().catch(() => ({}));
         if (!response.ok || !data.movie) {
             return null;
