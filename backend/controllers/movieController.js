@@ -213,6 +213,7 @@ const buildTmdbMoviePayload = async (tmdbId) => {
     popularity: Number(movie.popularity || 0)
   };
 };
+console.log('TMDB buildTmdbMoviePayload result:', JSON.stringify(payload, null, 2));
 
 const getPopular = async (req, res, next) => {
   try {
