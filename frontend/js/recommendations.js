@@ -210,6 +210,11 @@ const fetchRecommendations = async () => {
         return;
     }
 
+    if (!profile?.id) {
+        setSectionVisible(false);
+        return;
+    }
+
     setSectionVisible(true);
     renderSkeleton(6);
 

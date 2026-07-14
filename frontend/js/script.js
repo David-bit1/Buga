@@ -570,8 +570,8 @@ const renderLoadingState = () => {
         return;
     }
 
-    moviesGrid.innerHTML = Array.from({ length: 10 }) // Create a fixed number of skeletons
-        .map(() => `
+    moviesGrid.innerHTML = Array.from({ length: 8 })
+        .map((_, index) => `
             <article class="movie-card movie-card-skeleton" aria-hidden="true">
                 <div class="movie-poster movie-poster-skeleton"></div>
                 <div class="movie-card-body">
