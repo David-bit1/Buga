@@ -8,7 +8,7 @@
         IMAGE_BASE_URL: 'https://image.tmdb.org/t/p/w500',
         IMAGE_BASE_URL_W780: 'https://image.tmdb.org/t/p/w780',
         POSTER_BASE_URL: 'https://image.tmdb.org/t/p/w500',
-        FALLBACK_POSTER: 'https://via.placeholder.com/500x750/1a1a1a/ffffff.png?text=Buga',
+        FALLBACK_POSTER: '/assets/images/no-poster.png',
         DEFAULT_VIDEO_SOURCE: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4',
         REQUEST_TIMEOUT_MS: 9000,
         TOAST_DURATION: 4200,

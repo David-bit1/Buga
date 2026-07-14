@@ -210,6 +210,12 @@ const fetchRecommendations = async () => {
         return;
     }
 
+    // Double check for logged-out users
+    if (!window.BugaAuth?.getAuthToken?.()) {
+        setSectionVisible(false);
+        return;
+    }
+
     if (!profile?.id) {
         setSectionVisible(false);
         return;
