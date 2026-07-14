@@ -286,7 +286,9 @@ const createMovieCardMedia = (movie, tagLabel = '') => `
 `;
 
 const buildMediaHref = (movieId, mediaType = 'movie') => {
-    const params = new URLSearchParams({ id: String(movieId) });
+    const movie = featuredMoviesCache.find(m => m.id === movieId);
+    const idToUse = movie?.tmdb_id || movieId;
+    const params = new URLSearchParams({ id: String(idToUse) });
     if (mediaType && mediaType !== 'movie') {
         params.set('type', mediaType);
     }
@@ -334,7 +336,14 @@ const mapMedia = (media, mediaType = 'movie') => {
     };
 };
 
-const mapMovie = (movie) => mapMedia(movie, 'movie');
+const mapMovie = (movie) => {
+    const media = mapMedia(movie, 'movie');
+    return {
+        ...media,
+        tmdb_id: movie.tmdb_id, // Make sure tmdb_id is passed through
+        poster: movie.poster_url || media.poster
+    };
+};
 const mapSeries = (series) => mapMedia(series, 'tv');
 
 const buildYouTubeTrailerUrl = (videoKey) => {
