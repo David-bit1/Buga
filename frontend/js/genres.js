@@ -66,14 +66,7 @@ const fetchMoviesFromApi = async () => {
     return Array.isArray(data.movies) ? data.movies : [];
 };
 
-const mapMovie = (movie) => ({
-    id: movie.id,
-    title: movie.title || movie.original_title || 'Película',
-    poster: movie.poster_url || (movie.poster_path ? `${GENRES_SHARED.IMAGE_BASE_URL}${movie.poster_path}` : GENRES_SHARED.FALLBACK_POSTER),
-    description: movie.overview || 'Descripción no disponible.',
-    genres: Array.isArray(movie.genres) ? movie.genres : [],
-    year: formatYear(movie.release_date)
-});
+const mapMovie = (movie) => GENRES_SHARED.normalizeMovie(movie, 'movie');
 
 const buildMovieHref = (movieId) => `/pages/movie.html?id=${movieId}`;
 

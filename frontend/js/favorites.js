@@ -52,14 +52,7 @@ const getMovieDetails = async (movieId) => {
     return response.json();
 };
 
-const mapMovie = (movie) => ({
-    id: movie.id,
-    title: movie.title || movie.original_title || 'Película',
-    poster: movie.poster_path ? `${FAVORITES_SHARED.IMAGE_BASE_URL}${movie.poster_path}` : FAVORITES_SHARED.FALLBACK_POSTER,
-    description: movie.overview || 'Descripción no disponible.',
-    genres: Array.isArray(movie.genres) ? movie.genres : [],
-    year: formatYear(movie.release_date)
-});
+const mapMovie = (movie) => FAVORITES_SHARED.normalizeMovie(movie, 'movie');
 
 const buildMovieHref = (movieId) => `/pages/movie.html?id=${movieId}`;
 

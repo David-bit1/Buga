@@ -316,36 +316,8 @@ const getMovieDetails = async (movieId) => getMediaDetails('movie', movieId);
 
 const getSeriesDetails = async (seriesId) => getMediaDetails('tv', seriesId);
 
-const mapMedia = (media, mediaType = 'movie') => {
-    const releaseDate = mediaType === 'tv'
-        ? media.first_air_date || media.release_date
-        : media.release_date || media.first_air_date;
-
-    const title = mediaType === 'tv'
-        ? media.name || media.original_name || 'Serie'
-        : media.title || media.original_title || 'Película';
-
-    return {
-        id: media.id,
-        mediaType,
-        title,
-        poster: media.poster_url || (media.poster_path ? `${HOME_SHARED.IMAGE_BASE_URL}${media.poster_path}` : HOME_SHARED.FALLBACK_POSTER),
-        backdrop: media.banner_url || (media.backdrop_path ? `${HOME_SHARED.IMAGE_BASE_URL_W780}${media.backdrop_path}` : ''),
-        description: media.overview || 'Descripción no disponible.',
-        genres: Array.isArray(media.genres) ? media.genres : [],
-        year: formatYear(releaseDate)
-    };
-};
-
-const mapMovie = (movie) => {
-    const media = mapMedia(movie, 'movie');
-    return {
-        ...media,
-        tmdb_id: movie.tmdb_id, // Make sure tmdb_id is passed through
-        poster: movie.poster_url || media.poster
-    };
-};
-const mapSeries = (series) => mapMedia(series, 'tv');
+const mapMovie = (movie) => HOME_SHARED.normalizeMovie(movie, 'movie');
+const mapSeries = (series) => HOME_SHARED.normalizeMovie(series, 'tv');
 
 const buildYouTubeTrailerUrl = (videoKey) => {
     const params = new URLSearchParams({
@@ -520,13 +492,6 @@ const getSearchPanelContent = (state, movies = [], query = '') => {
 };
 
 const createCard = (movie) => {
-    console.log('Movie completa:', movie);
-    console.log('poster:', movie.poster);
-    console.log('poster_url:', movie.poster_url);
-    console.log('backdrop:', movie.backdrop);
-    console.log('banner_url:', movie.banner_url);
-    console.log('title:', movie.title);
-
     const genreLabel = movie.genres?.[0]?.name || 'Cine';
     const favorite = isHomeFavoriteMovie(movie.id);
     const mediaType = movie.mediaType || 'movie';
@@ -600,7 +565,6 @@ const showPageLoader = () => {
     if (pageLoader) {
         pageLoader.setAttribute('aria-busy', 'true');
     }
-    console.log('Loader visible');
 };
 
 const hidePageLoader = () => {
@@ -608,7 +572,6 @@ const hidePageLoader = () => {
     if (pageLoader) {
         pageLoader.setAttribute('aria-busy', 'false');
     }
-    console.log('Loader hidden');
 };
 
 const renderMovies = (movies) => {
@@ -1917,15 +1880,6 @@ const wireSeriesControls = () => {
 
 const bootstrap = async () => {
     let failSafeId = null;
-    console.log('Catalog render start');
-
-    console.log('Auth state:', {
-        page: window.location.pathname,
-        loading: true,
-        token: Boolean(window.BugaAuth?.getAuthToken?.()),
-        user: window.BugaAuth?.getAuthSession?.()?.user || null,
-        activeProfile: window.BugaAuth?.getActiveProfile?.() || null
-    });
 
     wireMenu();
     wireHeroControls();
@@ -1969,9 +1923,6 @@ const bootstrap = async () => {
     } finally {
         window.clearTimeout(failSafeId);
         hidePageLoader();
-        console.log('Loading:', false);
-        console.log('User:', window.BugaAuth?.getAuthSession?.()?.user || null);
-        console.log('Catalog render complete');
     }
 };
 

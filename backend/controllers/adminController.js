@@ -144,10 +144,10 @@ const createMovie = async (req, res, next) => {
     const {
       tmdbId,
       title,
-      overview,
+      description,
       poster_url,
       banner_url,
-      releaseDate,
+      release_year,
       runtime,
       genres = [],
       videoSource,
@@ -161,23 +161,20 @@ const createMovie = async (req, res, next) => {
 
     let tmdbPayload = null;
     try {
-      console.log('Admin createMovie - syncing TMDb for tmdbId:', tmdbId);
       tmdbPayload = await buildTmdbMoviePayload(Number(tmdbId));
-      console.log('Admin createMovie - TMDb sync result title:', tmdbPayload?.title, 'poster_url:', tmdbPayload?.poster_url, 'banner_url:', tmdbPayload?.banner_url, 'genres count:', tmdbPayload?.genres?.length || 0);
     } catch (error) {
       console.warn('Admin createMovie - TMDB sync failed:', error.message);
     }
 
     const normalizedGenres = normalizeGenres(genres || tmdbPayload?.genres || []);
-    const releaseYear = releaseDate ? String(releaseDate).slice(0, 4) : undefined;
-
     const movie = await insertOne('movies', {
       tmdb_id: Number(tmdbId),
       title: String(title || tmdbPayload?.title || '').trim(),
-      overview: String(overview || tmdbPayload?.overview || '').trim(),
+      description: String(description || tmdbPayload?.description || '').trim(),
+      overview: String(description || tmdbPayload?.overview || '').trim(),
       poster_url: String(poster_url || tmdbPayload?.poster_url || '').trim(),
       banner_url: String(banner_url || tmdbPayload?.banner_url || '').trim(),
-      release_year: toInteger(releaseYear || tmdbPayload?.release_year || 0, 0),
+      release_year: toInteger(release_year || tmdbPayload?.release_year || 0, 0),
       runtime: toInteger(runtime || tmdbPayload?.runtime || 0, 0),
       genres: normalizedGenres,
       video_source: videoSource,
@@ -185,18 +182,6 @@ const createMovie = async (req, res, next) => {
       status: String(status || 'published'),
       created_by: req.user.id
     });
-
-    console.log('Admin createMovie - PAYLOAD TO INSERT:', JSON.stringify({
-      tmdb_id: Number(tmdbId),
-      title: String(title || tmdbPayload?.title || '').trim(),
-      overview: String(overview || tmdbPayload?.overview || '').trim(),
-      poster_url: String(poster_url || tmdbPayload?.poster_url || '').trim(),
-      banner_url: String(banner_url || tmdbPayload?.banner_url || '').trim(),
-      release_year: toInteger(releaseYear || tmdbPayload?.release_year || 0, 0),
-      runtime: toInteger(runtime || tmdbPayload?.runtime || 0, 0),
-      genres: normalizedGenres
-    }, null, 2));
-    console.log('Admin createMovie - INSERT RESULT:', JSON.stringify(movie, null, 2));
 
     return res.status(201).json({
       message: 'Película creada correctamente',
@@ -222,12 +207,11 @@ const updateMovie = async (req, res, next) => {
     }
 
     const payload = {};
-    const fields = ['tmdbId', 'title', 'description', 'overview', 'poster', 'backdrop', 'poster_url', 'banner_url', 'releaseDate', 'runtime', 'videoSource', 'featured', 'status', 'processingStatus', 'sourceFile', 'hlsDirectory', 'hlsManifest'];
+    const fields = ['tmdbId', 'title', 'description', 'overview', 'poster', 'backdrop', 'poster_url', 'banner_url', 'release_year', 'runtime', 'videoSource', 'featured', 'status', 'processingStatus', 'sourceFile', 'hlsDirectory', 'hlsManifest'];
     fields.forEach((field) => {
       if (req.body[field] !== undefined) {
         const map = {
           tmdbId: 'tmdb_id',
-          releaseDate: 'release_year',
           videoSource: 'video_source',
           processingStatus: 'processing_status',
           sourceFile: 'source_file',

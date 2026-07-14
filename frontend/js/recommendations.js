@@ -166,7 +166,12 @@ const renderRecommendations = (items) => {
         return;
     }
 
-    const allowedItems = items.filter((movie) => isAllowedCatalogMovie(movie.id));
+    const allowedItems = items.filter((movie) => isAllowedCatalogMovie(movie.id)).map((movie) => ({
+        ...RECOMMENDATIONS_SHARED.normalizeMovie(movie, 'movie'),
+        reason: movie.reason || 'Te podría gustar',
+        source: Array.isArray(movie.sources) ? movie.sources.join(', ') : (movie.source || ''),
+        score: Number(movie.score || 0)
+    }));
 
     if (!allowedItems.length) {
         renderEmptyState(
@@ -188,7 +193,7 @@ const renderRecommendations = (items) => {
                     <img class="movie-poster" src="${poster}" alt="Poster de ${escapeText(movie.title)}" loading="lazy" decoding="async">
                 </div>
                 <div class="movie-card-body">
-                    <p class="movie-card-kicker">${escapeText(movie.genreLabel || 'Cine')} • ${escapeText(movie.year || normalizeYear(movie.releaseDate))}</p>
+                    <p class="movie-card-kicker">${escapeText(movie.genreLabel || 'Cine')} • ${escapeText(movie.year || movie.release_year || 'N/A')}</p>
                     <h3>${escapeText(movie.title)}</h3>
                     <p>${escapeText(movie.overview || 'Descripción no disponible.')}</p>
                     <div class="movie-card-actions">

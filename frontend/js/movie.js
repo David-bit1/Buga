@@ -102,33 +102,7 @@ const formatTime = (seconds) => {
 
 const parseYear = (value) => (value ? String(value).slice(0, 4) : 'N/A');
 
-const normalizeMovie = (movie) => ({
-    id: movie.id,
-    mediaType,
-    title: mediaType === 'tv'
-        ? movie.name || movie.original_name || `Serie ${movie.id}`
-        : movie.title || movie.original_title || `Película ${movie.id}`,
-    original_title: movie.original_title || '',
-    description: movie.overview || movie.description || 'Descripción no disponible.',
-    overview: movie.overview || movie.description || '',
-    tagline: movie.tagline || '',
-    poster: movie.poster_path ? `${MOVIE_SHARED.POSTER_BASE_URL}${movie.poster_path}` : movie.poster_url || movie.poster || MOVIE_SHARED.FALLBACK_POSTER,
-    backdrop: movie.backdrop_path ? `${MOVIE_SHARED.IMAGE_BASE_URL_W780}${movie.backdrop_path}` : movie.banner_url || movie.backdrop || '',
-    release_date: mediaType === 'tv' ? movie.first_air_date || movie.release_date || '' : movie.release_date || movie.first_air_date || String(movie.release_year || ''),
-    runtime: mediaType === 'tv'
-        ? Number(Array.isArray(movie.episode_run_time) ? movie.episode_run_time[0] : movie.runtime) || 0
-        : movie.runtime || 0,
-    genres: Array.isArray(movie.genres) ? movie.genres.map((genre) => (typeof genre === 'string' ? { name: genre } : (genre.name ? genre : { name: '' }))).filter(g => g.name) : [],
-    rating: movie.content_rating || '',
-    cast: Array.isArray(movie.credits?.cast) ? movie.credits.cast.slice(0, 10).map(cast => cast.name) : [],
-    director: (Array.isArray(movie.credits?.crew) ? movie.credits.crew : [])
-        .find(person => person.job === 'Director')?.name || '',
-    trailer: movie.trailer || '',
-    servers: Array.isArray(movie.servers) ? movie.servers : (Array.isArray(movie.playback_sources) ? movie.playback_sources : []),
-    featured: movie.popularity > 0,
-    status: movie.status || 'published',
-    popularity: movie.popularity || 0
-});
+const normalizeMovie = (movie) => BugaShared.normalizeMovie(movie, mediaType);
 
 const getMovieFavorites = () => {
     try {
@@ -600,12 +574,6 @@ const toggleFullscreen = async () => {
 
 const applyMovie = (movie) => {
     currentMovie = movie;
-    console.log('applyMovie - Movie completa:', movie);
-    console.log('applyMovie - poster:', movie.poster);
-    console.log('applyMovie - poster_url:', movie.poster_url);
-    console.log('applyMovie - backdrop:', movie.backdrop);
-    console.log('applyMovie - banner_url:', movie.banner_url);
-    console.log('applyMovie - title:', movie.title);
 
     document.title = `${movie.title} | Buga`;
     movieTitle.textContent = movie.title;
@@ -805,7 +773,6 @@ const fetchLocalMovie = async (id) => {
     try {
         const response = await fetch(`/api/movies/tmdb/${encodeURIComponent(id)}`);
         const data = await response.json().catch(() => ({}));
-        console.log('Movie detail raw response:', JSON.stringify(data, null, 2));
         if (!response.ok || !data.movie) {
             return null;
         }
@@ -913,6 +880,10 @@ const bootstrap = async () => {
         hideMoviePageLoader();
     }
 };
+
+if (window.BugaShared) {
+    window.BugaShared.normalizeMovie = normalizeMovie;
+}
 
 bootstrap();
 })();

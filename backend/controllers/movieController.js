@@ -5,8 +5,6 @@ const TMDB_BASE_URL = 'https://api.themoviedb.org/3';
 const TMDB_LANGUAGE = 'es-ES';
 const TMDB_IMAGE_BASE = 'https://image.tmdb.org/t/p/w500';
 
-console.log('TMDB_API_KEY env:', process.env.TMDB_API_KEY ? 'OK' : 'UNDEFINED', 'fallback prefix:', String(TMDB_API_KEY || '').slice(0, 8));
-
 const normalizeGenres = (value) => {
   if (Array.isArray(value)) {
     return value.map((item) => String(item).trim()).filter(Boolean);
@@ -130,20 +128,16 @@ const tmdbFetch = async (path) => {
   url.searchParams.set('language', TMDB_LANGUAGE);
 
   const response = await fetch(url);
-  console.log('TMDB request:', url.toString(), 'status:', response.status);
   if (!response.ok) {
     const text = await response.text().catch(() => '');
-    console.error('TMDB error body:', text);
+    console.error('TMDB error:', url.toString(), 'status:', response.status, 'body:', text);
     throw new Error(`TMDB respondió con ${response.status}`);
   }
 
-  const data = await response.json();
-  console.log('TMDB response keys:', Object.keys(data || {}).slice(0, 20).join(', '));
-  return data;
+  return response.json();
 };
 
 const buildTmdbMoviePayload = async (tmdbId) => {
-  console.log('TMDB sync - buildTmdbMoviePayload called with tmdbId:', tmdbId, 'API_KEY prefix:', String(TMDB_API_KEY || '').slice(0, 8));
   if (!tmdbId) {
     return null;
   }
@@ -151,7 +145,6 @@ const buildTmdbMoviePayload = async (tmdbId) => {
   let movie, credits, videos;
   try {
     movie = await tmdbFetch(`/movie/${tmdbId}`);
-    console.log('TMDB sync - movie status OK, title:', movie?.title, 'poster_path:', movie?.poster_path, 'backdrop_path:', movie?.backdrop_path);
   } catch (error) {
     console.error('TMDB sync - movie fetch failed:', error.message);
     throw error;
@@ -159,7 +152,6 @@ const buildTmdbMoviePayload = async (tmdbId) => {
 
   try {
     credits = await tmdbFetch(`/movie/${tmdbId}/credits`);
-    console.log('TMDB sync - credits status OK, cast count:', credits?.cast?.length || 0);
   } catch (error) {
     console.error('TMDB sync - credits fetch failed:', error.message);
     throw error;
@@ -167,7 +159,6 @@ const buildTmdbMoviePayload = async (tmdbId) => {
 
   try {
     videos = await tmdbFetch(`/movie/${tmdbId}/videos`);
-    console.log('TMDB sync - videos status OK, results count:', videos?.results?.length || 0);
   } catch (error) {
     console.error('TMDB sync - videos fetch failed:', error.message);
     throw error;
@@ -228,18 +219,7 @@ const getPopular = async (req, res, next) => {
 const listMovies = async (_req, res, next) => {
   try {
     const movies = await selectMany('movies', { order: { column: 'created_at', ascending: false } });
-    console.log('===== MOVIES RAW FROM SUPABASE =====');
-    console.dir(movies, { depth: null });
-    const serialized = movies.map((movie) => {
-      console.log('--- BEFORE SERIALIZE ---');
-      console.log('RAW movie:', movie);
-      const result = serializeMovie(movie);
-      console.log('--- AFTER SERIALIZE ---');
-      console.log('SERIALIZED:', result);
-      return result;
-    });
-    console.log('===== MOVIES SENT TO FRONTEND =====');
-    console.dir(serialized, { depth: null });
+    const serialized = movies.map(serializeMovie);
     return res.json({ movies: serialized });
   } catch (error) {
     return next(error);
@@ -254,15 +234,7 @@ const getMovie = async (req, res, next) => {
       return res.status(404).json({ message: 'Película no encontrada' });
     }
 
-    console.log('===== MOVIE RAW FROM SUPABASE =====');
-    console.dir(movie, { depth: null });
-    console.log('--- BEFORE SERIALIZE ---');
-    console.log('RAW movie:', movie);
     const serialized = serializeMovie(movie);
-    console.log('--- AFTER SERIALIZE ---');
-    console.log('SERIALIZED:', serialized);
-    console.log('===== MOVIE SENT TO FRONTEND =====');
-    console.dir(serialized, { depth: null });
     return res.json({ movie: serialized });
   } catch (error) {
     return next(error);

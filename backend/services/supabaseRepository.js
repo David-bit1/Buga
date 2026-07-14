@@ -46,13 +46,11 @@ const selectMany = async (table, {
 
   const { data, error } = await query;
   throwIfError(error);
-  console.log(`Supabase selectMany [${table}] returned ${data?.length || 0} rows`);
   return data || [];
 };
 
 const selectOne = async (table, options = {}) => {
   const rows = await selectMany(table, { ...options, limit: 1 });
-  console.log(`Supabase selectOne [${table}] returned`, rows[0] ? '1 row' : 'null');
   return rows[0] || null;
 };
 
@@ -64,28 +62,22 @@ const countRows = async (table, filters = []) => {
 };
 
 const insertOne = async (table, payload, select = '*') => {
-  console.log(`Supabase insertOne [${table}] payload:`, JSON.stringify(payload, null, 2));
   const { data, error } = await supabase.from(table).insert(payload).select(select).single();
   throwIfError(error);
-  console.log(`Supabase insertOne [${table}] result:`, JSON.stringify(data, null, 2));
   return data;
 };
 
 const updateRows = async (table, filters, payload, select = '*') => {
   let query = applyFilters(supabase.from(table).update(payload).select(select), filters);
-  console.log(`Supabase updateRows [${table}] filters:`, JSON.stringify(filters, null, 2), 'payload:', JSON.stringify(payload, null, 2));
   const { data, error } = await query;
   throwIfError(error);
-  console.log(`Supabase updateRows [${table}] result:`, JSON.stringify(data, null, 2));
   return data || [];
 };
 
 const deleteRows = async (table, filters, select = '*') => {
   let query = applyFilters(supabase.from(table).delete().select(select), filters);
-  console.log(`Supabase deleteRows [${table}] filters:`, JSON.stringify(filters, null, 2));
   const { data, error } = await query;
   throwIfError(error);
-  console.log(`Supabase deleteRows [${table}] result:`, JSON.stringify(data, null, 2));
   return data || [];
 };
 
