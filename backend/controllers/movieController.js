@@ -193,7 +193,7 @@ const buildTmdbMoviePayload = async (tmdbId) => {
     description: String(movie.overview || '').trim(),
     overview: String(movie.overview || '').trim(),
     poster_url: movie.poster_path ? `${TMDB_IMAGE_BASE}${movie.poster_path}` : '',
-    banner_url: movie.backdrop_path ? `${TMDB_IMAGE_BASE}${movie.backdrop_path}` : '',
+    banner_url: movie.backdrop_path ? `https://image.tmdb.org/t/p/w780${movie.backdrop_path}` : '',
     release_year: toInteger(String(movie.release_date || '').slice(0, 4), 0),
     runtime: toInteger(movie.runtime, 0),
     country: movie.origin_country && Array.isArray(movie.origin_country) && movie.origin_country.length > 0 

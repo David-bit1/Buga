@@ -173,17 +173,19 @@ const createMovie = async (req, res, next) => {
     const insertPayload = {
       tmdb_id: Number(tmdbId),
       title: String(title || tmdbPayload?.title || '').trim(),
-      description: String(description || tmdbPayload?.overview || '').trim(), // Keep for legacy if needed
+      description: String(description || tmdbPayload?.overview || '').trim(),
       overview: String(req.body.overview || description || tmdbPayload?.overview || '').trim(),
       poster_url: String(poster_url || tmdbPayload?.poster_url || '').trim(),
       banner_url: String(banner_url || tmdbPayload?.banner_url || '').trim(),
       release_year: toInteger(release_year || tmdbPayload?.release_year || 0, 0),
       runtime: toInteger(runtime || tmdbPayload?.runtime || 0, 0),
       genres: normalizedGenres,
-      servers: req.body.servers || [],
+      servers: req.body.servers && req.body.servers.length > 0 ? req.body.servers : (tmdbPayload?.servers || []),
       featured: Boolean(featured),
       status: String(status || 'published'),
-      created_by: req.user.id
+      created_by: req.user.id,
+      popularity: tmdbPayload?.popularity || 0,
+      trailer: req.body.trailer || tmdbPayload?.trailer || ''
     };
 
     console.log('AUDIT admin createMovie INSERT payload:', JSON.stringify(insertPayload, null, 2));
@@ -210,7 +212,7 @@ const updateMovie = async (req, res, next) => {
     }
 
     const payload = {};
-    const fields = ['tmdbId', 'title', 'description', 'overview', 'poster_url', 'banner_url', 'release_year', 'runtime', 'servers', 'videoSource', 'featured', 'status', 'processingStatus', 'sourceFile', 'hlsDirectory', 'hlsManifest'];
+    const fields = ['tmdbId', 'title', 'description', 'overview', 'poster_url', 'banner_url', 'release_year', 'runtime', 'servers', 'videoSource', 'featured', 'status', 'processingStatus', 'sourceFile', 'hlsDirectory', 'hlsManifest', 'trailer'];
     fields.forEach((field) => {
       if (req.body[field] !== undefined) {
         const map = {
@@ -219,7 +221,8 @@ const updateMovie = async (req, res, next) => {
           processingStatus: 'processing_status',
           sourceFile: 'source_file',
           hlsDirectory: 'hls_directory',
-          hlsManifest: 'hls_manifest'
+          hlsManifest: 'hls_manifest',
+          description: 'overview'
         };
         const target = map[field] || field;
         payload[target] = field === 'runtime' || field === 'tmdbId' ? Number(req.body[field]) : req.body[field];
