@@ -167,22 +167,25 @@ const createMovie = async (req, res, next) => {
     }
     console.log('AUDIT admin createMovie TMDb payload:', JSON.stringify(tmdbPayload, null, 2));
 
-    const normalizedGenres = normalizeGenres(genres || tmdbPayload?.genres || []);
+    const finalGenres = genres && genres.length > 0 ? genres : tmdbPayload?.genres || [];
+    const normalizedGenres = normalizeGenres(finalGenres);
+
     const insertPayload = {
       tmdb_id: Number(tmdbId),
       title: String(title || tmdbPayload?.title || '').trim(),
-      description: String(description || tmdbPayload?.overview || '').trim(),
-      overview: String(description || tmdbPayload?.overview || '').trim(),
+      description: String(description || tmdbPayload?.overview || '').trim(), // Keep for legacy if needed
+      overview: String(req.body.overview || description || tmdbPayload?.overview || '').trim(),
       poster_url: String(poster_url || tmdbPayload?.poster_url || '').trim(),
       banner_url: String(banner_url || tmdbPayload?.banner_url || '').trim(),
       release_year: toInteger(release_year || tmdbPayload?.release_year || 0, 0),
       runtime: toInteger(runtime || tmdbPayload?.runtime || 0, 0),
       genres: normalizedGenres,
-      video_source: videoSource,
+      servers: req.body.servers || [],
       featured: Boolean(featured),
       status: String(status || 'published'),
       created_by: req.user.id
     };
+
     console.log('AUDIT admin createMovie INSERT payload:', JSON.stringify(insertPayload, null, 2));
 
     const movie = await insertOne('movies', insertPayload);
@@ -207,7 +210,7 @@ const updateMovie = async (req, res, next) => {
     }
 
     const payload = {};
-    const fields = ['tmdbId', 'title', 'description', 'overview', 'poster_url', 'banner_url', 'release_year', 'runtime', 'videoSource', 'featured', 'status', 'processingStatus', 'sourceFile', 'hlsDirectory', 'hlsManifest'];
+    const fields = ['tmdbId', 'title', 'description', 'overview', 'poster_url', 'banner_url', 'release_year', 'runtime', 'servers', 'videoSource', 'featured', 'status', 'processingStatus', 'sourceFile', 'hlsDirectory', 'hlsManifest'];
     fields.forEach((field) => {
       if (req.body[field] !== undefined) {
         const map = {

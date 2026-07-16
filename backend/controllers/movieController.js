@@ -98,7 +98,7 @@ const serializeMovie = (movie) => {
     id: movie.id,
     tmdb_id: movie.tmdb_id || null,
     title: movie.title,
-    original_title: movie.original_title || '',
+    original_title: movie.original_title || movie.title || '',
     description: movie.overview || movie.description || '',
     overview: movie.overview || '',
     poster_url: movie.poster_url || '',
