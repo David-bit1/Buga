@@ -2,6 +2,11 @@ const { insertOne, selectMany, selectOne, updateRows, deleteRows } = require('..
 
 const TMDB_API_KEY = process.env.TMDB_API_KEY || 'b24af203b14e23f8c91844baae37cfab';
 const TMDB_BASE_URL = 'https://api.themoviedb.org/3';
+
+if (!TMDB_API_KEY || TMDB_API_KEY === 'b24af203b14e23f8c91844baae37cfab') {
+  console.error('CRITICAL: TMDB_API_KEY is not configured or is using the default placeholder. TMDb requests will fail.');
+}
+
 const TMDB_LANGUAGE = 'es-ES';
 const TMDB_IMAGE_BASE = 'https://image.tmdb.org/t/p/w500';
 
@@ -133,14 +138,25 @@ const tmdbFetch = async (path) => {
   url.searchParams.set('api_key', TMDB_API_KEY);
   url.searchParams.set('language', TMDB_LANGUAGE);
 
-  const response = await fetch(url);
-  if (!response.ok) {
-    const text = await response.text().catch(() => '');
-    console.error('TMDB error:', url.toString(), 'status:', response.status, 'body:', text);
-    throw new Error(`TMDB respondió con ${response.status}`);
-  }
+  try {
+    const response = await fetch(url);
 
-  return response.json();
+    if (!response.ok) {
+      const errorBody = await response.text().catch(() => 'Could not read error body');
+      const partialUrl = `${url.origin}${url.pathname}?api_key=...&language=${TMDB_LANGUAGE}`;
+      console.error(`TMDb API Error:
+  - Status: ${response.status} ${response.statusText}
+  - URL: ${partialUrl}
+  - Body: ${errorBody}`);
+      throw new Error(`TMDb responded with status ${response.status}`);
+    }
+
+    return await response.json();
+  } catch (error) {
+    console.error(`Network or fetch error when calling TMDb: ${error.message}`, error);
+    // Re-throw the error to be handled by the calling function
+    throw error;
+  }
 };
 
 const buildTmdbMoviePayload = async (tmdbId) => {
