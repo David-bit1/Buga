@@ -165,9 +165,10 @@ const createMovie = async (req, res, next) => {
     } catch (error) {
       console.warn('Admin createMovie - TMDB sync failed:', error.message);
     }
+    console.log('AUDIT admin createMovie TMDb payload:', JSON.stringify(tmdbPayload, null, 2));
 
     const normalizedGenres = normalizeGenres(genres || tmdbPayload?.genres || []);
-    const movie = await insertOne('movies', {
+    const insertPayload = {
       tmdb_id: Number(tmdbId),
       title: String(title || tmdbPayload?.title || '').trim(),
       description: String(description || tmdbPayload?.description || '').trim(),
@@ -181,12 +182,11 @@ const createMovie = async (req, res, next) => {
       featured: Boolean(featured),
       status: String(status || 'published'),
       created_by: req.user.id
-    });
+    };
+    console.log('AUDIT admin createMovie INSERT payload:', JSON.stringify(insertPayload, null, 2));
 
-    return res.status(201).json({
-      message: 'Película creada correctamente',
-      movie: sanitizeMovie(movie)
-    });
+    const movie = await insertOne('movies', insertPayload);
+    console.log('AUDIT admin createMovie INSERT result:', JSON.stringify(movie, null, 2));
   } catch (error) {
     if (String(error.code || '').includes('23505') || String(error.message || '').includes('duplicate')) {
       return res.status(409).json({ message: 'Ya existe una película con ese TMDB ID' });

@@ -94,7 +94,7 @@ const serializeMovie = (movie) => {
   const releaseYear = movie.release_year || (movie.release_date ? String(movie.release_date).slice(0, 4) : 0);
   const parsedYear = toInteger(String(releaseYear), 0);
 
-  return {
+  const result = {
     id: movie.id,
     tmdb_id: movie.tmdb_id || null,
     title: movie.title,
@@ -120,6 +120,12 @@ const serializeMovie = (movie) => {
     created_at: movie.created_at,
     updated_at: movie.updated_at
   };
+
+  if (process.env.NODE_ENV !== 'production') {
+    console.log('AUDIT serializeMovie RAW:', JSON.stringify(movie, null, 2), 'RESULT:', JSON.stringify(result, null, 2));
+  }
+
+  return result;
 };
 
 const tmdbFetch = async (path) => {
@@ -142,27 +148,9 @@ const buildTmdbMoviePayload = async (tmdbId) => {
     return null;
   }
 
-  let movie, credits, videos;
-  try {
-    movie = await tmdbFetch(`/movie/${tmdbId}`);
-  } catch (error) {
-    console.error('TMDB sync - movie fetch failed:', error.message);
-    throw error;
-  }
-
-  try {
-    credits = await tmdbFetch(`/movie/${tmdbId}/credits`);
-  } catch (error) {
-    console.error('TMDB sync - credits fetch failed:', error.message);
-    throw error;
-  }
-
-  try {
-    videos = await tmdbFetch(`/movie/${tmdbId}/videos`);
-  } catch (error) {
-    console.error('TMDB sync - videos fetch failed:', error.message);
-    throw error;
-  }
+  const movie = await tmdbFetch(`/movie/${tmdbId}`);
+  const credits = await tmdbFetch(`/movie/${tmdbId}/credits`);
+  const videos = await tmdbFetch(`/movie/${tmdbId}/videos`);
 
   const genres = Array.isArray(movie.genres)
     ? movie.genres.map((genre) => genre.name).filter(Boolean)
@@ -182,7 +170,7 @@ const buildTmdbMoviePayload = async (tmdbId) => {
   const director = (Array.isArray(credits.crew) ? credits.crew : [])
     .find(person => person.job === 'Director')?.name || '';
 
-  return {
+  const payload = {
     tmdb_id: Number(movie.id),
     title: String(movie.title || movie.original_title || '').trim(),
     original_title: String(movie.original_title || movie.title || '').trim(),
@@ -203,6 +191,9 @@ const buildTmdbMoviePayload = async (tmdbId) => {
     trailer: trailer ? `https://www.youtube.com/watch?v=${trailer}` : '',
     popularity: Number(movie.popularity || 0)
   };
+
+  console.log('AUDIT buildTmdbMoviePayload result:', JSON.stringify(payload, null, 2));
+  return payload;
 };
 
 const getPopular = async (req, res, next) => {
@@ -219,7 +210,13 @@ const getPopular = async (req, res, next) => {
 const listMovies = async (_req, res, next) => {
   try {
     const movies = await selectMany('movies', { order: { column: 'created_at', ascending: false } });
-    const serialized = movies.map(serializeMovie);
+    console.log('AUDIT listMovies RAW:', JSON.stringify(movies, null, 2));
+    const serialized = movies.map((movie) => {
+      const result = serializeMovie(movie);
+      console.log('AUDIT serializeMovie RAW:', JSON.stringify(movie, null, 2), 'SERIALIZED:', JSON.stringify(result, null, 2));
+      return result;
+    });
+    console.log('AUDIT listMovies RESPONSE:', JSON.stringify(serialized, null, 2));
     return res.json({ movies: serialized });
   } catch (error) {
     return next(error);
@@ -234,7 +231,9 @@ const getMovie = async (req, res, next) => {
       return res.status(404).json({ message: 'Película no encontrada' });
     }
 
+    console.log('AUDIT getMovie RAW:', JSON.stringify(movie, null, 2));
     const serialized = serializeMovie(movie);
+    console.log('AUDIT getMovie SERIALIZED:', JSON.stringify(serialized, null, 2));
     return res.json({ movie: serialized });
   } catch (error) {
     return next(error);
@@ -249,11 +248,13 @@ const getMovieByTmdbId = async (req, res, next) => {
     }
 
     const movie = await selectOne('movies', { filters: [{ type: 'eq', column: 'tmdb_id', value: tmdbId }] });
+    console.log('AUDIT getMovieByTmdbId Supabase result:', JSON.stringify(movie, null, 2));
     if (movie) {
       return res.json({ movie: serializeMovie(movie) });
     }
 
     const tmdbPayload = await buildTmdbMoviePayload(tmdbId);
+    console.log('AUDIT getMovieByTmdbId TMDb fallback payload:', JSON.stringify(tmdbPayload, null, 2));
     if (!tmdbPayload) {
       return res.status(404).json({ message: 'Película no encontrada' });
     }
@@ -296,13 +297,14 @@ const createMovie = async (req, res, next) => {
     let tmdbPayload = null;
     if (tmdb_id || req.body.tmdbId) {
       tmdbPayload = await buildTmdbMoviePayload(req.body.tmdbId || tmdb_id);
+      console.log('AUDIT createMovie TMDb payload:', JSON.stringify(tmdbPayload, null, 2));
     }
 
     const normalizedGenres = normalizeGenres(genres);
     const normalizedCast = normalizeCast(cast);
     const parsedServers = parseServers(servers);
 
-    const movie = await insertOne('movies', {
+    const insertPayload = {
       tmdb_id: toInteger(req.body.tmdbId || tmdb_id, null),
       title: resolvedTitle,
       original_title: String(original_title || tmdbPayload?.original_title || '').trim(),
@@ -324,7 +326,11 @@ const createMovie = async (req, res, next) => {
       status: String(status || 'published'),
       popularity: toInteger(tmdbPayload?.popularity || 0, 0),
       created_by: req.user?.id || null
-    });
+    };
+    console.log('AUDIT createMovie INSERT payload:', JSON.stringify(insertPayload, null, 2));
+
+    const movie = await insertOne('movies', insertPayload);
+    console.log('AUDIT createMovie INSERT result:', JSON.stringify(movie, null, 2));
 
     return res.status(201).json({ message: 'Película guardada correctamente', movie: serializeMovie(movie) });
   } catch (error) {

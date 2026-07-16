@@ -46,6 +46,9 @@ const selectMany = async (table, {
 
   const { data, error } = await query;
   throwIfError(error);
+  if (process.env.NODE_ENV !== 'production') {
+    console.log(`AUDIT selectMany [${table}] returned ${data?.length || 0} rows`, JSON.stringify(data, null, 2));
+  }
   return data || [];
 };
 
@@ -62,8 +65,10 @@ const countRows = async (table, filters = []) => {
 };
 
 const insertOne = async (table, payload, select = '*') => {
+  console.log(`AUDIT insertOne [${table}] payload:`, JSON.stringify(payload, null, 2));
   const { data, error } = await supabase.from(table).insert(payload).select(select).single();
   throwIfError(error);
+  console.log(`AUDIT insertOne [${table}] result:`, JSON.stringify(data, null, 2));
   return data;
 };
 
