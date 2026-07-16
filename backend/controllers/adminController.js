@@ -171,7 +171,7 @@ const createMovie = async (req, res, next) => {
     const insertPayload = {
       tmdb_id: Number(tmdbId),
       title: String(title || tmdbPayload?.title || '').trim(),
-      description: String(description || tmdbPayload?.description || '').trim(),
+      description: String(description || tmdbPayload?.overview || '').trim(),
       overview: String(description || tmdbPayload?.overview || '').trim(),
       poster_url: String(poster_url || tmdbPayload?.poster_url || '').trim(),
       banner_url: String(banner_url || tmdbPayload?.banner_url || '').trim(),
@@ -207,7 +207,7 @@ const updateMovie = async (req, res, next) => {
     }
 
     const payload = {};
-    const fields = ['tmdbId', 'title', 'description', 'overview', 'poster', 'backdrop', 'poster_url', 'banner_url', 'release_year', 'runtime', 'videoSource', 'featured', 'status', 'processingStatus', 'sourceFile', 'hlsDirectory', 'hlsManifest'];
+    const fields = ['tmdbId', 'title', 'description', 'overview', 'poster_url', 'banner_url', 'release_year', 'runtime', 'videoSource', 'featured', 'status', 'processingStatus', 'sourceFile', 'hlsDirectory', 'hlsManifest'];
     fields.forEach((field) => {
       if (req.body[field] !== undefined) {
         const map = {
@@ -216,9 +216,7 @@ const updateMovie = async (req, res, next) => {
           processingStatus: 'processing_status',
           sourceFile: 'source_file',
           hlsDirectory: 'hls_directory',
-          hlsManifest: 'hls_manifest',
-          poster: 'poster_url',
-          backdrop: 'banner_url'
+          hlsManifest: 'hls_manifest'
         };
         const target = map[field] || field;
         payload[target] = field === 'runtime' || field === 'tmdbId' ? Number(req.body[field]) : req.body[field];

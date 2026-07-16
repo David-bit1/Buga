@@ -99,7 +99,7 @@ const serializeMovie = (movie) => {
     tmdb_id: movie.tmdb_id || null,
     title: movie.title,
     original_title: movie.original_title || '',
-    description: movie.description || '',
+    description: movie.overview || movie.description || '',
     overview: movie.overview || '',
     poster_url: movie.poster_url || '',
     banner_url: movie.banner_url || '',
@@ -310,8 +310,8 @@ const createMovie = async (req, res, next) => {
       original_title: String(original_title || tmdbPayload?.original_title || '').trim(),
       description: String(description || tmdbPayload?.description || '').trim(),
       overview: String(overview || tmdbPayload?.overview || '').trim(),
-      poster_url: String(poster_url || tmdbPayload?.poster_url || '').trim(), // Corrected
-      banner_url: String(banner_url || tmdbPayload?.banner_url || '').trim(), // Corrected
+      poster_url: String(req.body.poster_url || tmdbPayload?.poster_url || '').trim(),
+      banner_url: String(req.body.banner_url || tmdbPayload?.banner_url || '').trim(),
       release_year: toInteger(release_year || tmdbPayload?.release_year || 0, 0),
       runtime: toInteger(runtime || tmdbPayload?.runtime || 0, 0),
       country: String(country || '').trim(),
@@ -378,8 +378,8 @@ const updateMovie = async (req, res, next) => {
     if (original_title !== undefined) updatePayload.original_title = String(original_title).trim();
     if (description !== undefined) updatePayload.description = String(description).trim();
     if (overview !== undefined) updatePayload.overview = String(overview).trim();
-    if (poster_url !== undefined) updatePayload.poster_url = String(poster_url).trim(); // Corrected
-    if (banner_url !== undefined) updatePayload.banner_url = String(banner_url).trim(); // Corrected
+    if (poster_url !== undefined) updatePayload.poster_url = String(poster_url).trim();
+    if (banner_url !== undefined) updatePayload.banner_url = String(banner_url).trim();
     if (release_year !== undefined) updatePayload.release_year = toInteger(release_year, movie.release_year);
     if (runtime !== undefined) updatePayload.runtime = toInteger(runtime, movie.runtime);
     if (country !== undefined) updatePayload.country = String(country).trim();
