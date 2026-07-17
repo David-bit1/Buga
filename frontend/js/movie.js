@@ -881,9 +881,5 @@ const bootstrap = async () => {
     }
 };
 
-if (window.BugaShared) {
-    window.BugaShared.normalizeMovie = normalizeMovie;
-}
-
 bootstrap();
 })();
