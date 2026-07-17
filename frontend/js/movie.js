@@ -549,7 +549,7 @@ const togglePlayback = async () => {
     }
 
     // If there's no source, load the default one before trying to play.
-    if (!movieVideo.currentSrc && !externalPlayer.src && !externalPlayerContainer.innerHTML) {
+    if (!movieVideo.currentSrc && !externalPlayer.src && !(externalPlayerContainer && externalPlayerContainer.innerHTML)) {
         const selectedIndex = parseInt(serverSelect?.value, 10) || 0;
         await setVideoSource(selectedIndex);
         return; // setVideoSource will handle playback
