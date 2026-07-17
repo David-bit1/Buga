@@ -192,10 +192,21 @@ const createMovie = async (req, res, next) => {
 
     const movie = await insertOne('movies', insertPayload);
     console.log('AUDIT admin createMovie INSERT result:', JSON.stringify(movie, null, 2));
+
+    return res.status(201).json({
+      message: 'Película creada correctamente',
+      movie: sanitizeMovie(movie)
+    });
   } catch (error) {
     if (String(error.code || '').includes('23505') || String(error.message || '').includes('duplicate')) {
       return res.status(409).json({ message: 'Ya existe una película con ese TMDB ID' });
     }
+    console.error('ADMIN CREATE MOVIE FAILED:', {
+      message: error.message,
+      details: error.details,
+      code: error.code,
+      stack: error.stack
+    });
     return next(error);
   }
 };

@@ -434,7 +434,7 @@ const handleMovieSubmit = async (event) => {
     });
 
     const payload = {
-        tmdbId: movieTmdbId.value ? Number(movieTmdbId.value) : null,
+        tmdbId: movieTmdbId.value ? Number(movieTmdbId.value) : null, // Keep tmdbId
         title: movieTitle.value.trim(),
         original_title: movieOriginalTitle.value.trim(),
         description: movieOverview.value.trim(), // Use overview as the main description
