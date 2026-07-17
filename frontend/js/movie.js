@@ -423,16 +423,22 @@ const setVideoSource = async (serverIndex) => {
             });
         } else if (movieVideo.canPlayType('application/vnd.apple.mpegurl')) {
             movieVideo.src = serverUrl;
-            movieVideo.load();
-            movieVideo.addEventListener('loadedmetadata', () => hidePlayerLoader(), { once: true });
+            movieVideo.addEventListener('loadedmetadata', () => {
+                hidePlayerLoader();
+                togglePlayback();
+            }, { once: true });
+            movieVideo.load(); // Load after setting up listener
         } else {
             notifyToast({ type: 'error', title: 'Incompatible', message: 'Tu navegador no soporta HLS.' });
             hidePlayerLoader();
         }
     } else if (serverType === 'mp4') {
         movieVideo.src = serverUrl;
-        movieVideo.load();
-        movieVideo.addEventListener('loadedmetadata', () => hidePlayerLoader(), { once: true });
+        movieVideo.addEventListener('loadedmetadata', () => {
+            hidePlayerLoader();
+            togglePlayback();
+        }, { once: true });
+        movieVideo.load(); // Load after setting up listener
     } else {
         notifyToast({ type: 'error', title: 'Servidor desconocido', message: `El tipo de servidor "${serverType}" no es soportado.` });
         hidePlayerLoader();
@@ -540,6 +546,13 @@ const populateServerSelect = (movie) => {
 const togglePlayback = async () => {
     if (!movieVideo) {
         return;
+    }
+
+    // If there's no source, load the default one before trying to play.
+    if (!movieVideo.currentSrc && !externalPlayer.src && !externalPlayerContainer.innerHTML) {
+        const selectedIndex = parseInt(serverSelect?.value, 10) || 0;
+        await setVideoSource(selectedIndex);
+        return; // setVideoSource will handle playback
     }
 
     if (movieVideo.paused || movieVideo.ended) {
