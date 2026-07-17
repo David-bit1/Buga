@@ -66,7 +66,7 @@ const fetchMoviesFromApi = async () => {
     return Array.isArray(data.movies) ? data.movies : [];
 };
 
-const mapMovie = (movie) => GENRES_SHARED.normalizeMovie(movie, 'movie');
+const mapMovie = (movie) => window.BugaShared.normalizeMovie(movie, 'movie');
 
 const buildMovieHref = (movieId) => `/pages/movie.html?id=${movieId}`;
 

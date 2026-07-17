@@ -316,8 +316,8 @@ const getMovieDetails = async (movieId) => getMediaDetails('movie', movieId);
 
 const getSeriesDetails = async (seriesId) => getMediaDetails('tv', seriesId);
 
-const mapMovie = (movie) => HOME_SHARED.normalizeMovie(movie, 'movie');
-const mapSeries = (series) => HOME_SHARED.normalizeMovie(series, 'tv');
+const mapMovie = (movie) => window.BugaShared.normalizeMovie(movie, 'movie');
+const mapSeries = (series) => window.BugaShared.normalizeMovie(series, 'tv');
 
 const buildYouTubeTrailerUrl = (videoKey) => {
     const params = new URLSearchParams({

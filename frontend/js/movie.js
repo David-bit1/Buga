@@ -102,7 +102,7 @@ const formatTime = (seconds) => {
 
 const parseYear = (value) => (value ? String(value).slice(0, 4) : 'N/A');
 
-const normalizeMovie = (movie) => BugaShared.normalizeMovie(movie, mediaType);
+const normalizeMovie = (movie) => window.BugaShared.normalizeMovie(movie, mediaType);
 
 const getMovieFavorites = () => {
     try {
