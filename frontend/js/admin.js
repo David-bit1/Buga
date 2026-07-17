@@ -454,7 +454,7 @@ const handleMovieSubmit = async (event) => {
         popularity: moviePopularity.value ? parseFloat(moviePopularity.value) : 0
     };
 
-    if (!payload.title) {
+    if (!payload.title && !payload.tmdbId) {
         notify({ type: 'error', title: 'Campos obligatorios', message: 'TMDB ID y título son requeridos.' });
         return;
     }
