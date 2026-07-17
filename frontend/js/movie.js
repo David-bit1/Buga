@@ -563,27 +563,16 @@ const populateServerSelect = (movie) => {
 };
 
 const togglePlayback = async () => {
-    console.log("togglePlayback called");
-
     if (!movieVideo) {
-        console.log("RETURN A: movieVideo element not found.");
         return;
     }
 
-    const selectedIndex = parseInt(serverSelect?.value, 10) || 0;
-    const currentServer = currentMovie?.servers?.[selectedIndex];
-
-    console.log("Current server:", currentServer);
-    console.log("Server type:", currentServer?.type);
-    console.log("Server URL:", currentServer?.url);
-    console.log("Movie video:", movieVideo);
-    console.log("External player:", externalPlayer);
-    console.log("External player container:", externalPlayerContainer);
+    console.log("togglePlayback called");
 
     // If there's no source, load the default one before trying to play.
     if (!movieVideo.currentSrc && !externalPlayer.src && !(externalPlayerContainer && externalPlayerContainer.innerHTML)) {
+        const selectedIndex = parseInt(serverSelect?.value, 10) || 0;
         await setVideoSource(selectedIndex);
-        console.log("RETURN B: No active source found, calling setVideoSource.");
         return; // setVideoSource will handle playback
     }
 
