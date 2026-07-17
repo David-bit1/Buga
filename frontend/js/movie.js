@@ -383,6 +383,7 @@ const setVideoSource = async (serverIndex) => {
     movieVideo.removeAttribute('src');
     movieVideo.load();
     movieVideo.poster = currentMovie.poster || '';
+    movieVideo.hidden = false; // Ensure video player is visible by default when changing source
     hideExternalPlayer();
 
     if (qualitySelect) {
@@ -396,6 +397,7 @@ const setVideoSource = async (serverIndex) => {
 
     if (serverType === 'iframe' || serverType === 'embed') {
         showExternalPlayer(serverUrl);
+        movieVideo.hidden = true; // Explicitly hide video element
         hidePlayerLoader();
     } else if (serverType === 'm3u8') {
         if (typeof window.Hls !== 'undefined' && window.Hls.isSupported()) {
@@ -460,9 +462,19 @@ const showExternalPlayer = (url) => {
 
     // If the URL is a full iframe tag, inject it into the container.
     if (String(url).trim().startsWith('<iframe')) {
+        let iframeHtml = url;
+        // Ensure allow and allowfullscreen attributes are present for better compatibility.
+        if (!iframeHtml.includes('allow=')) {
+            iframeHtml = iframeHtml.replace('<iframe', '<iframe allow="autoplay; encrypted-media; picture-in-picture"');
+        }
+        if (!iframeHtml.includes('allowfullscreen')) {
+            iframeHtml = iframeHtml.replace('<iframe', '<iframe allowfullscreen');
+        }
+
         if (externalPlayerContainer) {
-            externalPlayerContainer.innerHTML = url;
+            externalPlayerContainer.innerHTML = iframeHtml;
             externalPlayerContainer.hidden = false;
+            console.log('Injected iframe:', externalPlayerContainer.innerHTML); // For debugging
         }
         if (externalPlayer) {
             externalPlayer.hidden = true;
@@ -473,6 +485,7 @@ const showExternalPlayer = (url) => {
             externalPlayerContainer.hidden = true;
             externalPlayerContainer.innerHTML = '';
         }
+        if (externalPlayer)
         externalPlayer.hidden = false;
         externalPlayer.src = url;
     }
