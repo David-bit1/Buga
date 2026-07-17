@@ -384,6 +384,9 @@ const setVideoSource = async (serverIndex) => {
     movieVideo.load();
     movieVideo.poster = currentMovie.poster || '';
     movieVideo.hidden = false; // Ensure video player is visible by default when changing source
+    if (overlayPlayButton) {
+        overlayPlayButton.hidden = false; // Make sure our main play button is visible for native video
+    }
     hideExternalPlayer();
 
     if (qualitySelect) {
@@ -397,6 +400,9 @@ const setVideoSource = async (serverIndex) => {
 
     if (serverType === 'iframe' || serverType === 'embed') {
         showExternalPlayer(serverUrl);
+        if (overlayPlayButton) {
+            overlayPlayButton.hidden = true; // Hide our play button so it doesn't block iframe clicks
+        }
         movieVideo.hidden = true; // Explicitly hide video element
         hidePlayerLoader();
     } else if (serverType === 'm3u8') {
@@ -560,6 +566,8 @@ const togglePlayback = async () => {
     if (!movieVideo) {
         return;
     }
+
+    console.log("togglePlayback called");
 
     // If there's no source, load the default one before trying to play.
     if (!movieVideo.currentSrc && !externalPlayer.src && !(externalPlayerContainer && externalPlayerContainer.innerHTML)) {
@@ -735,7 +743,10 @@ const wirePlayer = () => {
     movieVideo.addEventListener('ended', () => saveWatchProgress(true));
 
     overlayPlayButton?.addEventListener('click', togglePlayback);
-    playPauseButton?.addEventListener('click', togglePlayback);
+    playPauseButton?.addEventListener('click', () => {
+        console.log("Play button clicked");
+        togglePlayback();
+    });
     muteButton?.addEventListener('click', toggleMute);
     fullscreenButton?.addEventListener('click', toggleFullscreen);
 
