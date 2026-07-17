@@ -128,7 +128,7 @@ create table if not exists public.movies (
    language text not null default '',
    genres jsonb not null default '[]'::jsonb,
    rating text not null default '',
-   cast jsonb not null default '[]'::jsonb,
+   "cast" jsonb not null default '[]'::jsonb,
    director text not null default '',
    trailer text not null default '',
    servers jsonb not null default '[]'::jsonb,
