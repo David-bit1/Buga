@@ -18,6 +18,7 @@ const playButton = document.getElementById('playButton');
 const backLink = document.querySelector('.movie-back-link');
 const movieVideo = document.getElementById('movieVideo');
 const externalPlayer = document.getElementById('externalPlayer');
+const externalPlayerContainer = document.getElementById('externalPlayerContainer');
 const serverSelect = document.getElementById('serverSelect');
 const moviePageLoader = document.getElementById('moviePageLoader');
 const playerLoader = document.getElementById('playerLoader');
@@ -445,13 +446,25 @@ const isExternalPlaybackUrl = (url = '') => {
 };
 
 const showExternalPlayer = (url) => {
-    if (movieVideo) {
-        movieVideo.pause();
-        movieVideo.removeAttribute('src');
-        movieVideo.load();
-    }
+    movieVideo?.pause();
+    movieVideo?.removeAttribute('src');
+    movieVideo?.load();
 
-    if (externalPlayer) {
+    // If the URL is a full iframe tag, inject it into the container.
+    if (String(url).trim().startsWith('<iframe')) {
+        if (externalPlayerContainer) {
+            externalPlayerContainer.innerHTML = url;
+            externalPlayerContainer.hidden = false;
+        }
+        if (externalPlayer) {
+            externalPlayer.hidden = true;
+            externalPlayer.removeAttribute('src');
+        }
+    } else { // Otherwise, it's a normal URL for the iframe's src.
+        if (externalPlayerContainer) {
+            externalPlayerContainer.hidden = true;
+            externalPlayerContainer.innerHTML = '';
+        }
         externalPlayer.hidden = false;
         externalPlayer.src = url;
     }
@@ -459,6 +472,10 @@ const showExternalPlayer = (url) => {
 
 const hideExternalPlayer = () => {
     if (externalPlayer) {
+        if (externalPlayerContainer) {
+            externalPlayerContainer.hidden = true;
+            externalPlayerContainer.innerHTML = '';
+        }
         externalPlayer.hidden = true;
         externalPlayer.removeAttribute('src');
     }
