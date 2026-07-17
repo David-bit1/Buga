@@ -423,6 +423,7 @@ const setVideoSource = async (serverIndex) => {
             });
         } else if (movieVideo.canPlayType('application/vnd.apple.mpegurl')) {
             movieVideo.src = serverUrl;
+            movieVideo.load();
             movieVideo.addEventListener('loadedmetadata', () => hidePlayerLoader(), { once: true });
         } else {
             notifyToast({ type: 'error', title: 'Incompatible', message: 'Tu navegador no soporta HLS.' });
@@ -430,6 +431,7 @@ const setVideoSource = async (serverIndex) => {
         }
     } else if (serverType === 'mp4') {
         movieVideo.src = serverUrl;
+        movieVideo.load();
         movieVideo.addEventListener('loadedmetadata', () => hidePlayerLoader(), { once: true });
     } else {
         notifyToast({ type: 'error', title: 'Servidor desconocido', message: `El tipo de servidor "${serverType}" no es soportado.` });
@@ -693,7 +695,14 @@ const wirePlayer = () => {
     });
     movieVideo.addEventListener('loadeddata', hidePlayerLoader);
     movieVideo.addEventListener('canplay', hidePlayerLoader);
-    movieVideo.addEventListener('error', hidePlayerLoader);
+    movieVideo.addEventListener('error', (event) => {
+        hidePlayerLoader();
+        const errorMessage = event.target.error?.message || 'El formato de video no es soportado o hay un problema de red.';
+        if (movieVideo.src) { // Only show error if a source was set
+            console.error('Error de reproducción de video:', errorMessage, event.target.error);
+            notifyToast({ type: 'error', title: 'Servidor no compatible', message: 'No se pudo reproducir desde este servidor. Prueba con otro.' });
+        }
+    });
     movieVideo.addEventListener('timeupdate', () => saveWatchProgress(false));
     movieVideo.addEventListener('pause', () => saveWatchProgress(true));
     movieVideo.addEventListener('seeking', () => saveWatchProgress(false));
