@@ -563,26 +563,49 @@ const populateServerSelect = (movie) => {
 };
 
 const togglePlayback = async () => {
+    console.log("1 - togglePlayback inicio");
+
     if (!movieVideo) {
+        console.log("RETURN: movieVideo no encontrado");
         return;
     }
 
-    console.log("togglePlayback called");
+    const selectedIndex = parseInt(serverSelect?.value, 10) || 0;
+    const currentServer = currentMovie?.servers?.[selectedIndex];
+
+    console.log("2 - currentServer:", currentServer);
+    console.log("3 - server.type:", currentServer?.type);
+    console.log("4 - movieVideo:", movieVideo);
+    console.log("5 - externalPlayer:", externalPlayer);
+    console.log("6 - externalPlayerContainer:", externalPlayerContainer);
 
     // If there's no source, load the default one before trying to play.
     if (!movieVideo.currentSrc && !(externalPlayer && externalPlayer.src) && !(externalPlayerContainer && externalPlayerContainer.innerHTML)) {
-        const selectedIndex = parseInt(serverSelect?.value, 10) || 0;
         await setVideoSource(selectedIndex);
+        console.log("RETURN: No hay fuente activa, llamando a setVideoSource.");
         return; // setVideoSource will handle playback
     }
 
     if (movieVideo.paused || movieVideo.ended) {
         try {
+            console.log("9 - Antes de video.play()");
             await movieVideo.play();
+            console.log("10 - Después de video.play()");
         } catch (error) {
             console.warn('Playback blocked', error);
         }
     } else {
+        // This branch handles pausing the video
+        const serverType = currentServer?.type;
+        if (serverType === 'iframe' || serverType === 'embed') {
+            console.log("7 - Antes de mostrar iframe (en pausa)");
+            // For iframes, we can't programmatically pause, so we do nothing.
+            // The user has to pause it inside the iframe.
+            console.log("8 - Después de showExternalPlayer() (en pausa)");
+        } else {
+            // For <video> element
+            movieVideo.pause();
+        }
         movieVideo.pause();
     }
 
