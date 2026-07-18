@@ -398,6 +398,9 @@ const setVideoSource = async (serverIndex) => {
     const serverType = server.type || 'iframe';
     const serverUrl = server.url;
 
+    // --- AUDIT LOG ---
+    console.log("TIPO:", serverType);
+
     if (serverType === 'iframe' || serverType === 'embed') {
         showExternalPlayer(serverUrl); // This function now handles the null container
         if (overlayPlayButton) {
@@ -462,6 +465,9 @@ const isExternalPlaybackUrl = (url = '') => {
 };
 
 const showExternalPlayer = (url) => {
+    // --- AUDIT LOG ---
+    console.log("URL RECIBIDA:", url);
+
     movieVideo?.pause();
     movieVideo?.removeAttribute('src');
     movieVideo?.load();
@@ -478,6 +484,8 @@ const showExternalPlayer = (url) => {
         }
 
         if (externalPlayerContainer) { // Check if container exists
+            // --- AUDIT LOG ---
+            console.log("ANTES (container):", externalPlayerContainer.outerHTML);
             externalPlayerContainer.innerHTML = iframeHtml;
             externalPlayerContainer.hidden = false;
             
@@ -492,6 +500,9 @@ const showExternalPlayer = (url) => {
             }
             console.log("Computed styles for externalPlayerContainer:", getComputedStyle(externalPlayerContainer));
             // --- END DOM AUDIT LOGS ---
+            // --- AUDIT LOG ---
+            console.log("DESPUÉS (container):", externalPlayerContainer.outerHTML);
+
         }
         if (externalPlayer) {
             externalPlayer.hidden = true;
@@ -503,8 +514,13 @@ const showExternalPlayer = (url) => {
             externalPlayerContainer.innerHTML = '';
         }
         if (externalPlayer)
+        // --- AUDIT LOG ---
+        console.log("ANTES (iframe src):", externalPlayer.outerHTML);
         externalPlayer.hidden = false;
         externalPlayer.src = url;
+        // --- AUDIT LOG ---
+        console.log("DESPUÉS (iframe src):", externalPlayer.outerHTML);
+
 
         // --- DOM AUDIT LOGS ---
         console.log("--- DOM AUDIT: After setting iframe src ---");
