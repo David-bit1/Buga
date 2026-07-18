@@ -480,7 +480,18 @@ const showExternalPlayer = (url) => {
         if (externalPlayerContainer) { // Check if container exists
             externalPlayerContainer.innerHTML = iframeHtml;
             externalPlayerContainer.hidden = false;
-            console.log('Injected iframe:', externalPlayerContainer.innerHTML); // For debugging
+            
+            // --- DOM AUDIT LOGS ---
+            console.log("--- DOM AUDIT: After iframe injection ---");
+            console.log("All iframes in document:", document.querySelectorAll("iframe"));
+            const injectedIframe = externalPlayerContainer.querySelector("iframe");
+            console.log("Injected iframe element:", injectedIframe);
+            if(injectedIframe) {
+                console.log("Injected iframe getBoundingClientRect:", injectedIframe.getBoundingClientRect());
+                console.log("Element at center of viewport:", document.elementFromPoint(window.innerWidth / 2, window.innerHeight / 2));
+            }
+            console.log("Computed styles for externalPlayerContainer:", getComputedStyle(externalPlayerContainer));
+            // --- END DOM AUDIT LOGS ---
         }
         if (externalPlayer) {
             externalPlayer.hidden = true;
@@ -494,6 +505,17 @@ const showExternalPlayer = (url) => {
         if (externalPlayer)
         externalPlayer.hidden = false;
         externalPlayer.src = url;
+
+        // --- DOM AUDIT LOGS ---
+        console.log("--- DOM AUDIT: After setting iframe src ---");
+        console.log("All iframes in document:", document.querySelectorAll("iframe"));
+        console.log("Iframe with src:", externalPlayer);
+        if(externalPlayer) {
+            console.log("Iframe with src getBoundingClientRect:", externalPlayer.getBoundingClientRect());
+            console.log("Element at center of viewport:", document.elementFromPoint(window.innerWidth / 2, window.innerHeight / 2));
+            console.log("Computed styles for externalPlayer:", getComputedStyle(externalPlayer));
+        }
+        // --- END DOM AUDIT LOGS ---
     }
 };
 
@@ -563,6 +585,13 @@ const populateServerSelect = (movie) => {
 };
 
 const togglePlayback = async () => {
+    // --- DOM AUDIT LOGS on Play click ---
+    console.log("--- DOM AUDIT: Play click ---");
+    console.log("document.getElementById(\"externalPlayer\") ->", document.getElementById("externalPlayer"));
+    console.log("document.getElementById(\"externalPlayerContainer\") ->", document.getElementById("externalPlayerContainer"));
+    console.log("document.querySelector(\".player-stage\").innerHTML ->", document.querySelector(".player-stage")?.innerHTML);
+    // --- END DOM AUDIT LOGS ---
+
     if (!movieVideo) {
         return;
     }
