@@ -399,7 +399,7 @@ const setVideoSource = async (serverIndex) => {
     const serverUrl = server.url;
 
     if (serverType === 'iframe' || serverType === 'embed') {
-        showExternalPlayer(serverUrl);
+        showExternalPlayer(serverUrl); // This function now handles the null container
         if (overlayPlayButton) {
             overlayPlayButton.hidden = true; // Hide our play button so it doesn't block iframe clicks
         }
@@ -477,7 +477,7 @@ const showExternalPlayer = (url) => {
             iframeHtml = iframeHtml.replace('<iframe', '<iframe allowfullscreen');
         }
 
-        if (externalPlayerContainer) {
+        if (externalPlayerContainer) { // Check if container exists
             externalPlayerContainer.innerHTML = iframeHtml;
             externalPlayerContainer.hidden = false;
             console.log('Injected iframe:', externalPlayerContainer.innerHTML); // For debugging
@@ -487,7 +487,7 @@ const showExternalPlayer = (url) => {
             externalPlayer.removeAttribute('src');
         }
     } else { // Otherwise, it's a normal URL for the iframe's src.
-        if (externalPlayerContainer) {
+        if (externalPlayerContainer) { // Check if container exists
             externalPlayerContainer.hidden = true;
             externalPlayerContainer.innerHTML = '';
         }
@@ -498,7 +498,7 @@ const showExternalPlayer = (url) => {
 };
 
 const hideExternalPlayer = () => {
-    if (externalPlayer) {
+    if (externalPlayer || externalPlayerContainer) {
         if (externalPlayerContainer) {
             externalPlayerContainer.hidden = true;
             externalPlayerContainer.innerHTML = '';
@@ -570,7 +570,7 @@ const togglePlayback = async () => {
     console.log("togglePlayback called");
 
     // If there's no source, load the default one before trying to play.
-    if (!movieVideo.currentSrc && !externalPlayer.src && !(externalPlayerContainer && externalPlayerContainer.innerHTML)) {
+    if (!movieVideo.currentSrc && !(externalPlayer && externalPlayer.src) && !(externalPlayerContainer && externalPlayerContainer.innerHTML)) {
         const selectedIndex = parseInt(serverSelect?.value, 10) || 0;
         await setVideoSource(selectedIndex);
         return; // setVideoSource will handle playback
