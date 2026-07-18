@@ -465,6 +465,10 @@ const isExternalPlaybackUrl = (url = '') => {
 };
 
 const showExternalPlayer = (url) => {
+    console.log("showExternalPlayer llamada");
+    console.log("url recibida:", url);
+    console.log("iframe encontrado:", externalPlayer);
+
     // --- AUDIT LOG ---
     console.log("URL RECIBIDA:", url);
 
@@ -484,6 +488,7 @@ const showExternalPlayer = (url) => {
         }
 
         if (externalPlayerContainer) { // Check if container exists
+            console.log("RETURN EN LÍNEA 525 (bloque if externalPlayerContainer)");
             // --- AUDIT LOG ---
             console.log("ANTES (container):", externalPlayerContainer.outerHTML);
             externalPlayerContainer.innerHTML = iframeHtml;
@@ -513,13 +518,16 @@ const showExternalPlayer = (url) => {
             externalPlayerContainer.hidden = true;
             externalPlayerContainer.innerHTML = '';
         }
-        if (externalPlayer)
-        // --- AUDIT LOG ---
-        console.log("ANTES (iframe src):", externalPlayer.outerHTML);
-        externalPlayer.hidden = false;
-        externalPlayer.src = url;
-        // --- AUDIT LOG ---
-        console.log("DESPUÉS (iframe src):", externalPlayer.outerHTML);
+        if (externalPlayer) {
+            console.log("ANTES:", externalPlayer.outerHTML);
+            externalPlayer.hidden = false;
+            externalPlayer.src = url;
+            console.log("DESPUÉS:", externalPlayer.outerHTML);
+        } else {
+            console.log("RETURN EN LÍNEA 565 (externalPlayer no encontrado)");
+            return;
+        }
+
 
 
         // --- DOM AUDIT LOGS ---
