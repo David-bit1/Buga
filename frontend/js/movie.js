@@ -364,7 +364,9 @@ const destroyHls = () => {
 };
 
 const setVideoSource = async (serverIndex) => {
+    console.log("A - entra a setVideoSource");
     if (!movieVideo || !currentMovie) {
+        console.log("RETURN: movieVideo o currentMovie no existen.");
         return;
     }
 
@@ -374,6 +376,7 @@ const setVideoSource = async (serverIndex) => {
     if (!server || !server.url) {
         notifyToast({ type: 'error', title: 'Servidor no válido', message: 'El servidor seleccionado no tiene una URL válida.' });
         hidePlayerLoader();
+        console.log("RETURN: Servidor no válido o sin URL.");
         return;
     }
 
@@ -398,11 +401,14 @@ const setVideoSource = async (serverIndex) => {
     const serverType = server.type || 'iframe';
     const serverUrl = server.url;
 
-    // --- AUDIT LOG ---
-    console.log("TIPO:", serverType);
+    console.log("B - serverType:", serverType);
+    console.log("C - antes del if embed");
 
     if (serverType === 'iframe' || serverType === 'embed') {
+        console.log("D - entra al if embed");
+        console.log("E - antes de showExternalPlayer");
         showExternalPlayer(serverUrl); // This function now handles the null container
+        console.log("F - después de showExternalPlayer");
         if (overlayPlayButton) {
             overlayPlayButton.hidden = true; // Hide our play button so it doesn't block iframe clicks
         }
