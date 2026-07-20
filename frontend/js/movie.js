@@ -382,7 +382,7 @@ const setVideoSource = async (serverIndex) => {
     movieVideo.removeAttribute('src');
     movieVideo.load();
     movieVideo.poster = currentMovie.poster || '';
-    movieVideo.hidden = false; // Ensure video player is visible by default when changing source
+    movieVideo.style.display = 'block'; // Ensure video player is visible by default
     hideExternalPlayer();
 
     if (qualitySelect) {
@@ -400,7 +400,7 @@ const setVideoSource = async (serverIndex) => {
         if (overlayPlayButton) {
             overlayPlayButton.hidden = true;
         }
-        movieVideo.hidden = true; // Explicitly hide video element
+        movieVideo.style.display = 'none'; // Explicitly hide video element
         hidePlayerLoader();
     } else if (serverType === 'm3u8') {
         if (typeof window.Hls !== 'undefined' && window.Hls.isSupported()) {
@@ -464,15 +464,6 @@ const showExternalPlayer = (url) => {
         return;
     }
 
-    console.log("iframe src:", externalPlayer.src);
-    console.log("iframe hidden:", externalPlayer.hidden);
-    console.log("iframe display:", getComputedStyle(externalPlayer).display);
-    console.log("iframe visibility:", getComputedStyle(externalPlayer).visibility);
-    console.log("iframe opacity:", getComputedStyle(externalPlayer).opacity);
-    console.log("iframe zIndex:", getComputedStyle(externalPlayer).zIndex);
-    console.log("iframe pointerEvents:", getComputedStyle(externalPlayer).pointerEvents);
-    console.log("iframe rect:", externalPlayer.getBoundingClientRect());
-
     let finalSrc = url;
     const urlTrimmed = String(url).trim();
 
@@ -488,18 +479,14 @@ const showExternalPlayer = (url) => {
     }
 
     externalPlayer.src = finalSrc;
-    setTimeout(() => {
-        console.log("iframe src después:", externalPlayer.src);
-    }, 500);
-
-    externalPlayer.hidden = false;
+    externalPlayer.style.display = 'block';
     externalPlayer.allowFullscreen = true;
     externalPlayer.setAttribute('allow', 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share');
 };
 
 const hideExternalPlayer = () => {
     if (externalPlayer) {
-        externalPlayer.hidden = true;
+        externalPlayer.style.display = 'none';
         externalPlayer.removeAttribute('src');
     }
 };
