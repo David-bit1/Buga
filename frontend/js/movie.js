@@ -18,7 +18,6 @@ const playButton = document.getElementById('playButton');
 const backLink = document.querySelector('.movie-back-link');
 const movieVideo = document.getElementById('movieVideo');
 const externalPlayer = document.getElementById('externalPlayer');
-const externalPlayerContainer = document.getElementById('externalPlayerContainer');
 const serverSelect = document.getElementById('serverSelect');
 const moviePageLoader = document.getElementById('moviePageLoader');
 const playerLoader = document.getElementById('playerLoader');
@@ -460,53 +459,34 @@ const isExternalPlaybackUrl = (url = '') => {
 };
 
 const showExternalPlayer = (url) => {
-    movieVideo?.pause();
-    movieVideo?.removeAttribute('src');
-    movieVideo?.load();
-
-    // If the URL is a full iframe tag, inject it into the container.
-    if (String(url).trim().startsWith('<iframe')) {
-        let iframeHtml = url;
-        // Ensure allow and allowfullscreen attributes are present for better compatibility.
-        if (!iframeHtml.includes('allow=')) {
-            iframeHtml = iframeHtml.replace('<iframe', '<iframe allow="autoplay; encrypted-media; picture-in-picture"');
-        }
-        if (!iframeHtml.includes('allowfullscreen')) {
-            iframeHtml = iframeHtml.replace('<iframe', '<iframe allowfullscreen');
-        }
-
-        if (externalPlayerContainer) {
-            externalPlayerContainer.innerHTML = iframeHtml;
-            externalPlayerContainer.hidden = false;
-            console.log('Injected iframe:', externalPlayerContainer.innerHTML); // For debugging
-        } else {
-             console.warn('externalPlayerContainer no encontrado. No se puede inyectar el iframe.');
-        }
-        if (externalPlayer) {
-            console.trace('Limpiando externalPlayer porque se usará el contenedor.');
-            externalPlayer.hidden = true;
-            externalPlayer.removeAttribute('src');
-        }
-    } else { // Otherwise, it's a normal URL for the iframe's src.
-        if (externalPlayerContainer) {
-            externalPlayerContainer.hidden = true;
-            externalPlayerContainer.innerHTML = '';
-        }
-        if (externalPlayer)
-            externalPlayer.hidden = false;
-            externalPlayer.src = url;
+    if (!externalPlayer) {
+        console.error('El elemento #externalPlayer no existe en el DOM.');
+        return;
     }
+
+    let finalSrc = url;
+    const urlTrimmed = String(url).trim();
+
+    // If the URL is a full iframe tag, extract the src attribute.
+    if (urlTrimmed.startsWith('<iframe')) {
+        const srcMatch = urlTrimmed.match(/src="([^"]+)"/);
+        if (srcMatch && srcMatch[1]) {
+            finalSrc = srcMatch[1];
+        } else {
+            notifyToast({ type: 'error', title: 'Error de servidor', message: 'El código del iframe no es válido.' });
+            return;
+        }
+    }
+
+    externalPlayer.src = finalSrc;
+    externalPlayer.hidden = false;
+    externalPlayer.allowFullscreen = true;
+    externalPlayer.setAttribute('allow', 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share');
 };
 
 const hideExternalPlayer = () => {
     if (externalPlayer) {
-        if (externalPlayerContainer) {
-            externalPlayerContainer.hidden = true;
-            externalPlayerContainer.innerHTML = '';
-        }
-        console.trace('Ocultando externalPlayer.');
         externalPlayer.hidden = true;
-        console.trace('Limpiando src de externalPlayer.');
         externalPlayer.removeAttribute('src');
     }
 };
