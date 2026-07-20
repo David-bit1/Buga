@@ -364,9 +364,7 @@ const destroyHls = () => {
 };
 
 const setVideoSource = async (serverIndex) => {
-    console.log("A - entra a setVideoSource");
     if (!movieVideo || !currentMovie) {
-        console.log("RETURN: movieVideo o currentMovie no existen.");
         return;
     }
 
@@ -376,7 +374,6 @@ const setVideoSource = async (serverIndex) => {
     if (!server || !server.url) {
         notifyToast({ type: 'error', title: 'Servidor no válido', message: 'El servidor seleccionado no tiene una URL válida.' });
         hidePlayerLoader();
-        console.log("RETURN: Servidor no válido o sin URL.");
         return;
     }
 
@@ -387,9 +384,6 @@ const setVideoSource = async (serverIndex) => {
     movieVideo.load();
     movieVideo.poster = currentMovie.poster || '';
     movieVideo.hidden = false; // Ensure video player is visible by default when changing source
-    if (overlayPlayButton) {
-        overlayPlayButton.hidden = false; // Make sure our main play button is visible for native video
-    }
     hideExternalPlayer();
 
     if (qualitySelect) {
@@ -401,16 +395,11 @@ const setVideoSource = async (serverIndex) => {
     const serverType = server.type || 'iframe';
     const serverUrl = server.url;
 
-    console.log("B - serverType:", serverType);
-    console.log("C - antes del if embed");
-
     if (serverType === 'iframe' || serverType === 'embed') {
-        console.log("D - entra al if embed");
-        console.log("E - antes de showExternalPlayer");
-        showExternalPlayer(serverUrl); // This function now handles the null container
-        console.log("F - después de showExternalPlayer");
+        showExternalPlayer(serverUrl);
+        // Oculta el botón de play superpuesto para que no bloquee los clics en el iframe.
         if (overlayPlayButton) {
-            overlayPlayButton.hidden = true; // Hide our play button so it doesn't block iframe clicks
+            overlayPlayButton.hidden = true;
         }
         movieVideo.hidden = true; // Explicitly hide video element
         hidePlayerLoader();
@@ -471,33 +460,47 @@ const isExternalPlaybackUrl = (url = '') => {
 };
 
 const showExternalPlayer = (url) => {
-    if (!externalPlayer) {
-        console.error('El elemento #externalPlayer no existe en el DOM.');
-        return;
-    }
+    movieVideo?.pause();
+    movieVideo?.removeAttribute('src');
+    movieVideo?.load();
 
-    let finalSrc = url;
-    const urlTrimmed = String(url).trim();
-
-    // If the URL is a full iframe tag, extract the src attribute.
-    if (urlTrimmed.startsWith('<iframe')) {
-        const srcMatch = urlTrimmed.match(/src="([^"]+)"/);
-        if (srcMatch && srcMatch[1]) {
-            finalSrc = srcMatch[1];
-        } else {
-            notifyToast({ type: 'error', title: 'Error de servidor', message: 'El código del iframe no es válido.' });
-            return;
+    // If the URL is a full iframe tag, inject it into the container.
+    if (String(url).trim().startsWith('<iframe')) {
+        let iframeHtml = url;
+        // Ensure allow and allowfullscreen attributes are present for better compatibility.
+        if (!iframeHtml.includes('allow=')) {
+            iframeHtml = iframeHtml.replace('<iframe', '<iframe allow="autoplay; encrypted-media; picture-in-picture"');
         }
-    }
+        if (!iframeHtml.includes('allowfullscreen')) {
+            iframeHtml = iframeHtml.replace('<iframe', '<iframe allowfullscreen');
+        }
 
-    externalPlayer.src = finalSrc;
-    externalPlayer.hidden = false;
-    externalPlayer.allowFullscreen = true;
-    externalPlayer.setAttribute('allow', 'autoplay; encrypted-media; picture-in-picture');
+        if (externalPlayerContainer) {
+            externalPlayerContainer.innerHTML = iframeHtml;
+            externalPlayerContainer.hidden = false;
+            console.log('Injected iframe:', externalPlayerContainer.innerHTML); // For debugging
+        }
+        if (externalPlayer) {
+            externalPlayer.hidden = true;
+            externalPlayer.removeAttribute('src');
+        }
+    } else { // Otherwise, it's a normal URL for the iframe's src.
+        if (externalPlayerContainer) {
+            externalPlayerContainer.hidden = true;
+            externalPlayerContainer.innerHTML = '';
+        }
+        if (externalPlayer)
+        externalPlayer.hidden = false;
+        externalPlayer.src = url;
+    }
 };
 
 const hideExternalPlayer = () => {
     if (externalPlayer) {
+        if (externalPlayerContainer) {
+            externalPlayerContainer.hidden = true;
+            externalPlayerContainer.innerHTML = '';
+        }
         externalPlayer.hidden = true;
         externalPlayer.removeAttribute('src');
     }
@@ -558,29 +561,17 @@ const populateServerSelect = (movie) => {
 };
 
 const togglePlayback = async () => {
-    // --- DOM AUDIT LOGS on Play click ---
-    console.log("--- DOM AUDIT: Play click ---");
-    console.log("document.getElementById(\"externalPlayer\") ->", document.getElementById("externalPlayer"));
-    console.log("document.getElementById(\"externalPlayerContainer\") ->", document.getElementById("externalPlayerContainer"));
-    console.log("document.querySelector(\".player-stage\").innerHTML ->", document.querySelector(".player-stage")?.innerHTML);
-    // --- END DOM AUDIT LOGS ---
-
     if (!movieVideo) {
         return;
     }
 
-    const selectedIndex = parseInt(serverSelect?.value, 10) || 0;
-    const currentServer = currentMovie?.servers?.[selectedIndex];
-    const serverType = currentServer?.type;
-
-    // If the active server is an iframe/embed, do nothing. The user interacts with the iframe directly.
-    if (serverType === 'iframe' || serverType === 'embed') {
-        // The click was likely on our overlay. We already hid it in setVideoSource.
-        // The next click should go to the iframe itself.
-        return;
+    // If there's no source, load the default one before trying to play.
+    if (!movieVideo.currentSrc && !externalPlayer.src && !(externalPlayerContainer && externalPlayerContainer.innerHTML)) {
+        const selectedIndex = parseInt(serverSelect?.value, 10) || 0;
+        await setVideoSource(selectedIndex);
+        return; // setVideoSource will handle playback
     }
 
-    // For native video playback (MP4, HLS)
     if (movieVideo.paused || movieVideo.ended) {
         try {
             await movieVideo.play();
@@ -748,10 +739,7 @@ const wirePlayer = () => {
     movieVideo.addEventListener('ended', () => saveWatchProgress(true));
 
     overlayPlayButton?.addEventListener('click', togglePlayback);
-    playPauseButton?.addEventListener('click', () => {
-        console.log("Play button clicked");
-        togglePlayback();
-    });
+    playPauseButton?.addEventListener('click', togglePlayback);
     muteButton?.addEventListener('click', toggleMute);
     fullscreenButton?.addEventListener('click', toggleFullscreen);
 
