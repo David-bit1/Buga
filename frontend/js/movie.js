@@ -471,58 +471,35 @@ const isExternalPlaybackUrl = (url = '') => {
 };
 
 const showExternalPlayer = (url) => {
-    movieVideo?.pause();
-    movieVideo?.removeAttribute('src');
-    movieVideo?.load();
+    if (!externalPlayer) {
+        console.error('El elemento #externalPlayer no existe en el DOM.');
+        return;
+    }
 
-    // If the URL is a full iframe tag, inject it into the container.
-    if (String(url).trim().startsWith('<iframe')) {
-        // This case requires the externalPlayerContainer to exist.
-        if (externalPlayerContainer) {
-            let iframeHtml = url;
-            // Ensure allow and allowfullscreen attributes are present for better compatibility.
-            if (!iframeHtml.includes('allow=')) {
-                iframeHtml = iframeHtml.replace('<iframe', '<iframe allow="autoplay; encrypted-media; picture-in-picture"');
-            }
-            if (!iframeHtml.includes('allowfullscreen')) {
-                iframeHtml = iframeHtml.replace('<iframe', '<iframe allowfullscreen');
-            }
-            externalPlayerContainer.innerHTML = iframeHtml;
-            externalPlayerContainer.hidden = false;
-            // Hide the other player if we are using the container
-            if (externalPlayer) {
-                externalPlayer.hidden = true;
-                externalPlayer.removeAttribute('src');
-            }
-        } 
-        // If container doesn't exist, we can't inject, so we do nothing and let the user know.
-        // This prevents hiding the main iframe player by mistake.
-        else {
-            console.warn('externalPlayerContainer no encontrado. No se puede inyectar el iframe.');
-            notifyToast({ type: 'error', title: 'Error de configuración', message: 'Falta el contenedor del reproductor.' });
-        }
-    } else { // Otherwise, it's a normal URL for the iframe's src.
-        if (externalPlayerContainer) {
-            externalPlayerContainer.hidden = true;
-            externalPlayerContainer.innerHTML = '';
-        }
-        if (externalPlayer) { // This is for URLs that go in the src attribute
-            externalPlayer.hidden = false;
-            externalPlayer.src = url;
+    let finalSrc = url;
+    const urlTrimmed = String(url).trim();
+
+    // If the URL is a full iframe tag, extract the src attribute.
+    if (urlTrimmed.startsWith('<iframe')) {
+        const srcMatch = urlTrimmed.match(/src="([^"]+)"/);
+        if (srcMatch && srcMatch[1]) {
+            finalSrc = srcMatch[1];
+        } else {
+            notifyToast({ type: 'error', title: 'Error de servidor', message: 'El código del iframe no es válido.' });
+            return;
         }
     }
+
+    externalPlayer.src = finalSrc;
+    externalPlayer.hidden = false;
+    externalPlayer.allowFullscreen = true;
+    externalPlayer.setAttribute('allow', 'autoplay; encrypted-media; picture-in-picture');
 };
 
 const hideExternalPlayer = () => {
-    if (externalPlayer || externalPlayerContainer) {
-        if (externalPlayerContainer) {
-            externalPlayerContainer.hidden = true;
-            externalPlayerContainer.innerHTML = '';
-        }
-        if (externalPlayer) {
-            externalPlayer.hidden = true;
-            externalPlayer.removeAttribute('src');
-        }
+    if (externalPlayer) {
+        externalPlayer.hidden = true;
+        externalPlayer.removeAttribute('src');
     }
 };
 
