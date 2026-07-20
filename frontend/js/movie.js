@@ -382,7 +382,12 @@ const setVideoSource = async (serverIndex) => {
     movieVideo.removeAttribute('src');
     movieVideo.load();
     movieVideo.poster = currentMovie.poster || '';
-    movieVideo.style.display = 'block'; // Ensure video player is visible by default
+    movieVideo.style.display = 'block';
+    movieVideo.hidden = false;
+    if (overlayPlayButton) {
+        overlayPlayButton.style.display = ''; // Reset to default (flex)
+        overlayPlayButton.style.pointerEvents = ''; // Reset to default
+    }
     hideExternalPlayer();
 
     if (qualitySelect) {
@@ -398,9 +403,11 @@ const setVideoSource = async (serverIndex) => {
         showExternalPlayer(serverUrl);
         // Oculta el botón de play superpuesto para que no bloquee los clics en el iframe.
         if (overlayPlayButton) {
-            overlayPlayButton.hidden = true;
+            overlayPlayButton.style.display = 'none';
+            overlayPlayButton.style.pointerEvents = 'none';
         }
-        movieVideo.style.display = 'none'; // Explicitly hide video element
+        movieVideo.style.display = 'none';
+        movieVideo.hidden = true;
         hidePlayerLoader();
     } else if (serverType === 'm3u8') {
         if (typeof window.Hls !== 'undefined' && window.Hls.isSupported()) {
@@ -479,14 +486,16 @@ const showExternalPlayer = (url) => {
     }
 
     externalPlayer.src = finalSrc;
-    externalPlayer.style.display = 'block';
+    externalPlayer.hidden = false;
+    externalPlayer.style.display = 'block'; // Make sure it's visible
     externalPlayer.allowFullscreen = true;
     externalPlayer.setAttribute('allow', 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share');
 };
 
 const hideExternalPlayer = () => {
     if (externalPlayer) {
-        externalPlayer.style.display = 'none';
+        externalPlayer.hidden = true;
+        externalPlayer.style.display = 'none'; // Ensure it's not in the layout
         externalPlayer.removeAttribute('src');
     }
 };
