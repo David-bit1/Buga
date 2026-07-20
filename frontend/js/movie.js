@@ -471,81 +471,45 @@ const isExternalPlaybackUrl = (url = '') => {
 };
 
 const showExternalPlayer = (url) => {
-    console.log("showExternalPlayer llamada");
-    console.log("url recibida:", url);
-    console.log("iframe encontrado:", externalPlayer);
-
-    // --- AUDIT LOG ---
-    console.log("URL RECIBIDA:", url);
-
     movieVideo?.pause();
     movieVideo?.removeAttribute('src');
     movieVideo?.load();
 
     // If the URL is a full iframe tag, inject it into the container.
     if (String(url).trim().startsWith('<iframe')) {
-        let iframeHtml = url;
-        // Ensure allow and allowfullscreen attributes are present for better compatibility.
-        if (!iframeHtml.includes('allow=')) {
-            iframeHtml = iframeHtml.replace('<iframe', '<iframe allow="autoplay; encrypted-media; picture-in-picture"');
-        }
-        if (!iframeHtml.includes('allowfullscreen')) {
-            iframeHtml = iframeHtml.replace('<iframe', '<iframe allowfullscreen');
-        }
-
-        if (externalPlayerContainer) { // Check if container exists
-            console.log("RETURN EN LÍNEA 525 (bloque if externalPlayerContainer)");
-            // --- AUDIT LOG ---
-            console.log("ANTES (container):", externalPlayerContainer.outerHTML);
+        // This case requires the externalPlayerContainer to exist.
+        if (externalPlayerContainer) {
+            let iframeHtml = url;
+            // Ensure allow and allowfullscreen attributes are present for better compatibility.
+            if (!iframeHtml.includes('allow=')) {
+                iframeHtml = iframeHtml.replace('<iframe', '<iframe allow="autoplay; encrypted-media; picture-in-picture"');
+            }
+            if (!iframeHtml.includes('allowfullscreen')) {
+                iframeHtml = iframeHtml.replace('<iframe', '<iframe allowfullscreen');
+            }
             externalPlayerContainer.innerHTML = iframeHtml;
             externalPlayerContainer.hidden = false;
-            
-            // --- DOM AUDIT LOGS ---
-            console.log("--- DOM AUDIT: After iframe injection ---");
-            console.log("All iframes in document:", document.querySelectorAll("iframe"));
-            const injectedIframe = externalPlayerContainer.querySelector("iframe");
-            console.log("Injected iframe element:", injectedIframe);
-            if(injectedIframe) {
-                console.log("Injected iframe getBoundingClientRect:", injectedIframe.getBoundingClientRect());
-                console.log("Element at center of viewport:", document.elementFromPoint(window.innerWidth / 2, window.innerHeight / 2));
+            // Hide the other player if we are using the container
+            if (externalPlayer) {
+                externalPlayer.hidden = true;
+                externalPlayer.removeAttribute('src');
             }
-            console.log("Computed styles for externalPlayerContainer:", getComputedStyle(externalPlayerContainer));
-            // --- END DOM AUDIT LOGS ---
-            // --- AUDIT LOG ---
-            console.log("DESPUÉS (container):", externalPlayerContainer.outerHTML);
-
-        }
-        if (externalPlayer) {
-            externalPlayer.hidden = true;
-            externalPlayer.removeAttribute('src');
+        } 
+        // If container doesn't exist, we can't inject, so we do nothing and let the user know.
+        // This prevents hiding the main iframe player by mistake.
+        else {
+            console.warn('externalPlayerContainer no encontrado. No se puede inyectar el iframe.');
+            notifyToast({ type: 'error', title: 'Error de configuración', message: 'Falta el contenedor del reproductor.' });
         }
     } else { // Otherwise, it's a normal URL for the iframe's src.
-        if (externalPlayerContainer) { // Check if container exists
+        if (externalPlayerContainer) {
             externalPlayerContainer.hidden = true;
             externalPlayerContainer.innerHTML = '';
         }
-        if (externalPlayer) {
-            console.log("ANTES:", externalPlayer.outerHTML);
+        if (externalPlayer) { // This is for URLs that go in the src attribute
             externalPlayer.hidden = false;
             externalPlayer.src = url;
-            console.log("DESPUÉS:", externalPlayer.outerHTML);
-        } else {
-            console.log("RETURN EN LÍNEA 565 (externalPlayer no encontrado)");
-            return;
         }
-
-
-
-        // --- DOM AUDIT LOGS ---
-        console.log("--- DOM AUDIT: After setting iframe src ---");
-        console.log("All iframes in document:", document.querySelectorAll("iframe"));
-        console.log("Iframe with src:", externalPlayer);
-        if(externalPlayer) {
-            console.log("Iframe with src getBoundingClientRect:", externalPlayer.getBoundingClientRect());
-            console.log("Element at center of viewport:", document.elementFromPoint(window.innerWidth / 2, window.innerHeight / 2));
-            console.log("Computed styles for externalPlayer:", getComputedStyle(externalPlayer));
-        }
-        // --- END DOM AUDIT LOGS ---
     }
 };
 
@@ -555,8 +519,10 @@ const hideExternalPlayer = () => {
             externalPlayerContainer.hidden = true;
             externalPlayerContainer.innerHTML = '';
         }
-        externalPlayer.hidden = true;
-        externalPlayer.removeAttribute('src');
+        if (externalPlayer) {
+            externalPlayer.hidden = true;
+            externalPlayer.removeAttribute('src');
+        }
     }
 };
 
