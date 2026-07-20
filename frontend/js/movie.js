@@ -479,8 +479,11 @@ const showExternalPlayer = (url) => {
             externalPlayerContainer.innerHTML = iframeHtml;
             externalPlayerContainer.hidden = false;
             console.log('Injected iframe:', externalPlayerContainer.innerHTML); // For debugging
+        } else {
+             console.warn('externalPlayerContainer no encontrado. No se puede inyectar el iframe.');
         }
         if (externalPlayer) {
+            console.trace('Limpiando externalPlayer porque se usará el contenedor.');
             externalPlayer.hidden = true;
             externalPlayer.removeAttribute('src');
         }
@@ -490,8 +493,8 @@ const showExternalPlayer = (url) => {
             externalPlayerContainer.innerHTML = '';
         }
         if (externalPlayer)
-        externalPlayer.hidden = false;
-        externalPlayer.src = url;
+            externalPlayer.hidden = false;
+            externalPlayer.src = url;
     }
 };
 
@@ -501,7 +504,9 @@ const hideExternalPlayer = () => {
             externalPlayerContainer.hidden = true;
             externalPlayerContainer.innerHTML = '';
         }
+        console.trace('Ocultando externalPlayer.');
         externalPlayer.hidden = true;
+        console.trace('Limpiando src de externalPlayer.');
         externalPlayer.removeAttribute('src');
     }
 };
