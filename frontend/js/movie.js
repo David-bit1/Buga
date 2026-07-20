@@ -561,17 +561,20 @@ const populateServerSelect = (movie) => {
 };
 
 const togglePlayback = async () => {
-    if (!movieVideo) {
+    if (!movieVideo || !serverSelect) {
         return;
     }
 
-    // If there's no source, load the default one before trying to play.
-    if (!movieVideo.currentSrc && !externalPlayer.src && !(externalPlayerContainer && externalPlayerContainer.innerHTML)) {
-        const selectedIndex = parseInt(serverSelect?.value, 10) || 0;
-        await setVideoSource(selectedIndex);
-        return; // setVideoSource will handle playback
+    const selectedIndex = parseInt(serverSelect.value, 10) || 0;
+    const server = currentMovie?.servers?.[selectedIndex];
+    const serverType = server?.type || 'iframe';
+
+    // If the active server is an iframe/embed, do nothing. The user interacts with the iframe directly.
+    if (serverType === 'iframe' || serverType === 'embed') {
+        return;
     }
 
+    // For native video playback (MP4, HLS)
     if (movieVideo.paused || movieVideo.ended) {
         try {
             await movieVideo.play();
@@ -581,8 +584,6 @@ const togglePlayback = async () => {
     } else {
         movieVideo.pause();
     }
-
-    updatePlayerChrome();
 };
 
 const toggleMute = () => {
