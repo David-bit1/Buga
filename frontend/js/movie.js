@@ -78,6 +78,10 @@ const mediaLabel = mediaType === 'tv' ? 'Serie' : 'Película';
 let currentMovie = null;
 let hlsInstance = null;
 let lastWatchSaveAt = 0;
+let activePlayerAdapter = null;
+
+// --- Player Adapters ---
+let youtubeApiReady = false;
 
 const formatRuntime = (minutes) => {
     if (!Number.isFinite(minutes) || minutes <= 0) {
@@ -333,6 +337,209 @@ const saveWatchProgress = (force = false) => {
     }
 };
 
+const YouTubePlayerAdapter = (playerElementId, videoId, onReady) => {
+    let player;
+    let eventListeners = {};
+    let timeUpdateInterval = null;
+
+    const trigger = (eventName, data) => {
+        (eventListeners[eventName] || []).forEach(cb => cb(data));
+    };
+
+    const onPlayerStateChange = (event) => {
+        switch (event.data) {
+            case YT.PlayerState.PLAYING:
+                trigger('play');
+                timeUpdateInterval = setInterval(() => trigger('timeupdate'), 250);
+                break;
+            case YT.PlayerState.PAUSED:
+                trigger('pause');
+                clearInterval(timeUpdateInterval);
+                break;
+            case YT.PlayerState.ENDED:
+                trigger('ended');
+                clearInterval(timeUpdateInterval);
+                break;
+            case YT.PlayerState.BUFFERING:
+                trigger('waiting');
+                break;
+        }
+    };
+
+    player = new YT.Player(playerElementId, {
+        videoId: videoId,
+        playerVars: {
+            autoplay: 1,
+            controls: 0,
+            rel: 0,
+            showinfo: 0,
+            modestbranding: 1,
+            iv_load_policy: 3,
+            playsinline: 1,
+        },
+        events: {
+            onReady: () => {
+                onReady?.();
+                trigger('loadedmetadata');
+                trigger('canplay');
+            },
+            onStateChange: onPlayerStateChange,
+            onError: (error) => trigger('error', error)
+        }
+    });
+
+    return {
+        play: () => player.playVideo(),
+        pause: () => player.pauseVideo(),
+        seekTo: (time) => player.seekTo(time, true),
+        setVolume: (level) => player.setVolume(level * 100),
+        mute: () => player.mute(),
+        unmute: () => player.unMute(),
+        getDuration: () => player.getDuration(),
+        getCurrentTime: () => player.getCurrentTime(),
+        isPaused: () => player.getPlayerState() !== YT.PlayerState.PLAYING,
+        getVolume: () => player.getVolume() / 100,
+        isMuted: () => player.isMuted(),
+        enterFullscreen: () => {
+            const iframe = player.getIframe();
+            if (iframe.requestFullscreen) {
+                iframe.requestFullscreen();
+            } else if (iframe.mozRequestFullScreen) {
+                iframe.mozRequestFullScreen();
+            } else if (iframe.webkitRequestFullscreen) {
+                iframe.webkitRequestFullscreen();
+            }
+        },
+        on: (eventName, callback) => {
+            if (!eventListeners[eventName]) eventListeners[eventName] = [];
+            eventListeners[eventName].push(callback);
+        },
+        destroy: () => {
+            clearInterval(timeUpdateInterval);
+            if (player && typeof player.destroy === 'function') {
+                player.destroy();
+            }
+            player = null;
+            eventListeners = {};
+        }
+    };
+};
+
+const Html5PlayerAdapter = (videoElement) => {
+    let hls = null;
+
+    return {
+        loadHls: (url) => {
+            if (hls) hls.destroy();
+            if (typeof window.Hls !== 'undefined' && window.Hls.isSupported()) {
+                hls = new window.Hls();
+                hls.loadSource(url);
+                hls.attachMedia(videoElement);
+            } else if (videoElement.canPlayType('application/vnd.apple.mpegurl')) {
+                videoElement.src = url;
+            }
+        },
+        loadMp4: (url) => {
+            if (hls) hls.destroy();
+            videoElement.src = url;
+        },
+        play: () => videoElement.play(),
+        pause: () => videoElement.pause(),
+        seekTo: (time) => { videoElement.currentTime = time; },
+        setVolume: (level) => { videoElement.volume = level; },
+        mute: () => { videoElement.muted = true; },
+        unmute: () => { videoElement.muted = false; },
+        getDuration: () => videoElement.duration,
+        getCurrentTime: () => videoElement.currentTime,
+        isPaused: () => videoElement.paused,
+        getVolume: () => videoElement.volume,
+        isMuted: () => videoElement.muted,
+        enterFullscreen: () => {
+            if (playerStage?.requestFullscreen) {
+                playerStage.requestFullscreen();
+            } else if (videoElement.webkitEnterFullscreen) {
+                videoElement.webkitEnterFullscreen();
+            }
+        },
+        on: (eventName, callback) => videoElement.addEventListener(eventName, callback),
+        off: (eventName, callback) => videoElement.removeEventListener(eventName, callback),
+        getHlsLevels: () => hls?.levels || [],
+        setHlsLevel: (levelIndex) => { if (hls) hls.currentLevel = levelIndex; },
+        destroy: () => {
+            if (hls) {
+                hls.destroy();
+                hls = null;
+            }
+            videoElement.pause();
+            videoElement.removeAttribute('src');
+            videoElement.load();
+        }
+    };
+};
+
+const PlayerManager = {
+    create: (server) => {
+        if (activePlayerAdapter) {
+            activePlayerAdapter.destroy();
+            activePlayerAdapter = null;
+        }
+
+        const youtubeId = PlayerManager.parseYoutubeId(server.url);
+        if (youtubeId) {
+            movieVideo.style.display = 'none';
+            externalPlayer.style.display = 'block';
+            return new Promise((resolve) => {
+                PlayerManager.loadYoutubeApi().then(() => {
+                    activePlayerAdapter = YouTubePlayerAdapter('externalPlayer', youtubeId, () => {
+                        resolve(activePlayerAdapter);
+                    });
+                });
+            });
+        }
+
+        // Fallback to HTML5 player for m3u8, mp4, or other iframe types
+        movieVideo.style.display = 'block';
+        externalPlayer.style.display = 'none';
+        activePlayerAdapter = Html5PlayerAdapter(movieVideo);
+
+        if (server.type === 'm3u8') {
+            activePlayerAdapter.loadHls(server.url);
+        } else if (server.type === 'mp4') {
+            activePlayerAdapter.loadMp4(server.url);
+        } else { // Generic iframe/embed
+            movieVideo.style.display = 'none';
+            externalPlayer.style.display = 'block';
+            externalPlayer.src = server.url; // This will be a simple iframe without API control
+            // We don't create an adapter for this, as it's not controllable
+            activePlayerAdapter.destroy();
+            activePlayerAdapter = null;
+        }
+
+        return Promise.resolve(activePlayerAdapter);
+    },
+    parseYoutubeId: (url) => {
+        const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/;
+        const match = url.match(regExp);
+        return (match && match[2].length === 11) ? match[2] : null;
+    },
+    loadYoutubeApi: () => {
+        return new Promise((resolve) => {
+            if (youtubeApiReady && window.YT) {
+                resolve();
+                return;
+            }
+            window.onYouTubeIframeAPIReady = () => {
+                youtubeApiReady = true;
+                resolve();
+            };
+            const tag = document.createElement('script');
+            tag.src = "https://www.youtube.com/iframe_api";
+            const firstScriptTag = document.getElementsByTagName('script')[0];
+            firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
+        });
+    }
+};
+
 const restoreWatchProgress = () => {
     if (!movieVideo || !currentMovie) {
         return;
@@ -355,13 +562,6 @@ const restoreWatchProgress = () => {
     }
 };
 
-const destroyHls = () => {
-    if (hlsInstance) {
-        hlsInstance.destroy();
-        hlsInstance = null;
-    }
-};
-
 const setVideoSource = async (serverIndex) => {
     if (!movieVideo || !currentMovie) {
         return;
@@ -377,120 +577,41 @@ const setVideoSource = async (serverIndex) => {
     }
 
     showPlayerLoader();
-    destroyHls();
-    movieVideo.pause();
-    movieVideo.removeAttribute('src');
-    movieVideo.load();
-    movieVideo.poster = currentMovie.poster || '';
-    movieVideo.style.display = 'block';
-    movieVideo.hidden = false;
-    if (overlayPlayButton) {
-        overlayPlayButton.style.display = ''; // Reset to default (flex)
-        overlayPlayButton.style.pointerEvents = ''; // Reset to default
-    }
-    hideExternalPlayer();
 
-    if (qualitySelect) {
-        qualitySelect.innerHTML = '';
-        qualitySelect.disabled = true;
-        qualitySelect.hidden = true;
-    }
+    const adapter = await PlayerManager.create(server);
 
-    const serverType = server.type || 'iframe';
-    const serverUrl = server.url;
-
-    if (serverType === 'iframe' || serverType === 'embed') {
-        showExternalPlayer(serverUrl);
-        // Oculta el botón de play superpuesto para que no bloquee los clics en el iframe.
-        if (overlayPlayButton) {
-            overlayPlayButton.style.display = 'none';
-            overlayPlayButton.style.pointerEvents = 'none';
-        }
-        movieVideo.style.display = 'none';
-        movieVideo.hidden = true;
+    if (!adapter) {
+        // Uncontrollable iframe, just hide loader and UI
         hidePlayerLoader();
-    } else if (serverType === 'm3u8') {
-        if (typeof window.Hls !== 'undefined' && window.Hls.isSupported()) {
-            hlsInstance = new window.Hls();
-            hlsInstance.loadSource(serverUrl);
-            hlsInstance.attachMedia(movieVideo);
-            hlsInstance.on(window.Hls.Events.MANIFEST_PARSED, () => {
-                hidePlayerLoader();
-                if (qualitySelect && hlsInstance.levels && hlsInstance.levels.length > 1) {
-                    const options = ['<option value="-1">Auto</option>'];
-                    options.push(...hlsInstance.levels.map((level, index) =>
-                        `<option value="${index}">${level.height}p</option>`
-                    ));
-                    qualitySelect.innerHTML = options.join('');
-                    qualitySelect.disabled = false;
-                    qualitySelect.hidden = false;
-                }
-            });
-            hlsInstance.on(window.Hls.Events.ERROR, (event, data) => {
-                if (data.fatal) {
-                    console.error('Error fatal de HLS:', data);
-                    notifyToast({ type: 'error', title: 'Error de reproducción', message: 'No se pudo cargar el stream HLS.' });
-                    hidePlayerLoader();
-                }
-            });
-        } else if (movieVideo.canPlayType('application/vnd.apple.mpegurl')) {
-            movieVideo.src = serverUrl;
-            movieVideo.addEventListener('loadedmetadata', () => {
-                hidePlayerLoader();
-                togglePlayback();
-            }, { once: true });
-            movieVideo.load(); // Load after setting up listener
-        } else {
-            notifyToast({ type: 'error', title: 'Incompatible', message: 'Tu navegador no soporta HLS.' });
-            hidePlayerLoader();
-        }
-    } else if (serverType === 'mp4') {
-        movieVideo.src = serverUrl;
-        movieVideo.addEventListener('loadedmetadata', () => {
-            hidePlayerLoader();
-            togglePlayback();
-        }, { once: true });
-        movieVideo.load(); // Load after setting up listener
-    } else {
-        notifyToast({ type: 'error', title: 'Servidor desconocido', message: `El tipo de servidor "${serverType}" no es soportado.` });
-        hidePlayerLoader();
-    }
-
-    movieVideo.dataset.movieId = String(currentMovie.id);
-    movieVideo.addEventListener('loadedmetadata', restoreWatchProgress, { once: true });
-};
-
-const isExternalPlaybackUrl = (url = '') => {
-    const target = String(url).trim().toLowerCase();
-    return target.includes('youtube.com/embed') || target.includes('youtube.com/watch') || target.includes('youtu.be') || target.includes('player.vimeo.com') || target.includes('dailymotion.com/embed') || target.includes('embed') || target.includes('vidsrc');
-};
-
-const showExternalPlayer = (url) => {
-    if (!externalPlayer) {
-        console.error('El elemento #externalPlayer no existe en el DOM.');
+        overlayPlayButton.style.display = 'none';
         return;
     }
 
-    let finalSrc = url;
-    const urlTrimmed = String(url).trim();
+    overlayPlayButton.style.display = '';
 
-    // If the URL is a full iframe tag, extract the src attribute.
-    if (urlTrimmed.startsWith('<iframe')) {
-        const srcMatch = urlTrimmed.match(/src="([^"]+)"/);
-        if (srcMatch && srcMatch[1]) {
-            finalSrc = srcMatch[1];
-        } else {
-            notifyToast({ type: 'error', title: 'Error de servidor', message: 'El código del iframe no es válido.' });
-            return;
+    adapter.on('loadedmetadata', () => {
+        restoreWatchProgress();
+        hidePlayerLoader();
+        const levels = adapter.getHlsLevels?.();
+        if (qualitySelect && levels && levels.length > 1) {
+            const options = ['<option value="-1">Auto</option>'];
+            options.push(...levels.map((level, index) => `<option value="${index}">${level.height}p</option>`));
+            qualitySelect.innerHTML = options.join('');
+            qualitySelect.disabled = false;
+            qualitySelect.hidden = false;
         }
-    }
+    });
 
-    externalPlayer.src = finalSrc;
-    externalPlayer.hidden = false;
-    externalPlayer.style.display = 'block'; // Make sure it's visible
-    externalPlayer.allowFullscreen = true;
-    externalPlayer.setAttribute('allow', 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share');
+    adapter.on('error', (error) => {
+        console.error('Player adapter error:', error);
+        notifyToast({ type: 'error', title: 'Error de reproducción', message: 'No se pudo cargar el video. Prueba otro servidor.' });
+        hidePlayerLoader();
+    });
+
+    wireAdapterToUI(adapter);
 };
+
+const showExternalPlayer = (url) => {};
 
 const hideExternalPlayer = () => {
     if (externalPlayer) {
@@ -555,50 +676,44 @@ const populateServerSelect = (movie) => {
 };
 
 const togglePlayback = async () => {
-    if (!movieVideo || !serverSelect) {
-        return;
-    }
+    if (!activePlayerAdapter) return;
 
-    const selectedIndex = parseInt(serverSelect.value, 10) || 0;
-    const server = currentMovie?.servers?.[selectedIndex];
-    const serverType = server?.type || 'iframe';
-
-    // If the active server is an iframe/embed, do nothing. The user interacts with the iframe directly.
-    if (serverType === 'iframe' || serverType === 'embed') {
-        return;
-    }
-
-    // For native video playback (MP4, HLS)
-    if (movieVideo.paused || movieVideo.ended) {
+    if (activePlayerAdapter.isPaused()) {
         try {
-            await movieVideo.play();
+            await activePlayerAdapter.play();
         } catch (error) {
             console.warn('Playback blocked', error);
         }
     } else {
-        movieVideo.pause();
+        activePlayerAdapter.pause();
     }
 };
 
 const toggleMute = () => {
-    if (!movieVideo) {
-        return;
+    if (!activePlayerAdapter) return;
+
+    if (activePlayerAdapter.isMuted()) {
+        activePlayerAdapter.unmute();
+    } else {
+        activePlayerAdapter.mute();
     }
 
-    movieVideo.muted = !movieVideo.muted;
-
-    if (!movieVideo.muted && Number(volumeInput?.value) === 0) {
-        movieVideo.volume = 0.5;
+    if (!activePlayerAdapter.isMuted() && Number(volumeInput?.value) === 0) {
+        activePlayerAdapter.setVolume(0.5);
         if (volumeInput) {
             volumeInput.value = '50';
         }
     }
-
     updateVolumeChrome();
 };
 
 const toggleFullscreen = async () => {
-    const target = playerStage || movieVideo;
+    if (activePlayerAdapter) {
+        activePlayerAdapter.enterFullscreen();
+        return;
+    }
+
+    const target = playerStage || externalPlayer || movieVideo;
 
     try {
         if (document.fullscreenElement) {
@@ -606,9 +721,9 @@ const toggleFullscreen = async () => {
             return;
         }
 
-        if (target?.requestFullscreen) {
+        if (target?.requestFullscreen) { // Standard
             await target.requestFullscreen();
-        } else if (movieVideo?.webkitEnterFullscreen) {
+        } else if (target?.webkitEnterFullscreen) { // Safari
             movieVideo.webkitEnterFullscreen();
         }
     } catch (error) {
@@ -691,7 +806,7 @@ const handleFavoriteToggle = () => {
     });
 };
 
-const wirePlayer = () => {
+const wireAdapterToUI = (adapter) => {
     if (!movieVideo) {
         return;
     }
@@ -700,13 +815,13 @@ const wirePlayer = () => {
     movieVideo.addEventListener('durationchange', updateProgressChrome);
     movieVideo.addEventListener('timeupdate', updateProgressChrome);
     movieVideo.addEventListener('play', updatePlayerChrome);
-    movieVideo.addEventListener('pause', updatePlayerChrome);
-    movieVideo.addEventListener('ended', updatePlayerChrome);
+    adapter.on('pause', updatePlayerChrome);
+    adapter.on('ended', updatePlayerChrome);
     movieVideo.addEventListener('volumechange', () => {
         updateVolumeChrome();
         updatePlayerChrome();
     });
-    movieVideo.addEventListener('waiting', () => {
+    adapter.on('waiting', () => {
         if (playerStatus) {
             playerStatus.textContent = 'Cargando...';
         }
@@ -728,11 +843,16 @@ const wirePlayer = () => {
             notifyToast({ type: 'error', title: 'Servidor no compatible', message: 'No se pudo reproducir desde este servidor. Prueba con otro.' });
         }
     });
-    movieVideo.addEventListener('timeupdate', () => saveWatchProgress(false));
-    movieVideo.addEventListener('pause', () => saveWatchProgress(true));
-    movieVideo.addEventListener('seeking', () => saveWatchProgress(false));
-    movieVideo.addEventListener('ended', () => saveWatchProgress(true));
+    adapter.on('timeupdate', () => {
+        saveWatchProgress(false);
+        updateProgressChrome();
+    });
+    adapter.on('pause', () => saveWatchProgress(true));
+    adapter.on('seeking', () => saveWatchProgress(false));
+    adapter.on('ended', () => saveWatchProgress(true));
+};
 
+const wirePlayer = () => {
     overlayPlayButton?.addEventListener('click', togglePlayback);
     playPauseButton?.addEventListener('click', togglePlayback);
     muteButton?.addEventListener('click', toggleMute);
@@ -748,18 +868,20 @@ const wirePlayer = () => {
     });
 
     progressInput?.addEventListener('input', () => {
-        const duration = movieVideo.duration || 0;
+        if (!activePlayerAdapter) return;
+        const duration = activePlayerAdapter.getDuration() || 0;
         if (!duration) {
             return;
         }
-
-        movieVideo.currentTime = duration * (Number(progressInput.value) / 1000);
+        activePlayerAdapter.seekTo(duration * (Number(progressInput.value) / 1000));
         updateProgressChrome();
     });
 
     volumeInput?.addEventListener('input', () => {
-        movieVideo.volume = Number(volumeInput.value) / 100;
-        movieVideo.muted = Number(volumeInput.value) === 0;
+        if (!activePlayerAdapter) return;
+        activePlayerAdapter.setVolume(Number(volumeInput.value) / 100);
+        if (Number(volumeInput.value) === 0) activePlayerAdapter.mute();
+        else activePlayerAdapter.unmute();
         updateVolumeChrome();
     });
 
@@ -777,29 +899,9 @@ const wirePlayer = () => {
         if (!currentMovie) {
             return;
         }
-
-        if (!hlsInstance) {
-            if (qualitySelect.value === 'mp4') {
-                // Find first MP4 URL from servers or use default
-                const mp4Server = currentMovie.servers?.find(server => 
-                    server.url && (server.url.endsWith('.mp4') || server.url.endsWith('.webm'))
-                );
-                movieVideo.src = mp4Server ? mp4Server.url : MOVIE_SHARED.DEFAULT_VIDEO_SOURCE;
-                movieVideo.load();
-            }
-            return;
-        }
-
-        if (qualitySelect.value === 'auto') {
-            hlsInstance.currentLevel = -1;
-            hlsInstance.loadLevel = -1;
-            return;
-        }
-
-        const targetHeight = Number(qualitySelect.value);
-        const levelIndex = hlsInstance.levels.findIndex((level) => Number(level.height) === targetHeight);
-        if (levelIndex >= 0) {
-            hlsInstance.currentLevel = levelIndex;
+        if (activePlayerAdapter && typeof activePlayerAdapter.setHlsLevel === 'function') {
+            const levelIndex = parseInt(qualitySelect.value, 10);
+            activePlayerAdapter.setHlsLevel(levelIndex);
         }
 
         try {
@@ -809,7 +911,9 @@ const wirePlayer = () => {
         }
     });
 
-    movieVideo.addEventListener('click', togglePlayback);
+    playerStage?.addEventListener('click', (e) => {
+        if (e.target === playerStage || e.target === overlayPlayButton) togglePlayback();
+    });
 
     playerStage?.addEventListener('dblclick', toggleFullscreen);
 
