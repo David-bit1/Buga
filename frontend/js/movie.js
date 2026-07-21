@@ -493,7 +493,7 @@ const PlayerManager = {
             movieVideo.style.display = 'none';
             externalPlayer.style.display = 'block';
             return new Promise((resolve) => {
-                PlayerManager.loadYoutubeApi().then(() => { // Corrected call
+                PlayerManager.loadYoutubeApi().then(() => {
                     activePlayerAdapter = YouTubePlayerAdapter('externalPlayer', youtubeId, () => resolve(activePlayerAdapter));
                 });
             });
