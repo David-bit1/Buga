@@ -470,6 +470,10 @@ const Html5PlayerAdapter = (videoElement) => {
                 hls.destroy();
                 hls = null;
             }
+            if (!videoElement.src) {
+                videoElement.load();
+                return;
+            }
             videoElement.pause();
             videoElement.removeAttribute('src');
             videoElement.load();
@@ -489,10 +493,8 @@ const PlayerManager = {
             movieVideo.style.display = 'none';
             externalPlayer.style.display = 'block';
             return new Promise((resolve) => {
-                PlayerManager.loadYoutubeApi().then(() => {
-                    activePlayerAdapter = YouTubePlayerAdapter('externalPlayer', youtubeId, () => {
-                        resolve(activePlayerAdapter);
-                    });
+                PlayerManager.loadYoutubeApi().then(() => { // Corrected call
+                    activePlayerAdapter = YouTubePlayerAdapter('externalPlayer', youtubeId, () => resolve(activePlayerAdapter));
                 });
             });
         }
