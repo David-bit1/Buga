@@ -76,11 +76,10 @@ const movieId = Number(params.get('id'));
 const mediaType = params.get('type') === 'tv' ? 'tv' : 'movie';
 const mediaLabel = mediaType === 'tv' ? 'Serie' : 'Película';
 let currentMovie = null;
-let hlsInstance = null;
 let lastWatchSaveAt = 0;
 let activePlayerAdapter = null;
 
-// --- Player Adapters ---
+// --- Player Architecture ---
 let youtubeApiReady = false;
 
 const formatRuntime = (minutes) => {
@@ -186,25 +185,26 @@ const updateFavoriteState = () => {
 };
 
 const updatePlayerChrome = () => {
-    if (!movieVideo || !playerStage) {
+    if (!activePlayerAdapter || !playerStage) {
         return;
     }
 
-    const isPlaying = !movieVideo.paused && !movieVideo.ended;
+    const isPaused = activePlayerAdapter.isPaused();
+    const isPlaying = !isPaused;
+
     playerStage.classList.toggle('is-playing', isPlaying);
 
     if (playPauseIcon) {
-        playPauseIcon.textContent = isPlaying ? '❚❚' : '▶';
+        playPauseIcon.textContent = isPlaying ? 'pause' : 'play_arrow';
     }
 
     if (overlayPlayButton) {
         overlayPlayButton.hidden = isPlaying;
     }
 
+    // Note: 'ended' state is handled by the adapter's 'ended' event listener
     if (playerStatus) {
-        if (movieVideo.ended) {
-            playerStatus.textContent = 'Video finalizado';
-        } else if (movieVideo.paused) {
+        if (isPaused) {
             playerStatus.textContent = 'Pausado';
         } else {
             playerStatus.textContent = 'Reproduciendo';
@@ -213,18 +213,19 @@ const updatePlayerChrome = () => {
 };
 
 const updateVolumeChrome = () => {
-    if (!movieVideo) {
+    if (!activePlayerAdapter) {
         return;
     }
 
-    const volumePercent = Math.round(movieVideo.muted ? 0 : movieVideo.volume * 100);
+    const isMuted = activePlayerAdapter.isMuted();
+    const volumePercent = Math.round(isMuted ? 0 : activePlayerAdapter.getVolume() * 100);
 
     if (volumeInput && String(volumeInput.value) !== String(volumePercent)) {
         volumeInput.value = String(volumePercent);
     }
 
     if (muteIcon) {
-        if (movieVideo.muted || volumePercent === 0) {
+        if (isMuted || volumePercent === 0) {
             muteIcon.textContent = '🔇';
         } else if (volumePercent < 45) {
             muteIcon.textContent = '🔉';
@@ -239,12 +240,12 @@ const updateVolumeChrome = () => {
 };
 
 const updateProgressChrome = () => {
-    if (!movieVideo) {
+    if (!activePlayerAdapter) {
         return;
     }
 
-    const duration = movieVideo.duration || 0;
-    const currentTime = movieVideo.currentTime || 0;
+    const duration = activePlayerAdapter.getDuration() || 0;
+    const currentTime = activePlayerAdapter.getCurrentTime() || 0;
 
     if (currentTimeLabel) {
         currentTimeLabel.textContent = formatTime(currentTime);
@@ -265,12 +266,12 @@ const removeFromWatchHistory = (movieMovieId) => {
 };
 
 const saveWatchProgress = (force = false) => {
-    if (!movieVideo || !currentMovie || !Number.isFinite(movieVideo.duration) || movieVideo.duration <= 0) {
-        return;
-    }
+    if (!activePlayerAdapter || !currentMovie) return;
 
-    const currentTime = movieVideo.currentTime || 0;
-    const duration = movieVideo.duration || 0;
+    const duration = activePlayerAdapter.getDuration();
+    if (!Number.isFinite(duration) || duration <= 0) return;
+
+    const currentTime = activePlayerAdapter.getCurrentTime();
     const progress = Math.min(100, Math.max(0, Math.round((currentTime / duration) * 100)));
 
     if (!force && Date.now() - lastWatchSaveAt < 5000) {
@@ -283,7 +284,7 @@ const saveWatchProgress = (force = false) => {
 
     lastWatchSaveAt = Date.now();
 
-    if (movieVideo.ended || progress >= 95) {
+    if (progress >= 95) { // Also considers ended via event
         removeFromWatchHistory(currentMovie.id);
         syncPreferenceEvent({
             type: 'watch',
@@ -323,7 +324,7 @@ const saveWatchProgress = (force = false) => {
         currentTime,
         duration,
         progress,
-        ended: Boolean(movieVideo.ended),
+        ended: progress >= 95,
         force
     });
 
@@ -337,6 +338,130 @@ const saveWatchProgress = (force = false) => {
     }
 };
 
+/**
+ * --- Player Adapter Architecture ---
+ * This section defines a clean, adapter-based architecture for the video player.
+ * It abstracts the underlying player implementation (HTML5, YouTube, etc.)
+ * behind a consistent interface.
+ */
+
+/**
+ * Manages the lifecycle of player adapters.
+ * Ensures only one player is active and that resources are cleaned up.
+ */
+const PlayerManager = {
+    create: async (server) => {
+        if (activePlayerAdapter) {
+            activePlayerAdapter.destroy();
+            activePlayerAdapter = null;
+        }
+
+        const youtubeId = PlayerManager.parseYoutubeId(server.url);
+
+        if (youtubeId) {
+            movieVideo.style.display = 'none';
+            externalPlayer.style.display = 'block';
+            await PlayerManager.loadYoutubeApi();
+            return new Promise((resolve) => {
+                activePlayerAdapter = YouTubePlayerAdapter('externalPlayer', youtubeId, () => {
+                    resolve(activePlayerAdapter);
+                });
+            });
+        }
+
+        if (server.type === 'iframe' || server.type === 'embed') {
+            movieVideo.style.display = 'none';
+            externalPlayer.style.display = 'block';
+            activePlayerAdapter = IframePlayerAdapter(externalPlayer, server.url);
+            return Promise.resolve(activePlayerAdapter);
+        }
+
+        // Fallback to HTML5 player for m3u8, mp4
+        movieVideo.style.display = 'block';
+        externalPlayer.style.display = 'none';
+        activePlayerAdapter = Html5PlayerAdapter(movieVideo);
+
+        if (server.type === 'm3u8') {
+            activePlayerAdapter.loadSource(server.url, 'hls');
+        } else { // Default to mp4
+            activePlayerAdapter.loadSource(server.url, 'mp4');
+        }
+
+        return Promise.resolve(activePlayerAdapter);
+    },
+
+    parseYoutubeId: (url) => {
+        const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/;
+        const match = String(url || '').match(regExp);
+        return (match && match[2].length === 11) ? match[2] : null;
+    },
+
+    loadYoutubeApi: () => {
+        return new Promise((resolve) => {
+            if (youtubeApiReady && window.YT?.Player) {
+                resolve();
+                return;
+            }
+            if (window.onYouTubeIframeAPIReady) {
+                // If it's already defined, chain onto it.
+                const originalReady = window.onYouTubeIframeAPIReady;
+                window.onYouTubeIframeAPIReady = () => {
+                    originalReady();
+                    youtubeApiReady = true;
+                    resolve();
+                };
+            } else {
+                window.onYouTubeIframeAPIReady = () => {
+                    youtubeApiReady = true;
+                    resolve();
+                };
+            }
+
+            if (!document.querySelector('script[src="https://www.youtube.com/iframe_api"]')) {
+                const tag = document.createElement('script');
+                tag.src = "https://www.youtube.com/iframe_api";
+                document.head.appendChild(tag);
+            }
+        });
+    }
+};
+
+/**
+ * Adapter for a generic, uncontrollable <iframe>.
+ */
+const IframePlayerAdapter = (iframeElement, url) => {
+    iframeElement.src = url;
+    iframeElement.setAttribute('allow', 'autoplay; encrypted-media; picture-in-picture; web-share');
+    iframeElement.allowFullscreen = true;
+
+    // This adapter is mostly a placeholder as we can't control it.
+    return {
+        play: () => {},
+        pause: () => {},
+        seekTo: () => {},
+        setVolume: () => {},
+        mute: () => {},
+        unmute: () => {},
+        getCurrentTime: () => 0,
+        getDuration: () => 0,
+        isPaused: () => true,
+        isMuted: () => true,
+        enterFullscreen: () => {
+            if (iframeElement.requestFullscreen) iframeElement.requestFullscreen();
+        },
+        on: (event, callback) => {
+            // Trigger ready events immediately for uncontrollable iframes
+            if (['loadedmetadata', 'canplay'].includes(event)) {
+                setTimeout(callback, 0);
+            }
+        },
+        destroy: () => {
+            iframeElement.removeAttribute('src');
+            iframeElement.style.display = 'none';
+        }
+    };
+};
+
 const YouTubePlayerAdapter = (playerElementId, videoId, onReady) => {
     let player;
     let eventListeners = {};
@@ -344,7 +469,7 @@ const YouTubePlayerAdapter = (playerElementId, videoId, onReady) => {
 
     const trigger = (eventName, data) => {
         (eventListeners[eventName] || []).forEach(cb => cb(data));
-    };
+    }; 
 
     const onPlayerStateChange = (event) => {
         switch (event.data) {
@@ -381,7 +506,7 @@ const YouTubePlayerAdapter = (playerElementId, videoId, onReady) => {
             onReady: () => {
                 onReady?.();
                 trigger('loadedmetadata');
-                trigger('canplay');
+                trigger('playing'); // YT autoplays, so trigger playing
             },
             onStateChange: onPlayerStateChange,
             onError: (error) => trigger('error', error)
@@ -429,19 +554,18 @@ const Html5PlayerAdapter = (videoElement) => {
     let hls = null;
 
     return {
-        loadHls: (url) => {
+        loadSource: (url, type) => {
             if (hls) hls.destroy();
-            if (typeof window.Hls !== 'undefined' && window.Hls.isSupported()) {
+
+            if (type === 'hls' && typeof window.Hls !== 'undefined' && window.Hls.isSupported()) {
                 hls = new window.Hls();
                 hls.loadSource(url);
                 hls.attachMedia(videoElement);
-            } else if (videoElement.canPlayType('application/vnd.apple.mpegurl')) {
+            } else if (type === 'hls' && videoElement.canPlayType('application/vnd.apple.mpegurl')) {
+                videoElement.src = url;
+            } else { // MP4 or fallback
                 videoElement.src = url;
             }
-        },
-        loadMp4: (url) => {
-            if (hls) hls.destroy();
-            videoElement.src = url;
         },
         play: () => videoElement.play(),
         pause: () => videoElement.pause(),
@@ -462,7 +586,10 @@ const Html5PlayerAdapter = (videoElement) => {
             }
         },
         on: (eventName, callback) => videoElement.addEventListener(eventName, callback),
-        off: (eventName, callback) => videoElement.removeEventListener(eventName, callback),
+        off: (eventName, callback) => {
+            // Ensure listeners are removed to prevent memory leaks
+            videoElement.removeEventListener(eventName, callback);
+        },
         getHlsLevels: () => hls?.levels || [],
         setHlsLevel: (levelIndex) => { if (hls) hls.currentLevel = levelIndex; },
         destroy: () => {
@@ -470,6 +597,7 @@ const Html5PlayerAdapter = (videoElement) => {
                 hls.destroy();
                 hls = null;
             }
+            // Stop playback and clean up
             if (!videoElement.src) {
                 videoElement.load();
                 return;
@@ -481,67 +609,6 @@ const Html5PlayerAdapter = (videoElement) => {
     };
 };
 
-const PlayerManager = {
-    create: (server) => {
-        if (activePlayerAdapter) {
-            activePlayerAdapter.destroy();
-            activePlayerAdapter = null;
-        }
-
-        const youtubeId = PlayerManager.parseYoutubeId(server.url);
-        if (youtubeId) {
-            movieVideo.style.display = 'none';
-            externalPlayer.style.display = 'block';
-            return new Promise((resolve) => {
-                PlayerManager.loadYoutubeApi().then(() => {
-                    activePlayerAdapter = YouTubePlayerAdapter('externalPlayer', youtubeId, () => resolve(activePlayerAdapter));
-                });
-            });
-        }
-
-        // Fallback to HTML5 player for m3u8, mp4, or other iframe types
-        movieVideo.style.display = 'block';
-        externalPlayer.style.display = 'none';
-        activePlayerAdapter = Html5PlayerAdapter(movieVideo);
-
-        if (server.type === 'm3u8') {
-            activePlayerAdapter.loadHls(server.url);
-        } else if (server.type === 'mp4') {
-            activePlayerAdapter.loadMp4(server.url);
-        } else { // Generic iframe/embed
-            movieVideo.style.display = 'none';
-            externalPlayer.style.display = 'block';
-            externalPlayer.src = server.url; // This will be a simple iframe without API control
-            // We don't create an adapter for this, as it's not controllable
-            activePlayerAdapter.destroy();
-            activePlayerAdapter = null;
-        }
-
-        return Promise.resolve(activePlayerAdapter);
-    },
-    parseYoutubeId: (url) => {
-        const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/;
-        const match = url.match(regExp);
-        return (match && match[2].length === 11) ? match[2] : null;
-    },
-    loadYoutubeApi: () => {
-        return new Promise((resolve) => {
-            if (youtubeApiReady && window.YT) {
-                resolve();
-                return;
-            }
-            window.onYouTubeIframeAPIReady = () => {
-                youtubeApiReady = true;
-                resolve();
-            };
-            const tag = document.createElement('script');
-            tag.src = "https://www.youtube.com/iframe_api";
-            const firstScriptTag = document.getElementsByTagName('script')[0];
-            firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
-        });
-    }
-};
-
 const restoreWatchProgress = () => {
     if (!movieVideo || !currentMovie) {
         return;
@@ -550,13 +617,14 @@ const restoreWatchProgress = () => {
     const history = getWatchHistory();
     const savedEntry = history.find((entry) => Number(entry.id) === Number(currentMovie.id));
 
-    if (!savedEntry || !Number.isFinite(savedEntry.currentTime) || savedEntry.currentTime <= 0) {
+    if (!activePlayerAdapter || !savedEntry || !Number.isFinite(savedEntry.currentTime) || savedEntry.currentTime <= 0) {
         return;
     }
 
-    const resumeTime = Math.min(savedEntry.currentTime, Math.max(0, (movieVideo.duration || savedEntry.duration || 0) - 5));
+    const duration = activePlayerAdapter.getDuration() || savedEntry.duration || 0;
+    const resumeTime = Math.min(savedEntry.currentTime, Math.max(0, duration - 5));
     if (resumeTime > 0) {
-        movieVideo.currentTime = resumeTime;
+        activePlayerAdapter.seekTo(resumeTime);
         if (playerStatus) {
             playerStatus.textContent = `Reanudando en ${formatTime(resumeTime)}`;
         }
@@ -580,45 +648,34 @@ const setVideoSource = async (serverIndex) => {
 
     showPlayerLoader();
 
-    const adapter = await PlayerManager.create(server);
+    try {
+        const adapter = await PlayerManager.create(server);
+        activePlayerAdapter = adapter; // Store the active adapter
 
-    if (!adapter) {
-        // Uncontrollable iframe, just hide loader and UI
-        hidePlayerLoader();
-        overlayPlayButton.style.display = 'none';
-        return;
-    }
-
-    overlayPlayButton.style.display = '';
-
-    adapter.on('loadedmetadata', () => {
-        restoreWatchProgress();
-        hidePlayerLoader();
-        const levels = adapter.getHlsLevels?.();
-        if (qualitySelect && levels && levels.length > 1) {
-            const options = ['<option value="-1">Auto</option>'];
-            options.push(...levels.map((level, index) => `<option value="${index}">${level.height}p</option>`));
-            qualitySelect.innerHTML = options.join('');
-            qualitySelect.disabled = false;
-            qualitySelect.hidden = false;
+        if (!adapter) {
+            // This case is for uncontrollable iframes that don't have a full adapter
+            hidePlayerLoader();
+            overlayPlayButton.style.display = 'none';
+            return;
         }
-    });
 
-    adapter.on('error', (error) => {
-        console.error('Player adapter error:', error);
-        notifyToast({ type: 'error', title: 'Error de reproducción', message: 'No se pudo cargar el video. Prueba otro servidor.' });
+        overlayPlayButton.style.display = '';
+        wireAdapterToUI(adapter);
+
+    } catch (error) {
+        console.error("Error creating player adapter:", error);
+        notifyToast({ type: 'error', title: 'Error del reproductor', message: 'No se pudo inicializar el reproductor.' });
         hidePlayerLoader();
-    });
-
-    wireAdapterToUI(adapter);
+    }
 };
 
-const showExternalPlayer = (url) => {};
+const showExternalPlayer = () => {
+    // This function is now obsolete, PlayerManager handles visibility.
+};
 
 const hideExternalPlayer = () => {
     if (externalPlayer) {
-        externalPlayer.hidden = true;
-        externalPlayer.style.display = 'none'; // Ensure it's not in the layout
+        externalPlayer.style.display = 'none';
         externalPlayer.removeAttribute('src');
     }
 };
@@ -809,49 +866,49 @@ const handleFavoriteToggle = () => {
 };
 
 const wireAdapterToUI = (adapter) => {
-    if (!movieVideo) {
-        return;
-    }
-
-    movieVideo.addEventListener('loadedmetadata', updateProgressChrome);
-    movieVideo.addEventListener('durationchange', updateProgressChrome);
-    movieVideo.addEventListener('timeupdate', updateProgressChrome);
-    movieVideo.addEventListener('play', updatePlayerChrome);
+    adapter.on('loadedmetadata', () => {
+        updateProgressChrome();
+        restoreWatchProgress();
+        hidePlayerLoader();
+        const levels = adapter.getHlsLevels?.();
+        if (qualitySelect && levels && levels.length > 1) {
+            const options = ['<option value="-1">Auto</option>'];
+            options.push(...levels.map((level, index) => `<option value="${index}">${level.height}p</option>`));
+            qualitySelect.innerHTML = options.join('');
+            qualitySelect.disabled = false;
+            qualitySelect.hidden = false;
+        }
+    });
+    adapter.on('durationchange', updateProgressChrome);
+    adapter.on('timeupdate', () => {
+        updateProgressChrome();
+        saveWatchProgress(false);
+    });
+    adapter.on('play', updatePlayerChrome);
     adapter.on('pause', updatePlayerChrome);
-    adapter.on('ended', updatePlayerChrome);
-    movieVideo.addEventListener('volumechange', () => {
+    adapter.on('ended', () => {
+        updatePlayerChrome();
+        saveWatchProgress(true);
+    });
+    adapter.on('volumechange', () => {
         updateVolumeChrome();
         updatePlayerChrome();
     });
     adapter.on('waiting', () => {
-        if (playerStatus) {
-            playerStatus.textContent = 'Cargando...';
-        }
+        if (playerStatus) playerStatus.textContent = 'Cargando...';
         showPlayerLoader();
     });
-    movieVideo.addEventListener('playing', () => {
-        if (playerStatus) {
-            playerStatus.textContent = 'Reproduciendo';
-        }
+    adapter.on('playing', () => {
+        if (playerStatus) playerStatus.textContent = 'Reproduciendo';
         hidePlayerLoader();
+        updatePlayerChrome();
     });
-    movieVideo.addEventListener('loadeddata', hidePlayerLoader);
-    movieVideo.addEventListener('canplay', hidePlayerLoader);
-    movieVideo.addEventListener('error', (event) => {
+    adapter.on('canplay', hidePlayerLoader);
+    adapter.on('error', (event) => {
         hidePlayerLoader();
-        const errorMessage = event.target.error?.message || 'El formato de video no es soportado o hay un problema de red.';
-        if (movieVideo.src) { // Only show error if a source was set
-            console.error('Error de reproducción de video:', errorMessage, event.target.error);
-            notifyToast({ type: 'error', title: 'Servidor no compatible', message: 'No se pudo reproducir desde este servidor. Prueba con otro.' });
-        }
+        console.error('Error de reproducción:', event);
+        notifyToast({ type: 'error', title: 'Error de reproducción', message: 'No se pudo cargar el video. Prueba otro servidor.' });
     });
-    adapter.on('timeupdate', () => {
-        saveWatchProgress(false);
-        updateProgressChrome();
-    });
-    adapter.on('pause', () => saveWatchProgress(true));
-    adapter.on('seeking', () => saveWatchProgress(false));
-    adapter.on('ended', () => saveWatchProgress(true));
 };
 
 const wirePlayer = () => {
@@ -859,15 +916,6 @@ const wirePlayer = () => {
     playPauseButton?.addEventListener('click', togglePlayback);
     muteButton?.addEventListener('click', toggleMute);
     fullscreenButton?.addEventListener('click', toggleFullscreen);
-
-    captionsButton?.addEventListener('click', () => {
-        const track = movieVideo.textTracks?.[0];
-        if (!track) {
-            return;
-        }
-
-        track.mode = track.mode === 'showing' ? 'disabled' : 'showing';
-    });
 
     progressInput?.addEventListener('input', () => {
         if (!activePlayerAdapter) return;
@@ -904,12 +952,12 @@ const wirePlayer = () => {
         if (activePlayerAdapter && typeof activePlayerAdapter.setHlsLevel === 'function') {
             const levelIndex = parseInt(qualitySelect.value, 10);
             activePlayerAdapter.setHlsLevel(levelIndex);
-        }
 
-        try {
-            await movieVideo.play();
-        } catch {
-            // autoplay can be blocked
+            try {
+                await activePlayerAdapter.play();
+            } catch {
+                // Autoplay can be blocked, which is fine.
+            }
         }
     });
 
@@ -984,12 +1032,6 @@ const bootstrap = async () => {
         populateServerSelect(movie);
         await setVideoSource(0); // Cargar el primer servidor por defecto
 
-        if (movieVideo) {
-            movieVideo.currentTime = 0;
-            movieVideo.muted = params.get('autoplay') === '1';
-            movieVideo.volume = 1;
-        }
-
         if (volumeInput) {
             volumeInput.value = '100';
         }
@@ -1001,7 +1043,7 @@ const bootstrap = async () => {
 
         if (params.get('autoplay') === '1') {
             try {
-                await movieVideo.play();
+                if (activePlayerAdapter) await activePlayerAdapter.play();
             } catch (error) {
                 console.warn('Autoplay blocked', error);
             }
