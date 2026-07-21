@@ -44,11 +44,20 @@ const notifyToast = (options) => {
     return null;
 };
 
-const syncPreferenceEvent = (payload) => {
+const getAuthSession = () => {
+    try {
+        // Replicate auth logic locally as BugaAuth is not available on this page.
+        return JSON.parse(localStorage.getItem('Buga-auth') || 'null');
+    } catch {
+        return null;
+    }
+};
+
+const syncPreferenceEvent = (payload) => { 
     window.BugaAuth?.recordPreferenceEvent?.(payload);
 };
 
-const getAuthToken = () => window.BugaAuth?.getAuthToken?.() || '';
+const getAuthToken = () => getAuthSession()?.token || '';
 const fetchAuthJson = async (url) => {
     const response = await fetch(url, {
         headers: {
