@@ -702,7 +702,20 @@ const setVideoSource = async (serverIndex) => {
     const attemptWithFailureHandling = async () => {
         attempt++;
         try {
-            const adapter = await PlayerManager.create(server);
+            // Check if server.url contains HTML with iframe elements
+            let urlToUse = server.url;
+            if (typeof server.url === 'string' && server.url.includes('<iframe')) {
+                // Extract iframe src from HTML content
+                const iframeMatch = server.url.match(/<iframe[^>]*src=["']([^"']+)["'][^>]*>/);
+                if (iframeMatch && iframeMatch[1]) {
+                    urlToUse = iframeMatch[1];
+                }
+            }
+            
+            const serverCopy = { ...server };
+            serverCopy.url = urlToUse;
+            
+            const adapter = await PlayerManager.create(serverCopy);
             activePlayerAdapter = adapter; // Store the active adapter
 
             if (!adapter) {
