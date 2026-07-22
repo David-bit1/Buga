@@ -818,6 +818,7 @@ const populateServerSelect = (movie) => {
 };
 
 const togglePlayback = async () => {
+    console.log('togglePlayback called');
     if (!activePlayerAdapter) return;
 
     if (activePlayerAdapter.isPaused()) {
