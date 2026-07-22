@@ -310,8 +310,8 @@ const resetMovieForm = () => {
     movieOverview.value = '';
     moviePosterUrl.value = '';
     movieBannerUrl.value = '';
-    movieReleaseYear.value = ''; // Corrected from movieYear
-    movieRuntime.value = ''; // Corrected from movieDuration
+    movieReleaseYear.value = '';
+    movieRuntime.value = '';
     movieCountry.value = '';
     movieLanguage.value = '';
     movieGenres.value = '';
@@ -347,8 +347,8 @@ const fillMovieForm = (movie) => {
     movieOverview.value = movie.description || '';
     moviePosterUrl.value = movie.poster_url || '';
     movieBannerUrl.value = movie.banner_url || '';
-    movieReleaseYear.value = movie.release_year || ''; // Corrected from movieYear
-    movieRuntime.value = movie.runtime || ''; // Corrected from movieDuration
+    movieReleaseYear.value = movie.release_year || '';
+    movieRuntime.value = movie.runtime || '';
     movieCountry.value = movie.country || '';
     movieLanguage.value = movie.language || '';
     movieGenres.value = Array.isArray(movie.genres) ? movie.genres.map((genre) => genre.name).join(', ') : '';

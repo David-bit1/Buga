@@ -553,8 +553,8 @@ const YouTubePlayerAdapter = (playerElementId, videoId, onReady) => {
         getVolume() { return this.isReady ? this.player.getVolume() / 100 : 0; }
         isMuted() { return this.isReady ? this.player.isMuted() : true; }
 
-        enterFullscreen: () => {
-            const iframe = player.getIframe();
+        enterFullscreen() {
+            const iframe = this.player.getIframe();
             if (iframe.requestFullscreen) {
                 iframe.requestFullscreen();
             } else if (iframe.mozRequestFullScreen) {

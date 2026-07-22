@@ -283,13 +283,13 @@ const autoFillFromTmdb = async () => {
             movieTitle.value = movie.title || '';
         }
         if (!movieOriginalTitle.value.trim()) {
-            movieOriginalTitle.value = movie.original_title || '';
-        }
-        if (!movieDescription.value.trim()) {
-            movieDescription.value = movie.description || '';
+            movieOriginalTitle.value = movie.original_title || ''; // Corrected from movieOriginalTitle
         }
         if (!movieOverview.value.trim()) {
-            movieOverview.value = movie.overview || '';
+            movieOverview.value = movie.overview || ''; // Corrected from movieOverview
+        }
+        if (!movieDescription.value.trim()) {
+            movieDescription.value = movie.description || movie.overview || '';
         }
         if (!movieGenres.value.trim()) {
             movieGenres.value = Array.isArray(movie.genres) ? movie.genres.join(', ') : '';
