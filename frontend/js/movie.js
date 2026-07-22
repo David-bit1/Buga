@@ -562,7 +562,7 @@ const YouTubePlayerAdapter = (playerElementId, videoId, onReady) => {
             } else if (iframe.webkitRequestFullscreen) {
                 iframe.webkitRequestFullscreen();
             }
-        },
+        }
 
         on(eventName, callback) {
             if (!this.eventListeners[eventName]) this.eventListeners[eventName] = [];
