@@ -168,7 +168,13 @@ const getAuthSession = () => {
 };
 
 const setAuthSession = (session) => {
-    localStorage.setItem(AUTH_SHARED.STORAGE_KEYS.AUTH, JSON.stringify(session));
+    // --- LOGS DE DEPURACIÓN DE SESIÓN ---
+    console.log("saveSession() token:", session?.token);
+    console.log("saveSession() user:", session?.user);
+    console.log("Guardando en localStorage:", JSON.stringify(session));
+    // ------------------------------------
+    localStorage.setItem(AUTH_SHARED.STORAGE_KEYS.AUTH, JSON.stringify(session || null));
+    console.log("Después de guardar:", localStorage.getItem(AUTH_SHARED.STORAGE_KEYS.AUTH));
 };
 
 const clearAuthSession = () => {
@@ -483,6 +489,9 @@ const handleAuthForm = async (form) => {
             body: JSON.stringify(payload)
         }), AUTH_SHARED.REQUEST_TIMEOUT_MS, `${mode} auth`);
         const data = await readResponseData(response);
+
+        // --- LOG DE DEPURACIÓN DE LOGIN ---
+        console.log("Login response:", data);
 
         if (!response.ok) {
             throw new Error(data.message || 'No se pudo completar la operación');
