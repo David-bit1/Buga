@@ -437,8 +437,8 @@ const handleMovieSubmit = async (event) => {
         tmdbId: movieTmdbId.value ? Number(movieTmdbId.value) : null, // Keep tmdbId
         title: movieTitle.value.trim(),
         original_title: movieOriginalTitle.value.trim(),
-        description: movieOverview.value.trim(), // Use overview as the main description
-        poster_url: moviePosterUrl.value.trim(), // Corrected from moviePosterUrl
+        description: movieOverview.value.trim(),
+        poster_url: moviePosterUrl.value.trim(),
         banner_url: movieBannerUrl.value.trim(),
         release_year: movieReleaseYear.value ? Number(movieReleaseYear.value) : 0,
         runtime: movieRuntime.value ? Number(movieRuntime.value) : 0,
@@ -576,7 +576,7 @@ const autoFillFromTmdb = async () => {
     } catch (error) {
         console.warn('TMDb autofill failed', error);
         notify({
-            type: 'error',
+            type: 'error', // Corrected from window.BugaToast?.show?
             title: 'Error al autocompletar',
             message: 'No se pudo obtener la información desde TMDB. Revisa la conexión.'
         });

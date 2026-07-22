@@ -1407,8 +1407,8 @@ const loadFeaturedMovies = async (options = {}) => {
         renderMovies(movies);
         prefetchTrailerKeys(movies);
         if (searchInput?.value?.trim()) {
-            handleSearchInput();
-        } // Corrected from handleSearchInput
+            handleSearchInput(); // Corrected from handleSearchInput
+        }
     } catch (error) {
         console.warn('Featured movies failed', error);
         notifyToast({
