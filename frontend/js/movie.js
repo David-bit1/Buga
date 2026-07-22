@@ -364,124 +364,108 @@ const saveWatchProgress = (force = false) => {
  * --- Player Adapter Architecture ---
  * This section defines a clean, adapter-based architecture for the video player.
  * It abstracts the underlying player implementation (HTML5, YouTube, etc.)
- * behind a consistent interface.
+ * behind a consistent interface (PlayerAdapter).
  */
 
-/**
- * Manages the lifecycle of player adapters.
- * Ensures only one player is active and that resources are cleaned up.
- */
-const PlayerManager = {
-    create: async (server) => {
-        if (activePlayerAdapter) {
-            activePlayerAdapter.destroy();
-            activePlayerAdapter = null;
-        }
+class PlayerAdapter {
+    play() { throw new Error('Not implemented'); }
+    pause() { throw new Error('Not implemented'); }
+    seekTo(time) { throw new Error('Not implemented'); }
+    setVolume(level) { throw new Error('Not implemented'); }
+    mute() { throw new Error('Not implemented'); }
+    unmute() { throw new Error('Not implemented'); }
+    getCurrentTime() { throw new Error('Not implemented'); }
+    getDuration() { throw new Error('Not implemented'); }
+    isPaused() { throw new Error('Not implemented'); }
+    isMuted() { throw new Error('Not implemented'); }
+    getVolume() { throw new Error('Not implemented'); }
+    enterFullscreen() { throw new Error('Not implemented'); }
+    on(eventName, callback) { throw new Error('Not implemented'); }
+    off(eventName, callback) { throw new Error('Not implemented'); }
+    destroy() { throw new Error('Not implemented'); }
+}
 
-        const youtubeId = PlayerManager.parseYoutubeId(server.url);
-
-        if (youtubeId) {
-            movieVideo.style.display = 'none';
-            externalPlayer.style.display = 'block';
-            await PlayerManager.loadYoutubeApi();
-            return await YouTubePlayerAdapter.create('externalPlayer', youtubeId);
-        }
-
-        if (server.type === 'iframe' || server.type === 'embed') {
-            movieVideo.style.display = 'none';
-            externalPlayer.style.display = 'block';
-            activePlayerAdapter = IframePlayerAdapter(externalPlayer, server.url);
-            return Promise.resolve(activePlayerAdapter);
-        }
-
-        // Fallback to HTML5 player for m3u8, mp4
-        movieVideo.style.display = 'block';
-        externalPlayer.style.display = 'none';
-        activePlayerAdapter = Html5PlayerAdapter(movieVideo);
-
-        if (server.type === 'm3u8') {
-            activePlayerAdapter.loadSource(server.url, 'hls');
-        } else { // Default to mp4
-            activePlayerAdapter.loadSource(server.url, 'mp4');
-        }
-
-        return Promise.resolve(activePlayerAdapter);
-    },
-
-    parseYoutubeId: (url) => {
-        const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/;
-        const match = String(url || '').match(regExp);
-        return (match && match[2].length === 11) ? match[2] : null;
-    },
-
-    loadYoutubeApi: () => {
-        return new Promise((resolve) => {
-            if (youtubeApiReady && window.YT?.Player) {
-                resolve();
-                return;
-            }
-            if (window.onYouTubeIframeAPIReady) {
-                // If it's already defined, chain onto it.
-                const originalReady = window.onYouTubeIframeAPIReady;
-                window.onYouTubeIframeAPIReady = () => {
-                    originalReady();
-                    youtubeApiReady = true;
-                    resolve();
-                };
-            } else {
-                window.onYouTubeIframeAPIReady = () => {
-                    youtubeApiReady = true;
-                    resolve();
-                };
-            }
-
-            if (!document.querySelector('script[src="https://www.youtube.com/iframe_api"]')) {
-                const tag = document.createElement('script');
-                tag.src = "https://www.youtube.com/iframe_api";
-                document.head.appendChild(tag);
-            }
-        });
+class Html5PlayerAdapter extends PlayerAdapter {
+    constructor(videoElement) {
+        super();
+        this.videoElement = videoElement;
+        this.hls = null;
+        this._boundEvents = new Map();
     }
-};
 
-/**
- * Adapter for a generic, uncontrollable <iframe>.
- */
-const IframePlayerAdapter = (iframeElement, url) => {
-    iframeElement.src = url;
-    iframeElement.setAttribute('allow', 'autoplay; encrypted-media; picture-in-picture; web-share');
-    iframeElement.allowFullscreen = true;
+    loadSource(url, type) {
+        if (this.hls) {
+            this.hls.destroy();
+            this.hls = null;
+        }
 
-    // This adapter is mostly a placeholder as we can't control it.
-    return {
-        play: () => {},
-        pause: () => {},
-        seekTo: () => {},
-        setVolume: () => {},
-        mute: () => {},
-        unmute: () => {},
-        getCurrentTime: () => 0,
-        getDuration: () => 0,
-        isPaused: () => true,
-        isMuted: () => true,
-        enterFullscreen: () => {
-            if (iframeElement.requestFullscreen) iframeElement.requestFullscreen();
-        },
-        on: (event, callback) => {
-            // Trigger ready events immediately for uncontrollable iframes
-            if (['loadedmetadata', 'canplay'].includes(event)) {
-                setTimeout(callback, 0);
-            }
-        },
-        destroy: () => {
-            iframeElement.removeAttribute('src');
-            iframeElement.style.display = 'none';
+        if (type === 'hls' && typeof window.Hls !== 'undefined' && window.Hls.isSupported()) {
+            this.hls = new window.Hls();
+            this.hls.loadSource(url);
+            this.hls.attachMedia(this.videoElement);
+        } else if (type === 'hls' && this.videoElement.canPlayType('application/vnd.apple.mpegurl')) {
+            this.videoElement.src = url;
+        } else {
+            this.videoElement.src = url;
         }
     }
-};
 
-class YouTubePlayerAdapter {
+    play() { return this.videoElement.play(); }
+    pause() { this.videoElement.pause(); }
+    seekTo(time) { this.videoElement.currentTime = time; }
+    setVolume(level) { this.videoElement.volume = level; }
+    mute() { this.videoElement.muted = true; }
+    unmute() { this.videoElement.muted = false; }
+    getDuration() { return this.videoElement.duration || 0; }
+    getCurrentTime() { return this.videoElement.currentTime || 0; }
+    isPaused() { return this.videoElement.paused; }
+    getVolume() { return this.videoElement.volume; }
+    isMuted() { return this.videoElement.muted; }
+
+    enterFullscreen() {
+        if (playerStage?.requestFullscreen) {
+            return playerStage.requestFullscreen();
+        } else if (this.videoElement.webkitEnterFullscreen) {
+            this.videoElement.webkitEnterFullscreen();
+        }
+    }
+
+    on(eventName, callback) {
+        this.videoElement.addEventListener(eventName, callback);
+        if (!this._boundEvents.has(eventName)) this._boundEvents.set(eventName, []);
+        this._boundEvents.get(eventName).push(callback);
+    }
+
+    off(eventName, callback) {
+        this.videoElement.removeEventListener(eventName, callback);
+        if (this._boundEvents.has(eventName)) {
+            const callbacks = this._boundEvents.get(eventName);
+            const idx = callbacks.indexOf(callback);
+            if (idx > -1) callbacks.splice(idx, 1);
+        }
+    }
+
+    getHlsLevels() { return this.hls?.levels || []; }
+    setHlsLevel(levelIndex) { if (this.hls) this.hls.currentLevel = levelIndex; }
+
+    destroy() {
+        if (this.hls) {
+            this.hls.destroy();
+            this.hls = null;
+        }
+        if (!this.videoElement.src) {
+            this.videoElement.load();
+            return;
+        }
+        this.videoElement.pause();
+        this.videoElement.removeAttribute('src');
+        this.videoElement.load();
+    }
+}
+
+class YouTubePlayerAdapter extends PlayerAdapter {
     constructor(player, playerElementId) {
+        super();
         this.player = player;
         this.playerElementId = playerElementId;
         this.eventListeners = {};
@@ -493,6 +477,19 @@ class YouTubePlayerAdapter {
     }
 
     static async create(playerElementId, videoId) {
+        await new Promise((resolve) => {
+            if (window.YT?.Player) {
+                resolve();
+            } else {
+                const check = setInterval(() => {
+                    if (window.YT?.Player) {
+                        clearInterval(check);
+                        resolve();
+                    }
+                }, 50);
+            }
+        });
+
         return new Promise((resolve) => {
             const player = new YT.Player(playerElementId, {
                 videoId: videoId,
@@ -506,8 +503,13 @@ class YouTubePlayerAdapter {
                     playsinline: 1,
                 },
                 events: {
-                    onReady: () => {
-                        const adapter = new YouTubePlayerAdapter(player, playerElementId);
+                    onReady: (event) => {
+                        const adapter = new YouTubePlayerAdapter(event.target, playerElementId);
+                        // Emit HTML5-like ready events
+                        adapter.trigger('loadedmetadata');
+                        adapter.trigger('durationchange');
+                        adapter.trigger('canplay');
+                        adapter.trigger('playing');
                         resolve(adapter);
                     }
                 }
@@ -523,6 +525,7 @@ class YouTubePlayerAdapter {
         switch (event.data) {
             case YT.PlayerState.PLAYING:
                 this.trigger('play');
+                this.trigger('playing');
                 this.timeUpdateInterval = setInterval(() => this.trigger('timeupdate'), 250);
                 break;
             case YT.PlayerState.PAUSED:
@@ -535,6 +538,10 @@ class YouTubePlayerAdapter {
                 break;
             case YT.PlayerState.BUFFERING:
                 this.trigger('waiting');
+                break;
+            case YT.PlayerState.CUED:
+                this.trigger('loadedmetadata');
+                this.trigger('durationchange');
                 break;
         }
     }
@@ -568,6 +575,13 @@ class YouTubePlayerAdapter {
         this.eventListeners[eventName].push(callback);
     }
 
+    off(eventName, callback) {
+        if (this.eventListeners[eventName]) {
+            const idx = this.eventListeners[eventName].indexOf(callback);
+            if (idx > -1) this.eventListeners[eventName].splice(idx, 1);
+        }
+    }
+
     destroy() {
         this.isReady = false;
         clearInterval(this.timeUpdateInterval);
@@ -577,7 +591,6 @@ class YouTubePlayerAdapter {
         this.player = null;
         this.eventListeners = {};
 
-        // Replace the iframe with a clean div to prevent YT API conflicts
         const playerElement = document.getElementById(this.playerElementId);
         if (playerElement && playerElement.parentNode) {
             const newDiv = document.createElement('div');
@@ -587,63 +600,117 @@ class YouTubePlayerAdapter {
     }
 }
 
-const Html5PlayerAdapter = (videoElement) => {
-    let hls = null;
+class IframePlayerAdapter extends PlayerAdapter {
+    constructor(iframeElement, url) {
+        super();
+        this.iframeElement = iframeElement;
+        this.iframeElement.src = url;
+        this.iframeElement.setAttribute('allow', 'autoplay; encrypted-media; picture-in-picture; web-share');
+        this.iframeElement.allowFullscreen = true;
+    }
 
-    return {
-        loadSource: (url, type) => {
-            if (hls) hls.destroy();
+    play() {}
+    pause() {}
+    seekTo() {}
+    setVolume() {}
+    mute() {}
+    unmute() {}
+    getCurrentTime() { return 0; }
+    getDuration() { return 0; }
+    isPaused() { return true; }
+    isMuted() { return true; }
+    getVolume() { return 0; }
 
-            if (type === 'hls' && typeof window.Hls !== 'undefined' && window.Hls.isSupported()) {
-                hls = new window.Hls();
-                hls.loadSource(url);
-                hls.attachMedia(videoElement);
-            } else if (type === 'hls' && videoElement.canPlayType('application/vnd.apple.mpegurl')) {
-                videoElement.src = url;
-            } else { // MP4 or fallback
-                videoElement.src = url;
-            }
-        },
-        play: () => videoElement.play(),
-        pause: () => videoElement.pause(),
-        seekTo: (time) => { videoElement.currentTime = time; },
-        setVolume: (level) => { videoElement.volume = level; },
-        mute: () => { videoElement.muted = true; },
-        unmute: () => { videoElement.muted = false; },
-        getDuration: () => videoElement.duration,
-        getCurrentTime: () => videoElement.currentTime,
-        isPaused: () => videoElement.paused,
-        getVolume: () => videoElement.volume,
-        isMuted: () => videoElement.muted,
-        enterFullscreen: () => {
-            if (playerStage?.requestFullscreen) {
-                playerStage.requestFullscreen();
-            } else if (videoElement.webkitEnterFullscreen) {
-                videoElement.webkitEnterFullscreen();
-            }
-        },
-        on: (eventName, callback) => videoElement.addEventListener(eventName, callback),
-        off: (eventName, callback) => {
-            // Ensure listeners are removed to prevent memory leaks
-            videoElement.removeEventListener(eventName, callback);
-        },
-        getHlsLevels: () => hls?.levels || [],
-        setHlsLevel: (levelIndex) => { if (hls) hls.currentLevel = levelIndex; },
-        destroy: () => {
-            if (hls) {
-                hls.destroy();
-                hls = null;
-            }
-            // Stop playback and clean up
-            if (!videoElement.src) {
-                videoElement.load();
+    enterFullscreen() {
+        if (this.iframeElement.requestFullscreen) this.iframeElement.requestFullscreen();
+    }
+
+    on(eventName, callback) {
+        if (['loadedmetadata', 'canplay'].includes(eventName)) {
+            setTimeout(callback, 0);
+        }
+    }
+
+    off() {}
+
+    destroy() {
+        this.iframeElement.removeAttribute('src');
+        this.iframeElement.style.display = 'none';
+    }
+}
+
+/**
+ * Manages the lifecycle of player adapters.
+ * Ensures only one player is active and that resources are cleaned up.
+ */
+const PlayerManager = {
+    create: async (server) => {
+        if (activePlayerAdapter) {
+            activePlayerAdapter.destroy();
+            activePlayerAdapter = null;
+        }
+
+        const youtubeId = PlayerManager.parseYoutubeId(server.url);
+
+        if (youtubeId) {
+            movieVideo.style.display = 'none';
+            externalPlayer.style.display = 'block';
+            await PlayerManager.loadYoutubeApi();
+            return await YouTubePlayerAdapter.create('externalPlayer', youtubeId);
+        }
+
+        if (server.type === 'iframe' || server.type === 'embed') {
+            movieVideo.style.display = 'none';
+            externalPlayer.style.display = 'block';
+            return new IframePlayerAdapter(externalPlayer, server.url);
+        }
+
+        movieVideo.style.display = 'block';
+        externalPlayer.style.display = 'none';
+        const adapter = new Html5PlayerAdapter(movieVideo);
+
+        if (server.type === 'm3u8') {
+            adapter.loadSource(server.url, 'hls');
+        } else {
+            adapter.loadSource(server.url, 'mp4');
+        }
+
+        return adapter;
+    },
+
+    parseYoutubeId: (url) => {
+        const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/;
+        const match = String(url || '').match(regExp);
+        return (match && match[2].length === 11) ? match[2] : null;
+    },
+
+    loadYoutubeApi: () => {
+        return new Promise((resolve) => {
+            if (youtubeApiReady && window.YT?.Player) {
+                resolve();
                 return;
             }
-            videoElement.pause();
-            videoElement.removeAttribute('src');
-            videoElement.load();
-        }
-    };
+            if (window.onYouTubeIframeAPIReady) {
+                const originalReady = window.onYouTubeIframeAPIReady;
+                window.onYouTubeIframeAPIReady = () => {
+                    originalReady();
+                    youtubeApiReady = true;
+                    resolve();
+                };
+            } else {
+                window.onYouTubeIframeAPIReady = () => {
+                    youtubeApiReady = true;
+                    resolve();
+                };
+            }
+
+            if (!document.querySelector('script[src="https://www.youtube.com/iframe_api"]')) {
+                const tag = document.createElement('script');
+                tag.src = "https://www.youtube.com/iframe_api";
+                document.head.appendChild(tag);
+            }
+        });
+    }
 };
 
 const restoreWatchProgress = () => {
