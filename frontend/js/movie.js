@@ -384,11 +384,7 @@ const PlayerManager = {
             movieVideo.style.display = 'none';
             externalPlayer.style.display = 'block';
             await PlayerManager.loadYoutubeApi();
-            return new Promise((resolve) => {
-                activePlayerAdapter = YouTubePlayerAdapter('externalPlayer', youtubeId, () => {
-                    resolve(activePlayerAdapter);
-                });
-            });
+            return await YouTubePlayerAdapter.create('externalPlayer', youtubeId);
         }
 
         if (server.type === 'iframe' || server.type === 'embed') {
@@ -485,68 +481,78 @@ const IframePlayerAdapter = (iframeElement, url) => {
 };
 
 const YouTubePlayerAdapter = (playerElementId, videoId, onReady) => {
-    let player;
-    let eventListeners = {};
-    let timeUpdateInterval = null;
+    // This class is now instantiated via the static `create` method.
+    class YouTubePlayerAdapter {
+        constructor(player) {
+            this.player = player;
+            this.eventListeners = {};
+            this.timeUpdateInterval = null;
+            this.isReady = true;
 
-    const trigger = (eventName, data) => {
-        (eventListeners[eventName] || []).forEach(cb => cb(data));
-    }; 
-
-    const onPlayerStateChange = (event) => {
-        switch (event.data) {
-            case YT.PlayerState.PLAYING:
-                trigger('play');
-                timeUpdateInterval = setInterval(() => trigger('timeupdate'), 250);
-                break;
-            case YT.PlayerState.PAUSED:
-                trigger('pause');
-                clearInterval(timeUpdateInterval);
-                break;
-            case YT.PlayerState.ENDED:
-                trigger('ended');
-                clearInterval(timeUpdateInterval);
-                break;
-            case YT.PlayerState.BUFFERING:
-                trigger('waiting');
-                break;
+            this.player.addEventListener('onStateChange', this.onPlayerStateChange.bind(this));
+            this.player.addEventListener('onError', (error) => this.trigger('error', error));
         }
-    };
 
-    player = new YT.Player(playerElementId, {
-        videoId: videoId,
-        playerVars: {
-            autoplay: 1,
-            controls: 0,
-            rel: 0,
-            showinfo: 0,
-            modestbranding: 1,
-            iv_load_policy: 3,
-            playsinline: 1,
-        },
-        events: {
-            onReady: () => {
-                onReady?.();
-                trigger('loadedmetadata');
-                trigger('playing'); // YT autoplays, so trigger playing
-            },
-            onStateChange: onPlayerStateChange,
-            onError: (error) => trigger('error', error)
+        static async create(playerElementId, videoId) {
+            return new Promise((resolve) => {
+                const player = new YT.Player(playerElementId, {
+                    videoId: videoId,
+                    playerVars: {
+                        autoplay: 1,
+                        controls: 0,
+                        rel: 0,
+                        showinfo: 0,
+                        modestbranding: 1,
+                        iv_load_policy: 3,
+                        playsinline: 1,
+                    },
+                    events: {
+                        onReady: () => {
+                            const adapter = new YouTubePlayerAdapter(player);
+                            resolve(adapter);
+                        }
+                    }
+                });
+            });
         }
-    });
 
-    return {
-        play: () => player.playVideo(),
-        pause: () => player.pauseVideo(),
-        seekTo: (time) => player.seekTo(time, true),
-        setVolume: (level) => player.setVolume(level * 100),
-        mute: () => player.mute(),
-        unmute: () => player.unMute(),
-        getDuration: () => player.getDuration(),
-        getCurrentTime: () => player.getCurrentTime(),
-        isPaused: () => player.getPlayerState() !== YT.PlayerState.PLAYING,
-        getVolume: () => player.getVolume() / 100,
-        isMuted: () => player.isMuted(),
+        trigger(eventName, data) {
+            (this.eventListeners[eventName] || []).forEach(cb => cb(data));
+        }
+
+        onPlayerStateChange(event) {
+            switch (event.data) {
+                case YT.PlayerState.PLAYING:
+                    this.trigger('play');
+                    this.timeUpdateInterval = setInterval(() => this.trigger('timeupdate'), 250);
+                    break;
+                case YT.PlayerState.PAUSED:
+                    this.trigger('pause');
+                    clearInterval(this.timeUpdateInterval);
+                    break;
+                case YT.PlayerState.ENDED:
+                    this.trigger('ended');
+                    clearInterval(this.timeUpdateInterval);
+                    break;
+                case YT.PlayerState.BUFFERING:
+                    this.trigger('waiting');
+                    break;
+            }
+        }
+
+        play() { if (this.isReady) this.player.playVideo(); }
+        pause() { if (this.isReady) this.player.pauseVideo(); }
+        seekTo(time) { if (this.isReady) this.player.seekTo(time, true); }
+        setVolume(level) { if (this.isReady) this.player.setVolume(level * 100); }
+        mute() { if (this.isReady) this.player.mute(); }
+        unmute() { if (this.isReady) this.player.unMute(); }
+
+        getDuration() { return this.isReady ? this.player.getDuration() : 0; }
+        getCurrentTime() { return this.isReady ? this.player.getCurrentTime() : 0; }
+        isPaused() { return this.isReady ? this.player.getPlayerState() !== YT.PlayerState.PLAYING : true; }
+        getVolume() { return this.isReady ? this.player.getVolume() / 100 : 0; }
+        isMuted() { return this.isReady ? this.player.isMuted() : true; }
+
         enterFullscreen: () => {
             const iframe = player.getIframe();
             if (iframe.requestFullscreen) {
@@ -557,20 +563,33 @@ const YouTubePlayerAdapter = (playerElementId, videoId, onReady) => {
                 iframe.webkitRequestFullscreen();
             }
         },
-        on: (eventName, callback) => {
-            if (!eventListeners[eventName]) eventListeners[eventName] = [];
-            eventListeners[eventName].push(callback);
-        },
-        destroy: () => {
-            clearInterval(timeUpdateInterval);
-            if (player && typeof player.destroy === 'function') {
-                player.destroy();
-            }
-            player = null;
-            eventListeners = {};
+
+        on(eventName, callback) {
+            if (!this.eventListeners[eventName]) this.eventListeners[eventName] = [];
+            this.eventListeners[eventName].push(callback);
         }
-    };
+
+        destroy() {
+            this.isReady = false;
+            clearInterval(this.timeUpdateInterval);
+            if (this.player && typeof this.player.destroy === 'function') {
+                this.player.destroy();
+            }
+            this.player = null;
+            this.eventListeners = {};
+
+            // Replace the iframe with a clean div to prevent YT API conflicts
+            const playerElement = document.getElementById(playerElementId);
+            if (playerElement) {
+                const newDiv = document.createElement('div');
+                newDiv.id = playerElementId;
+                playerElement.parentNode.replaceChild(newDiv, playerElement);
+            }
+        }
+    }
+    return YouTubePlayerAdapter;
 };
+
 
 const Html5PlayerAdapter = (videoElement) => {
     let hls = null;
