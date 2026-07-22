@@ -378,13 +378,16 @@ const PlayerManager = {
             activePlayerAdapter = null;
         }
 
-        const youtubeId = PlayerManager.parseYoutubeId(server.url);
-
-        if (youtubeId) {
-            movieVideo.style.display = 'none';
-            externalPlayer.style.display = 'block';
-            await PlayerManager.loadYoutubeApi();
-            return await YouTubePlayerAdapter.create('externalPlayer', youtubeId);
+        // Only attempt YouTube player creation if server type is YouTube
+        if (server.type === 'youtube') {
+            const youtubeId = PlayerManager.parseYoutubeId(server.url);
+            
+            if (youtubeId) {
+                movieVideo.style.display = 'none';
+                externalPlayer.style.display = 'block';
+                await PlayerManager.loadYoutubeApi();
+                return await YouTubePlayerAdapter.create('externalPlayer', youtubeId);
+            }
         }
 
         if (server.type === 'iframe' || server.type === 'embed') {
