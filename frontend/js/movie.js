@@ -477,7 +477,7 @@ const IframePlayerAdapter = (iframeElement, url) => {
             iframeElement.removeAttribute('src');
             iframeElement.style.display = 'none';
         }
-    };
+    }
 };
 
 class YouTubePlayerAdapter {
