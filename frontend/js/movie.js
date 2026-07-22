@@ -693,25 +693,47 @@ const setVideoSource = async (serverIndex) => {
 
     showPlayerLoader();
 
-    try {
-        const adapter = await PlayerManager.create(server);
-        activePlayerAdapter = adapter; // Store the active adapter
+    let attempt = 0;
+    const maxAttempts = servers.length;
+    
+    const attemptWithFailureHandling = async () => {
+        attempt++;
+        try {
+            const adapter = await PlayerManager.create(server);
+            activePlayerAdapter = adapter; // Store the active adapter
 
-        if (!adapter) {
-            // This case is for uncontrollable iframes that don't have a full adapter
-            hidePlayerLoader();
-            overlayPlayButton.style.display = 'none';
-            return;
+            if (!adapter) {
+                // This case is for uncontrollable iframes that don't have a full adapter
+                hidePlayerLoader();
+                overlayPlayButton.style.display = 'none';
+                return true; // Success - fallback case is expected
+            }
+
+            overlayPlayButton.style.display = '';
+            wireAdapterToUI(adapter);
+            return true; // Success
+
+        } catch (error) {
+            console.error(`Error creating player adapter (intento ${attempt}):`, error);
+            
+            // If this was the last server, show error
+            if (attempt >= maxAttempts) {
+                notifyToast({ 
+                    type: 'error', 
+                    title: 'Error del reproductor', 
+                    message: 'No se pudo inicializar el reproductor en ningún servidor.' 
+                });
+                hidePlayerLoader();
+                return false; // All attempts failed
+            }
+            
+            // Try next server automatically
+            await new Promise(resolve => setTimeout(resolve, 800)); // Brief delay
+            return await attemptWithFailureHandling();
         }
-
-        overlayPlayButton.style.display = '';
-        wireAdapterToUI(adapter);
-
-    } catch (error) {
-        console.error("Error creating player adapter:", error);
-        notifyToast({ type: 'error', title: 'Error del reproductor', message: 'No se pudo inicializar el reproductor.' });
-        hidePlayerLoader();
-    }
+    };
+    
+    await attemptWithFailureHandling();
 };
 
 const showExternalPlayer = () => {
