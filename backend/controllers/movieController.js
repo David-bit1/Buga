@@ -41,31 +41,49 @@ const toBoolean = (value) =>
   value === true || value === 'true' || value === 1 || value === '1' || value === 'on';
 
 const parseServers = (value) => {
-  if (Array.isArray(value)) {
-    return value
-      .map((entry) => {
-        if (!entry) {
-          return null;
-        }
-
-        if (typeof entry === 'string') {
-          return { name: 'Servidor 1', type: 'iframe', url: entry.trim() };
-        }
-
-        const url = String(entry.url || entry.link || entry.value || '').trim();
-        if (!url) {
-          return null;
-        }
-
-        return {
-          name: String(entry.name || entry.label || 'Servidor').trim() || 'Servidor',
-          type: String(entry.type || 'iframe').toLowerCase().trim() || 'iframe',
-          url,
-          status: String(entry.status || 'active'),
-          order: Number(entry.order || 0)
-        };
-      })
-      .filter(Boolean);
+    if (Array.isArray(value)) {
+        return value
+            .map((entry) => {
+                if (!entry) {
+                    return null;
+                }
+                
+                if (typeof entry === 'string') {
+                    // Check if entry contains iframe HTML content
+                    if (typeof entry === 'string' && entry.includes('<iframe')) {
+                        // Extract iframe src from HTML content
+                        const iframeMatch = entry.match(/<iframe[^>]*src=["']([^"']+)["'][^>]*>/);
+                        if (iframeMatch && iframeMatch[1]) {
+                            return { name: 'Servidor 1', type: 'iframe', url: iframeMatch[1].trim() };
+                        }
+                    }
+                }
+                return { name: 'Servidor 1', type: 'iframe', url: entry.trim() };
+            }
+            
+            if (typeof entry === 'string') {
+                const trimmed = value.trim();
+                if (!trimmed) {
+                    return [];
+                }
+                
+                try {
+                    const parsed = JSON.parse(trimmed);
+                    return parseServers(parsed);
+                } catch {
+                    return trimmed
+                        .split(/\n|\r/)
+                        .map((line) => line.trim())
+                        .filter(Boolean)
+                        .map((url, index) => ({
+                            name: `Servidor ${index + 1}`,
+                            type: 'iframe',
+                            url,
+                            status: 'active',
+                            order: index
+                        }));
+                }
+    }
   }
 
   if (typeof value === 'string') {
