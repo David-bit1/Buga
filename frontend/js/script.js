@@ -1908,7 +1908,7 @@ const bootstrap = async () => {
         }
 
         if (event.key === HOME_SHARED.getProfileStorageKey('Buga-favorites')) {
-            refreshFeaturedGrid(searchInput?.value || ''); // Corrected from refreshFeaturedGrid
+            refreshFeaturedGrid(searchInput?.value || '');
             renderTrendingMovies();
             renderSeries(seriesMoviesCache);
         }

@@ -576,7 +576,7 @@ const autoFillFromTmdb = async () => {
     } catch (error) {
         console.warn('TMDb autofill failed', error);
         notify({
-            type: 'error', // Corrected from window.BugaToast?.show?
+            type: 'error',
             title: 'Error al autocompletar',
             message: 'No se pudo obtener la información desde TMDB. Revisa la conexión.'
         });

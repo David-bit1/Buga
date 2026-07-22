@@ -510,7 +510,7 @@ const handleAuthForm = async (form) => {
             message: mode === 'register'
                 ? 'Tu cuenta premium quedó lista.'
                 : 'Bienvenido de vuelta a Buga.'
-        }); // Corrected from pushToastFlash
+        });
         window.location.href = '/pages/profiles.html';
     } catch (error) {
         showAuthError(form, error.message || 'Ocurrió un error');
