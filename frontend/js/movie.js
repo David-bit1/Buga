@@ -1,7 +1,15 @@
 (function () {
 const MOVIE_SHARED = window.BugaShared;
-const MOVIE_FAVORITES_KEY = MOVIE_SHARED.getProfileStorageKey('Buga-favorites');
-const WATCH_HISTORY_KEY = MOVIE_SHARED.getProfileStorageKey('Buga-watch-history');
+
+const getScopedStorageKey = (baseKey) => {
+    // Replicate profile-scoped key generation locally
+    const session = getAuthSession();
+    const userScope = session?.user?.id || 'guest';
+    // movie.js does not have profile context, so we use a global scope for the user
+    return `${baseKey}:${userScope}:global`;
+};
+const MOVIE_FAVORITES_KEY = getScopedStorageKey(MOVIE_SHARED.STORAGE_KEYS.FAVORITES);
+const WATCH_HISTORY_KEY = getScopedStorageKey(MOVIE_SHARED.STORAGE_KEYS.WATCH_HISTORY);
 
 const movieHero = document.getElementById('movieHero');
 const movieBackdrop = document.getElementById('movieBackdrop');
