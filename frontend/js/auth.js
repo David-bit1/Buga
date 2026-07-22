@@ -433,8 +433,14 @@ const fetchCurrentUser = async () => {
         return;
     }
 
+    console.log("Token enviado:", getAuthToken());
+
     try {
         const response = await window.BugaUtils.requestWithTimeout(authFetch(`${AUTH_SHARED.API_BASES.auth}/me`), AUTH_SHARED.REQUEST_TIMEOUT_MS, 'auth/me');
+        
+        console.log("Status:", response.status);
+        console.log("Response:", await response.clone().text());
+
         const data = await readResponseData(response);
         if (!response.ok) {
             throw new Error(data.message || 'Sesión inválida');
@@ -443,8 +449,9 @@ const fetchCurrentUser = async () => {
         saveSession({ ...session, user: data.user });
         console.log('Loading:', false);
         console.log('User:', data.user);
-    } catch {
-        clearAuthSession();
+    } catch (error) {
+        // clearAuthSession(); // Comentado temporalmente para depuración
+        console.error("Error en fetchCurrentUser:", error);
         console.log('Loading:', false);
         console.log('User:', null);
     } finally {
