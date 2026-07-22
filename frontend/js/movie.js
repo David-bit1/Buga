@@ -378,17 +378,13 @@ const PlayerManager = {
             activePlayerAdapter = null;
         }
 
-        // Only attempt YouTube player creation if server type is YouTube
-        if (server.type === 'youtube') {
-            const youtubeId = PlayerManager.parseYoutubeId(server.url);
-            
-if (youtubeId) {
+        const youtubeId = PlayerManager.parseYoutubeId(server.url);
+
+        if (youtubeId) {
             movieVideo.style.display = 'none';
             externalPlayer.style.display = 'block';
             await PlayerManager.loadYoutubeApi();
-            activePlayerAdapter = await YouTubePlayerAdapter.create('externalPlayer', youtubeId);
-            return activePlayerAdapter;
-        }
+            return await YouTubePlayerAdapter.create('externalPlayer', youtubeId);
         }
 
         if (server.type === 'iframe' || server.type === 'embed') {
@@ -497,34 +493,26 @@ class YouTubePlayerAdapter {
     }
 
     static async create(playerElementId, videoId) {
-        return Promise.race([
-            new Promise((resolve) => {
-                const player = new YT.Player(playerElementId, {
-                    videoId: videoId,
-                    playerVars: {
-                        autoplay: 1,
-                        controls: 0,
-                        rel: 0,
-                        showinfo: 0,
-                        modestbranding: 1,
-                        iv_load_policy: 3,
-                        playsinline: 1,
-                    },
-                    events: {
-                        onReady: () => {
-                            const adapter = new YouTubePlayerAdapter(player, playerElementId);
-                            resolve(adapter);
-                        }
+        return new Promise((resolve) => {
+            const player = new YT.Player(playerElementId, {
+                videoId: videoId,
+                playerVars: {
+                    autoplay: 1,
+                    controls: 0,
+                    rel: 0,
+                    showinfo: 0,
+                    modestbranding: 1,
+                    iv_load_policy: 3,
+                    playsinline: 1,
+                },
+                events: {
+                    onReady: () => {
+                        const adapter = new YouTubePlayerAdapter(player, playerElementId);
+                        resolve(adapter);
                     }
-                });
-            }),
-            new Promise((_, reject) => 
-                window.setTimeout(() => 
-                    reject(new Error('YouTube player timed out')), 
-                    10000
-                )
-            )
-        ]);
+                }
+            });
+        });
     }
 
     trigger(eventName, data) {
@@ -697,60 +685,25 @@ const setVideoSource = async (serverIndex) => {
 
     showPlayerLoader();
 
-    let attempt = 0;
-    const maxAttempts = servers.length;
-    
-    const attemptWithFailureHandling = async () => {
-        attempt++;
-        try {
-            // Check if server.url contains HTML with iframe elements
-            let urlToUse = server.url;
-            if (typeof server.url === 'string' && server.url.includes('<iframe')) {
-                // Extract iframe src from HTML content
-                const iframeMatch = server.url.match(/<iframe[^>]*src=["']([^"']+)["'][^>]*>/);
-                if (iframeMatch && iframeMatch[1]) {
-                    urlToUse = iframeMatch[1];
-                }
-            }
-            
-            const serverCopy = { ...server };
-            serverCopy.url = urlToUse;
-            
-            const adapter = await PlayerManager.create(serverCopy);
-            activePlayerAdapter = adapter; // Store the active adapter
+    try {
+        const adapter = await PlayerManager.create(server);
+        activePlayerAdapter = adapter; // Store the active adapter
 
-            if (!adapter) {
-                // This case is for uncontrollable iframes that don't have a full adapter
-                hidePlayerLoader();
-                overlayPlayButton.style.display = 'none';
-                return true; // Success - fallback case is expected
-            }
-
-            overlayPlayButton.style.display = '';
-            wireAdapterToUI(adapter);
-            return true; // Success
-
-        } catch (error) {
-            console.error(`Error creating player adapter (intento ${attempt}):`, error);
-            
-            // If this was the last server, show error
-            if (attempt >= maxAttempts) {
-                notifyToast({ 
-                    type: 'error', 
-                    title: 'Error del reproductor', 
-                    message: 'No se pudo inicializar el reproductor en ningún servidor.' 
-                });
-                hidePlayerLoader();
-                return false; // All attempts failed
-            }
-            
-            // Try next server automatically
-            await new Promise(resolve => setTimeout(resolve, 800)); // Brief delay
-            return await attemptWithFailureHandling();
+        if (!adapter) {
+            // This case is for uncontrollable iframes that don't have a full adapter
+            hidePlayerLoader();
+            overlayPlayButton.style.display = 'none';
+            return;
         }
-    };
-    
-    await attemptWithFailureHandling();
+
+        overlayPlayButton.style.display = '';
+        wireAdapterToUI(adapter);
+
+    } catch (error) {
+        console.error("Error creating player adapter:", error);
+        notifyToast({ type: 'error', title: 'Error del reproductor', message: 'No se pudo inicializar el reproductor.' });
+        hidePlayerLoader();
+    }
 };
 
 const showExternalPlayer = () => {
@@ -819,7 +772,6 @@ const populateServerSelect = (movie) => {
 };
 
 const togglePlayback = async () => {
-    console.log('togglePlayback called');
     if (!activePlayerAdapter) return;
 
     if (activePlayerAdapter.isPaused()) {
@@ -997,7 +949,6 @@ const wireAdapterToUI = (adapter) => {
 };
 
 const wirePlayer = () => {
-    console.log('wirePlayer called');
     overlayPlayButton?.addEventListener('click', togglePlayback);
     playPauseButton?.addEventListener('click', togglePlayback);
     muteButton?.addEventListener('click', toggleMute);
@@ -1074,6 +1025,17 @@ const fetchLocalMovie = async (id) => {
     }
 };
 
+const handleLoadError = (errorMessage) => {
+    hideMoviePageLoader();
+    movieTitle.textContent = 'Contenido no disponible';
+    movieDescription.textContent = errorMessage || 'La película o serie que buscas no se encuentra o no está disponible.';
+    notifyToast({
+        type: 'error',
+        title: 'Error al cargar',
+        message: errorMessage || 'No se pudo obtener la información del contenido.'
+    });
+};
+
 const bootstrap = async () => {
     setReady();
     wirePlayer();
@@ -1108,15 +1070,35 @@ const bootstrap = async () => {
     }
 
     try {
+        console.log(`[Buga] ID recibido desde URL: ${movieId}`);
         const localMovie = await fetchLocalMovie(movieId);
-        const movie = normalizeMovie(localMovie || await fetchMovieFromTMDB(movieId));
+        let movie;
+
+        if (localMovie) {
+            console.log('[Buga] Película encontrada en la base de datos local.');
+            movie = normalizeMovie(localMovie);
+        } else {
+            console.warn('[Buga] Película no encontrada en la base de datos local. Intentando con TMDb...');
+            const tmdbMovie = await fetchMovieFromTMDB(movieId).catch(err => {
+                console.error('[Buga] Fallo al buscar en TMDb:', err);
+                return null;
+            });
+            if (!tmdbMovie) {
+                handleLoadError('No se encontró la película en la base de datos local ni en TMDb.');
+                return;
+            }
+            movie = normalizeMovie(tmdbMovie);
+        }
+
+        console.log('[Buga] Objeto de película final:', movie);
+        console.log('[Buga] Servidores encontrados:', movie.servers);
+
         applyMovie(movie);
         syncPreferenceEvent({
             type: 'view',
             movie
         });
         populateServerSelect(movie);
-        await setVideoSource(0); // Cargar el primer servidor por defecto
 
         if (volumeInput) {
             volumeInput.value = '100';
@@ -1125,6 +1107,12 @@ const bootstrap = async () => {
         updateProgressChrome();
         updateVolumeChrome();
         updatePlayerChrome();
+
+        if (movie.servers && movie.servers.length > 0) {
+            await setVideoSource(0); // Cargar el primer servidor por defecto
+        } else {
+            hidePlayerLoader();
+        }
         hideMoviePageLoader();
 
         if (params.get('autoplay') === '1') {
@@ -1135,34 +1123,8 @@ const bootstrap = async () => {
             }
         }
     } catch (error) {
-        console.warn('TMDB detail load failed', error);
-        notifyToast({
-            type: 'error',
-            title: 'No se pudo cargar la película',
-            message: 'Hubo un problema de red o con TMDB.'
-        });
-
-        const fallbackMovie = {
-            id: movieId,
-            title: mediaType === 'tv' ? `Serie ${movieId}` : `Película ${movieId}`,
-            description: 'No se pudo cargar la información desde TMDB.',
-            tagline: mediaType === 'tv'
-                ? 'Contenido temporal de serie mientras se resuelve la conexión.'
-                : 'Contenido temporal mientras se resuelve la conexión.',
-            poster: '',
-            backdrop: '',
-            release_date: '',
-            runtime: 0,
-            genres: [],
-            mediaType
-        };
-
-        applyMovie(fallbackMovie);
-        populateServerSelect(fallbackMovie);
-        updateProgressChrome();
-        updateVolumeChrome();
-        updatePlayerChrome();
-        hideMoviePageLoader();
+        console.error('Error fatal en bootstrap de película:', error);
+        handleLoadError(error.message);
     }
 };
 
