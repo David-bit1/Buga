@@ -382,12 +382,13 @@ const PlayerManager = {
         if (server.type === 'youtube') {
             const youtubeId = PlayerManager.parseYoutubeId(server.url);
             
-            if (youtubeId) {
-                movieVideo.style.display = 'none';
-                externalPlayer.style.display = 'block';
-                await PlayerManager.loadYoutubeApi();
-                return await YouTubePlayerAdapter.create('externalPlayer', youtubeId);
-            }
+if (youtubeId) {
+            movieVideo.style.display = 'none';
+            externalPlayer.style.display = 'block';
+            await PlayerManager.loadYoutubeApi();
+            activePlayerAdapter = await YouTubePlayerAdapter.create('externalPlayer', youtubeId);
+            return activePlayerAdapter;
+        }
         }
 
         if (server.type === 'iframe' || server.type === 'embed') {
@@ -996,6 +997,7 @@ const wireAdapterToUI = (adapter) => {
 };
 
 const wirePlayer = () => {
+    console.log('wirePlayer called');
     overlayPlayButton?.addEventListener('click', togglePlayback);
     playPauseButton?.addEventListener('click', togglePlayback);
     muteButton?.addEventListener('click', toggleMute);
