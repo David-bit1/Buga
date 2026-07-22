@@ -61,27 +61,53 @@ const parseServers = (value) => {
                 return { name: 'Servidor 1', type: 'iframe', url: entry.trim() };
             }
             
-            if (typeof entry === 'string') {
-                const trimmed = value.trim();
-                if (!trimmed) {
-                    return [];
-                }
-                
-                try {
-                    const parsed = JSON.parse(trimmed);
-                    return parseServers(parsed);
-                } catch {
-                    return trimmed
-                        .split(/\n|\r/)
-                        .map((line) => line.trim())
-                        .filter(Boolean)
-                        .map((url, index) => ({
-                            name: `Servidor ${index + 1}`,
-                            type: 'iframe',
+if (typeof entry === 'string') {
+                    const trimmed = value.trim();
+                    if (!trimmed) {
+                        return [];
+                    }
+                 
+                    try {
+                        const parsed = JSON.parse(trimmed);
+                        return parseServers(parsed);
+                    } catch {
+                        return trimmed
+                            .split(/\n|\r/)
+                            .map((line) => line.trim())
+                            .filter(Boolean)
+                            .map((url, index) => ({
+                                name: `Servidor ${index + 1}`,
+                                type: 'iframe',
+                                url,
+                                status: 'active',
+                                order: index
+                            }));
+                } else {
+                    // Check if entry contains iframe HTML content
+                    if (typeof entry === 'string' && entry.includes('<iframe')) {
+                        // Extract iframe src from HTML content
+                        const iframeMatch = entry.match(/<iframe[^>]*src=["']([^"']+)["'][^>]*>/);
+                        if (iframeMatch && iframeMatch[1]) {
+                            return { name: 'Servidor 1', type: 'iframe', url: iframeMatch[1].trim() };
+                        }
+                    }
+                    
+                    const url = String(entry.url || entry.link || entry.value || '').trim();
+                    if (!url) {
+                        return null;
+                    }
+                    
+                    // Check if this is a YouTube URL
+                    if (/youtu\.be\/.{11}/.test(url) || 
+                        /youtube\.com\/(?:youtu\.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)[^#&?]*/.test(url)) {
+                        return {
+                            name: 'YouTube Server',
+                            type: 'youtube',
                             url,
                             status: 'active',
-                            order: index
-                        }));
+                            order: 0
+                        };
+                    }
                 }
     }
   }
