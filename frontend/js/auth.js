@@ -418,6 +418,12 @@ const handleLogout = () => {
 };
 
 const fetchCurrentUser = async () => {
+    // --- LOGS DE DEPURACIÓN DE SESIÓN ---
+    console.log("localStorage Buga-auth:", localStorage.getItem(AUTH_SHARED.STORAGE_KEYS.AUTH));
+    console.log("getAuthSession():", getAuthSession());
+    console.log("getAuthToken():", getAuthToken());
+    // ------------------------------------
+
     const session = getAuthSession();
     console.log('Auth state:', {
         page: window.location.pathname,
