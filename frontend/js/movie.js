@@ -1003,7 +1003,6 @@ const fetchLocalMovie = async (id) => {
         if (!response.ok || !data.movie) {
             return null;
         }
-    }
         return data.movie;
     } catch (error) {
         console.warn('Local movie fetch failed', error);
