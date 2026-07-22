@@ -286,8 +286,8 @@ const createMovieCardMedia = (movie, tagLabel = '') => `
 `;
 
 const buildMediaHref = (movieId, mediaType = 'movie') => {
-    const movie = featuredMoviesCache.find(m => m.id === movieId);
-    const idToUse = movie?.tmdb_id || movieId; // Prioritize TMDb ID for consistency
+    const movie = featuredMoviesCache.find(m => m.id === movieId || m.tmdb_id === movieId);
+    const idToUse = movie?.tmdb_id || movieId;
     const params = new URLSearchParams({ id: String(idToUse) });
     if (mediaType && mediaType !== 'movie') {
         params.set('type', mediaType);
