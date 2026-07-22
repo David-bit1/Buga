@@ -493,26 +493,34 @@ class YouTubePlayerAdapter {
     }
 
     static async create(playerElementId, videoId) {
-        return new Promise((resolve) => {
-            const player = new YT.Player(playerElementId, {
-                videoId: videoId,
-                playerVars: {
-                    autoplay: 1,
-                    controls: 0,
-                    rel: 0,
-                    showinfo: 0,
-                    modestbranding: 1,
-                    iv_load_policy: 3,
-                    playsinline: 1,
-                },
-                events: {
-                    onReady: () => {
-                        const adapter = new YouTubePlayerAdapter(player, playerElementId);
-                        resolve(adapter);
+        return Promise.race([
+            new Promise((resolve) => {
+                const player = new YT.Player(playerElementId, {
+                    videoId: videoId,
+                    playerVars: {
+                        autoplay: 1,
+                        controls: 0,
+                        rel: 0,
+                        showinfo: 0,
+                        modestbranding: 1,
+                        iv_load_policy: 3,
+                        playsinline: 1,
+                    },
+                    events: {
+                        onReady: () => {
+                            const adapter = new YouTubePlayerAdapter(player, playerElementId);
+                            resolve(adapter);
+                        }
                     }
-                }
-            });
-        });
+                });
+            }),
+            new Promise((_, reject) => 
+                window.setTimeout(() => 
+                    reject(new Error('YouTube player timed out')), 
+                    10000
+                )
+            )
+        ]);
     }
 
     trigger(eventName, data) {
