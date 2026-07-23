@@ -900,11 +900,11 @@ const toggleMute = () => {
     if (!activePlayerAdapter) return;
 
     if (activePlayerAdapter.isMuted()) {
-        activePlayerAdapter.unmute();
+        activePlayerAdapter.unmute(); // Correct: unmute if muted
     } else {
-        activePlayerAdapter.mute();
+        activePlayerAdapter.mute(); // Correct: mute if not muted
     }
-
+    // If unmuting and volume is 0, set a default volume
     if (!activePlayerAdapter.isMuted() && Number(volumeInput?.value) === 0) {
         activePlayerAdapter.setVolume(0.5);
         if (volumeInput) {
@@ -1035,13 +1035,16 @@ const wireAdapterToUI = (adapter) => {
         updateProgressChrome();
         restoreWatchProgress();
         hidePlayerLoader();
+
+        // Quality selector logic
         const levels = adapter.getHlsLevels?.();
         if (qualitySelect && levels && levels.length > 1) {
             const options = ['<option value="-1">Auto</option>'];
             options.push(...levels.map((level, index) => `<option value="${index}">${level.height}p</option>`));
             qualitySelect.innerHTML = options.join('');
-            qualitySelect.disabled = false;
-            qualitySelect.hidden = false;
+            qualitySelect.closest('.player-control-group').hidden = false;
+        } else if (qualitySelect) {
+            qualitySelect.closest('.player-control-group').hidden = true;
         }
     });
     adapter.on('durationchange', updateProgressChrome);
