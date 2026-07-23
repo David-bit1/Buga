@@ -477,21 +477,11 @@ class YouTubePlayerAdapter extends PlayerAdapter {
     }
 
     static async create(playerElementId, videoId) {
-        await new Promise((resolve) => {
-            if (window.YT?.Player) {
-                resolve();
-            } else {
-                const check = setInterval(() => {
-                    if (window.YT?.Player) {
-                        clearInterval(check);
-                        resolve();
-                    }
-                }, 50);
-            }
-        });
+        // The PlayerManager now ensures the API is loaded, so this check is redundant.
+        // await PlayerManager.loadYoutubeApi();
 
         return new Promise((resolve) => {
-            const player = new YT.Player(playerElementId, {
+            new YT.Player(playerElementId, {
                 videoId: videoId,
                 playerVars: {
                     autoplay: 1,
@@ -503,13 +493,15 @@ class YouTubePlayerAdapter extends PlayerAdapter {
                     playsinline: 1,
                 },
                 events: {
-                    onReady: (event) => {
+                    onReady: (event) => { // The 'player' instance is event.target
+                        console.log('[5.1.YT.3] YouTube onReady event fired');
                         const adapter = new YouTubePlayerAdapter(event.target, playerElementId);
-                        // Emit HTML5-like ready events
+                        // Emit synthetic HTML5-like ready events for consistent UI updates
                         adapter.trigger('loadedmetadata');
                         adapter.trigger('durationchange');
                         adapter.trigger('canplay');
                         adapter.trigger('playing');
+                        console.log('[5.1.YT.4] YouTube adapter instance created, resolving promise');
                         resolve(adapter);
                     }
                 }
