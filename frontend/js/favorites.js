@@ -22,7 +22,7 @@ const setFavoritesPageItems = (favorites) => {
     localStorage.setItem(FAVORITES_PAGE_STORAGE_KEY, JSON.stringify(favorites));
 };
 
-const isFavoritesPageMovie = (movieId) => getFavoritesPageItems().includes(movieId);
+const isFavoritesPageMovie = (movieId) => getFavoritesPageItems().includes(String(movieId));
 
 const notifyToast = (options) => window.BugaToast?.show?.(options) || null;
 const syncPreferenceEvent = (payload) => window.BugaAuth?.recordPreferenceEvent?.(payload);
@@ -144,7 +144,7 @@ const updateFavoriteButton = (button, movieId) => {
 
 const toggleFavorite = (movieId) => {
     const favorites = getFavoritesPageItems();
-    const index = favorites.indexOf(movieId);
+    const index = favorites.indexOf(String(movieId));
     const isRemoving = index >= 0;
 
     if (isRemoving) {
@@ -254,8 +254,8 @@ const wireActions = () => {
         if (favoriteButton) {
             event.preventDefault();
             event.stopPropagation();
-            const movieId = Number(favoriteButton.dataset.favoriteToggle);
-            if (!Number.isNaN(movieId)) {
+            const movieId = favoriteButton.dataset.favoriteToggle;
+            if (movieId) {
                 const action = toggleFavorite(movieId);
                 loadFavorites();
                 notifyToast({
@@ -281,9 +281,9 @@ const wireActions = () => {
         }
 
         const button = event.target.closest('.ver-btn');
-        const movieId = Number(button?.dataset.movieId ?? card.dataset.movieId);
+        const movieId = button?.dataset.movieId ?? card.dataset.movieId;
 
-        if (!Number.isNaN(movieId)) {
+        if (movieId) {
             navigateToMovie(movieId);
         }
     });
@@ -299,8 +299,8 @@ const wireActions = () => {
         }
 
         event.preventDefault();
-        const movieId = Number(card.dataset.movieId);
-        if (!Number.isNaN(movieId)) {
+        const movieId = card.dataset.movieId;
+        if (movieId) {
             navigateToMovie(movieId);
         }
     });

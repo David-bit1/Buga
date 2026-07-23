@@ -195,7 +195,7 @@ const updateFavoriteState = () => {
     }
 
     const favorites = getMovieFavorites();
-    const isFavorite = favorites.includes(currentMovie.id);
+    const isFavorite = favorites.includes(String(currentMovie.id));
     favoriteButton.classList.toggle('is-active', isFavorite);
     favoriteButton.innerHTML = `
         <span class="movie-btn-icon" aria-hidden="true">${isFavorite ? '♥' : '♡'}</span>
@@ -950,7 +950,7 @@ const handleFavoriteToggle = () => {
     const favorites = getMovieFavorites();
     const index = favorites.indexOf(currentMovie.id);
 
-    if (index >= 0) {
+    if (index > -1) {
         favorites.splice(index, 1);
     } else {
         favorites.push(currentMovie.id);
@@ -1033,6 +1033,7 @@ const wireAdapterToUI = (adapter) => {
         console.error('Error de reproducción:', event);
         notifyToast({ type: 'error', title: 'Error de reproducción', message: 'No se pudo cargar el video. Prueba otro servidor.' });
     });
+    console.log('[6] Reproductor creado');
 };
 
 const wirePlayer = () => {
@@ -1177,7 +1178,8 @@ const bootstrap = async () => {
     };
 
     try {
-        console.log(`[Buga] Loading content for ID: ${movieId} (type: ${mediaType})`);
+        console.log(`[1] URL recibida. ID: ${movieId}, Tipo: ${mediaType}`);
+
         const localMovie = await fetchLocalMovie(movieId);
         let movie;
 
@@ -1197,10 +1199,11 @@ const bootstrap = async () => {
             movie = normalizeMovie(tmdbMovie);
         }
 
-        console.log('[Buga] Final movie object:', movie);
-        console.log('[Buga] Available servers:', movie.servers);
+        console.log('[2] Movie cargada:', movie);
 
         applyMovie(movie);
+        console.log('[3] Renderizando banner y metadata');
+
         syncPreferenceEvent({
             type: 'view',
             movie
@@ -1215,12 +1218,15 @@ const bootstrap = async () => {
         updateVolumeChrome();
         updatePlayerChrome();
 
+        console.log('[4] Renderizando descripción y UI del reproductor');
+
         if (movie.servers && movie.servers.length > 0) {
             await setVideoSource(0);
         } else {
             console.warn('[Buga] Movie has no servers');
             hidePlayerLoader();
         }
+        console.log('[7] Ocultando loader');
         safeHideMovieLoader();
 
         if (params.get('autoplay') === '1') {
@@ -1230,10 +1236,12 @@ const bootstrap = async () => {
                 console.warn('Autoplay blocked', error);
             }
         }
+        console.log('[8] Loader ocultado. Proceso finalizado.');
     } catch (error) {
         console.error('Error fatal en bootstrap de película:', error);
         handleLoadError(error.message);
     } finally {
+        // Aseguramos que el loader se oculte incluso si hay un error no capturado.
         safeHideMovieLoader();
     }
 };
