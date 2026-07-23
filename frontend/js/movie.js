@@ -477,43 +477,53 @@ class YouTubePlayerAdapter extends PlayerAdapter {
     }
 
     static async create(playerElementId, videoId) {
-        await new Promise((resolve) => {
-            if (window.YT?.Player) {
-                resolve();
-            } else {
-                const check = setInterval(() => {
-                    if (window.YT?.Player) {
-                        clearInterval(check);
-                        resolve();
-                    }
-                }, 50);
-            }
-        });
+        console.log("[F] ENTER YouTubePlayerAdapter.create");
 
-        return new Promise((resolve) => {
-            const player = new YT.Player(playerElementId, {
-                videoId: videoId,
-                playerVars: {
-                    autoplay: 1,
-                    controls: 0,
-                    rel: 0,
-                    showinfo: 0,
-                    modestbranding: 1,
-                    iv_load_policy: 3,
-                    playsinline: 1,
-                },
-                events: {
-                    onReady: (event) => {
-                        const adapter = new YouTubePlayerAdapter(event.target, playerElementId);
-                        // Emit HTML5-like ready events
-                        adapter.trigger('loadedmetadata');
-                        adapter.trigger('durationchange');
-                        adapter.trigger('canplay');
-                        adapter.trigger('playing');
-                        resolve(adapter);
-                    }
+        return new Promise((resolve, reject) => {
+            try {
+                const playerContainer = document.getElementById(playerElementId);
+                if (!playerContainer) {
+                    throw new Error(`Player container #${playerElementId} not found in DOM.`);
                 }
-            });
+                console.log(`[F.1] Container #${playerElementId} found:`, playerContainer);
+
+                console.log("[F.2] ANTES new YT.Player");
+                new YT.Player(playerElementId, {
+                    videoId: videoId,
+                    playerVars: {
+                        autoplay: 1,
+                        controls: 0,
+                        rel: 0,
+                        showinfo: 0,
+                        modestbranding: 1,
+                        iv_load_policy: 3,
+                        playsinline: 1,
+                    },
+                    events: {
+                        onReady: (event) => {
+                            console.log("[H] ENTER YouTube onReady callback");
+                            const adapter = new YouTubePlayerAdapter(event.target, playerElementId);
+                            adapter.trigger('loadedmetadata');
+                            adapter.trigger('durationchange');
+                            adapter.trigger('canplay');
+                            adapter.trigger('playing');
+                            console.log("[H.1] EXIT YouTube onReady callback");
+                            resolve(adapter);
+                        },
+                        onError: (event) => {
+                            console.error("[!] YouTube Player Error:", event.data);
+                            reject(new Error(`YouTube player error code: ${event.data}`));
+                        }
+                    }
+                });
+                console.log("[G] DESPUÉS new YT.Player (creation call sent)");
+            } catch (error) {
+                console.error("[!] Failed to instantiate YT.Player:", error);
+                console.error(error.stack);
+                reject(error);
+            }
+        }).finally(() => {
+            console.log("[F.3] EXIT YouTubePlayerAdapter.create (Promise settled)");
         });
     }
 
@@ -650,7 +660,9 @@ class IframePlayerAdapter extends PlayerAdapter {
  * Ensures only one player is active and that resources are cleaned up.
  */
 const PlayerManager = {
+    _youtubeApiPromise: null,
     create: async (server) => {
+        console.log("[B] ENTER PlayerManager.create");
         if (activePlayerAdapter) {
             activePlayerAdapter.destroy();
             activePlayerAdapter = null;
@@ -659,10 +671,17 @@ const PlayerManager = {
         const youtubeId = PlayerManager.parseYoutubeId(server.url);
 
         if (youtubeId) {
+            console.log("[B.1.YT] YouTube ID found:", youtubeId);
             movieVideo.style.display = 'none';
             externalPlayer.style.display = 'block';
+            console.log("[B.2.YT] ANTES await PlayerManager.loadYoutubeApi");
             await PlayerManager.loadYoutubeApi();
-            return await YouTubePlayerAdapter.create('externalPlayer', youtubeId);
+            console.log("[B.3.YT] DESPUÉS await PlayerManager.loadYoutubeApi");
+            console.log("[B.4.YT] ANTES await YouTubePlayerAdapter.create");
+            const adapter = await YouTubePlayerAdapter.create('externalPlayer', youtubeId);
+            console.log("[B.5.YT] DESPUÉS await YouTubePlayerAdapter.create");
+            console.log("[B.6.YT] EXIT PlayerManager.create (returning YT adapter)");
+            return adapter;
         }
 
         if (server.type === 'iframe' || server.type === 'embed') {
@@ -671,6 +690,7 @@ const PlayerManager = {
             return new IframePlayerAdapter(externalPlayer, server.url);
         }
 
+        console.log("[B.1.HTML5] HTML5 player type detected");
         movieVideo.style.display = 'block';
         externalPlayer.style.display = 'none';
         const adapter = new Html5PlayerAdapter(movieVideo);
@@ -681,6 +701,7 @@ const PlayerManager = {
             adapter.loadSource(server.url, 'mp4');
         }
 
+        console.log("[B.2.HTML5] EXIT PlayerManager.create (returning HTML5 adapter)");
         return adapter;
     },
 
@@ -691,31 +712,29 @@ const PlayerManager = {
     },
 
     loadYoutubeApi: () => {
-        return new Promise((resolve) => {
-            if (youtubeApiReady && window.YT?.Player) {
-                resolve();
-                return;
-            }
-            if (window.onYouTubeIframeAPIReady) {
-                const originalReady = window.onYouTubeIframeAPIReady;
-                window.onYouTubeIframeAPIReady = () => {
-                    originalReady();
-                    youtubeApiReady = true;
-                    resolve();
-                };
-            } else {
-                window.onYouTubeIframeAPIReady = () => {
-                    youtubeApiReady = true;
-                    resolve();
-                };
+        if (PlayerManager._youtubeApiPromise) {
+            return PlayerManager._youtubeApiPromise;
+        }
+
+        PlayerManager._youtubeApiPromise = new Promise((resolve) => {
+            if (window.YT && window.YT.Player) {
+                return resolve();
             }
 
-            if (!document.querySelector('script[src="https://www.youtube.com/iframe_api"]')) {
+            const existingScript = document.querySelector('script[src="https://www.youtube.com/iframe_api"]');
+            
+            window.onYouTubeIframeAPIReady = () => {
+                resolve();
+            };
+
+            if (!existingScript) {
                 const tag = document.createElement('script');
                 tag.src = "https://www.youtube.com/iframe_api";
                 document.head.appendChild(tag);
             }
         });
+
+        return PlayerManager._youtubeApiPromise;
     }
 };
 
@@ -743,6 +762,7 @@ const restoreWatchProgress = () => {
 };
 
 const setVideoSource = async (serverIndex) => {
+    console.log("[A] ENTER setVideoSource");
     if (!movieVideo || !currentMovie) {
         return;
     }
@@ -751,6 +771,7 @@ const setVideoSource = async (serverIndex) => {
     const server = servers[serverIndex];
 
     if (!server || !server.url) {
+        console.error("[!] setVideoSource failed: server or URL is invalid.");
         notifyToast({ type: 'error', title: 'Servidor no válido', message: 'El servidor seleccionado no tiene una URL válida.' });
         hidePlayerLoader();
         return;
@@ -759,24 +780,32 @@ const setVideoSource = async (serverIndex) => {
     showPlayerLoader();
 
     try {
+        console.log("[B] ANTES await PlayerManager.create");
         const adapter = await PlayerManager.create(server);
+        console.log("[C] DESPUÉS await PlayerManager.create, adapter received:", adapter);
         activePlayerAdapter = adapter; // Store the active adapter
 
         if (!adapter) {
             // This case is for uncontrollable iframes that don't have a full adapter
+            console.warn("[!] Adapter creation returned null/undefined. This might be an uncontrollable iframe.");
             hidePlayerLoader();
             overlayPlayButton.style.display = 'none';
+            console.log("[C.1] EXIT setVideoSource (no adapter)");
             return;
         }
 
+        console.log("[D] ANTES wireAdapterToUI");
         overlayPlayButton.style.display = '';
         wireAdapterToUI(adapter);
+        console.log("[E] DESPUÉS wireAdapterToUI");
 
     } catch (error) {
-        console.error("Error creating player adapter:", error);
+        console.error("[!] Error in setVideoSource:", error);
+        console.error(error.stack);
         notifyToast({ type: 'error', title: 'Error del reproductor', message: 'No se pudo inicializar el reproductor.' });
         hidePlayerLoader();
     }
+    console.log("[J] EXIT setVideoSource");
 };
 
 const showExternalPlayer = () => {
@@ -976,7 +1005,7 @@ const handleFavoriteToggle = () => {
 };
 
 const wireAdapterToUI = (adapter) => {
-    console.log('[6.1] wireAdapterToUI started');
+    console.log("[D.1] ENTER wireAdapterToUI");
     const isControllable = adapter instanceof Html5PlayerAdapter || adapter instanceof YouTubePlayerAdapter;
 
     // Show/hide controls based on adapter type
@@ -988,11 +1017,12 @@ const wireAdapterToUI = (adapter) => {
     });
 
     if (!isControllable) {
-        console.log('[6.2] Uncontrollable player (iframe), skipping event wiring.');
+        console.log("[D.2] Uncontrollable player (iframe), skipping event wiring.");
         return; // No need to wire events for uncontrollable players like iframes
     }
 
     adapter.on('loadedmetadata', () => {
+        console.log("[I] EVENT: loadedmetadata");
         updateProgressChrome();
         restoreWatchProgress();
         hidePlayerLoader();
@@ -1035,7 +1065,7 @@ const wireAdapterToUI = (adapter) => {
         console.error('Error de reproducción:', event);
         notifyToast({ type: 'error', title: 'Error de reproducción', message: 'No se pudo cargar el video. Prueba otro servidor.' });
     });
-    console.log('[6.3] wireAdapterToUI finished');
+    console.log("[D.3] EXIT wireAdapterToUI");
 };
 
 const wirePlayer = () => {
@@ -1223,7 +1253,7 @@ const bootstrap = async () => {
         console.log('[4] Renderizando descripción y UI del reproductor');
 
         if (movie.servers && movie.servers.length > 0) {
-            console.log('[4.1] Movie has servers, calling setVideoSource');
+            console.log('[4.1] Movie has servers, ANTES await setVideoSource');
             await setVideoSource(0);
         } else {
             console.warn('[Buga] Movie has no servers');
@@ -1242,9 +1272,7 @@ const bootstrap = async () => {
         console.log('[8] Loader ocultado. Proceso finalizado.');
     } catch (error) {
         console.error('Error fatal en bootstrap de película:', error);
-        if (error.stack) {
-            console.trace(error);
-        }
+        console.trace(error);
         handleLoadError(error.message);
     } finally {
         // Aseguramos que el loader se oculte incluso si hay un error no capturado.
