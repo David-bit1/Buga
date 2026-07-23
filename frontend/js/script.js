@@ -1358,6 +1358,7 @@ const wireSearch = () => {
         }
 
         const movieId = Number(resultButton.dataset.searchMovieId);
+        console.log('[Buga Catalog] Click search result - movieId=', movieId);
         if (!Number.isNaN(movieId)) {
             const mediaType = resultButton.dataset.mediaType || 'movie';
             hideSearchResults();
