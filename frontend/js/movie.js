@@ -481,23 +481,29 @@ class YouTubePlayerAdapter extends PlayerAdapter {
 
         return new Promise((resolve, reject) => {
             try {
-                const playerContainer = document.getElementById(playerElementId);
+                let playerContainer = document.getElementById(playerElementId);
                 if (!playerContainer) {
                     throw new Error(`Player container #${playerElementId} not found in DOM.`);
                 }
                 console.log(`[F.1] Container #${playerElementId} found:`, playerContainer);
 
+                // --- CAUSA RAÍZ CORREGIDA ---
+                // La API de YouTube necesita un DIV, no un IFRAME. Si es un iframe, lo reemplazamos.
+                if (playerContainer.tagName === 'IFRAME') {
+                    console.warn(`[!] Container #${playerElementId} is an IFRAME. Replacing with a DIV for YouTube API.`);
+                    const newDiv = document.createElement('div');
+                    newDiv.id = playerElementId;
+                    playerContainer.parentNode.replaceChild(newDiv, playerContainer);
+                    playerContainer = newDiv;
+                    console.log(`[F.1.1] Container replaced with:`, playerContainer);
+                }
+
                 console.log("[F.2] ANTES new YT.Player");
                 new YT.Player(playerElementId, {
                     videoId: videoId,
                     playerVars: {
-                        autoplay: 1,
-                        controls: 0,
-                        rel: 0,
-                        showinfo: 0,
-                        modestbranding: 1,
-                        iv_load_policy: 3,
-                        playsinline: 1,
+                        autoplay: 1, controls: 0, rel: 0, showinfo: 0,
+                        modestbranding: 1, iv_load_policy: 3, playsinline: 1,
                     },
                     events: {
                         onReady: (event) => {
@@ -510,20 +516,23 @@ class YouTubePlayerAdapter extends PlayerAdapter {
                             console.log("[H.1] EXIT YouTube onReady callback");
                             resolve(adapter);
                         },
+                        onStateChange: (event) => {
+                            console.log("[YT Event] State changed:", event.data);
+                        },
                         onError: (event) => {
                             console.error("[!] YouTube Player Error:", event.data);
                             reject(new Error(`YouTube player error code: ${event.data}`));
                         }
                     }
                 });
-                console.log("[G] DESPUÉS new YT.Player (creation call sent)");
+                console.log("[G] DESPUÉS new YT.Player (constructor finished)");
             } catch (error) {
                 console.error("[!] Failed to instantiate YT.Player:", error);
                 console.error(error.stack);
                 reject(error);
             }
         }).finally(() => {
-            console.log("[F.3] EXIT YouTubePlayerAdapter.create (Promise settled)");
+            console.log("[F.3] EXIT YouTubePlayerAdapter.create (Promise has settled)");
         });
     }
 
