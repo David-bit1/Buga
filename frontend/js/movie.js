@@ -477,35 +477,44 @@ class YouTubePlayerAdapter extends PlayerAdapter {
     }
 
     static async create(playerElementId, videoId) {
-        // The PlayerManager now ensures the API is loaded, so this check is redundant.
-        // await PlayerManager.loadYoutubeApi();
+        console.log("ENTER YouTubePlayerAdapter.create");
 
-        return new Promise((resolve) => {
-            new YT.Player(playerElementId, {
-                videoId: videoId,
-                playerVars: {
-                    autoplay: 1,
-                    controls: 0,
-                    rel: 0,
-                    showinfo: 0,
-                    modestbranding: 1,
-                    iv_load_policy: 3,
-                    playsinline: 1,
-                },
-                events: {
-                    onReady: (event) => { // The 'player' instance is event.target
-                        console.log('[5.1.YT.3] YouTube onReady event fired');
-                        const adapter = new YouTubePlayerAdapter(event.target, playerElementId);
-                        // Emit synthetic HTML5-like ready events for consistent UI updates
-                        adapter.trigger('loadedmetadata');
-                        adapter.trigger('durationchange');
-                        adapter.trigger('canplay');
-                        adapter.trigger('playing');
-                        console.log('[5.1.YT.4] YouTube adapter instance created, resolving promise');
-                        resolve(adapter);
+        return new Promise((resolve, reject) => {
+            try {
+                new YT.Player(playerElementId, {
+                    videoId: videoId,
+                    playerVars: {
+                        autoplay: 1,
+                        controls: 0,
+                        rel: 0,
+                        showinfo: 0,
+                        modestbranding: 1,
+                        iv_load_policy: 3,
+                        playsinline: 1,
+                    },
+                    events: {
+                        onReady: (event) => {
+                            console.log("ENTER YouTube onReady callback");
+                            const adapter = new YouTubePlayerAdapter(event.target, playerElementId);
+                            adapter.trigger('loadedmetadata');
+                            adapter.trigger('durationchange');
+                            adapter.trigger('canplay');
+                            adapter.trigger('playing');
+                            console.log("EXIT YouTube onReady callback");
+                            resolve(adapter);
+                        },
+                        onError: (event) => {
+                            console.error("YouTube Player Error:", event.data);
+                            reject(new Error(`YouTube player error code: ${event.data}`));
+                        }
                     }
-                }
-            });
+                });
+            } catch (error) {
+                console.error("Failed to instantiate YT.Player:", error);
+                reject(error);
+            }
+        }).finally(() => {
+            console.log("EXIT YouTubePlayerAdapter.create");
         });
     }
 
@@ -655,10 +664,17 @@ const PlayerManager = {
         if (youtubeId) {
             console.log('[5.1.YT.1] YouTube ID found:', youtubeId);
             movieVideo.style.display = 'none';
-            externalPlayer.style.display = 'block';
+            if (externalPlayer) externalPlayer.style.display = 'block';
+            
+            console.log("ANTES await PlayerManager.loadYoutubeApi");
             await PlayerManager.loadYoutubeApi();
+            console.log("DESPUÉS await PlayerManager.loadYoutubeApi");
+
             console.log('[5.1.YT.2] YouTube API ready, creating adapter');
-            return await YouTubePlayerAdapter.create('externalPlayer', youtubeId);
+            console.log("ANTES await YouTubePlayerAdapter.create");
+            const adapter = await YouTubePlayerAdapter.create('externalPlayer', youtubeId);
+            console.log("DESPUÉS await YouTubePlayerAdapter.create");
+            return adapter;
         }
 
         if (server.type === 'iframe' || server.type === 'embed') {
@@ -760,7 +776,9 @@ const setVideoSource = async (serverIndex) => {
 
     try {
         console.log('[5.1] Calling PlayerManager.create');
+        console.log("ANTES await PlayerManager.create");
         const adapter = await PlayerManager.create(server);
+        console.log("DESPUÉS await PlayerManager.create");
         console.log('[5.2] PlayerManager.create finished, adapter received');
         activePlayerAdapter = adapter; // Store the active adapter
 
@@ -777,10 +795,8 @@ const setVideoSource = async (serverIndex) => {
         console.log('[5.4] Adapter wired to UI');
 
     } catch (error) {
-        console.error("Error creating player adapter:", error);
-        if (error.stack) {
-            console.trace(error);
-        }
+        console.error("Error in setVideoSource:", error);
+        console.trace(error);
         notifyToast({ type: 'error', title: 'Error del reproductor', message: 'No se pudo inicializar el reproductor.' });
         hidePlayerLoader();
     }
