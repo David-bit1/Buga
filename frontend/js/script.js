@@ -1639,6 +1639,7 @@ const wireTrendingMovieActions = () => {
 
         const button = event.target.closest('.ver-btn');
         const movieId = Number(button?.dataset.movieId ?? card.dataset.movieId);
+        console.log('[Buga Catalog] Click trending card - card.dataset.movieId=', card.dataset.movieId, 'button.dataset.movieId=', button?.dataset.movieId, 'movieId=', movieId);
 
         if (!Number.isNaN(movieId)) {
             navigateToMovie(movieId);
@@ -1710,6 +1711,7 @@ const wireSeriesActions = () => {
 
         const button = event.target.closest('.ver-btn');
         const movieId = Number(button?.dataset.movieId ?? card.dataset.movieId);
+        console.log('[Buga Catalog] Click series card - card.dataset.movieId=', card.dataset.movieId, 'button.dataset.movieId=', button?.dataset.movieId, 'movieId=', movieId);
 
         if (!Number.isNaN(movieId)) {
             navigateToMedia(movieId, 'tv');
@@ -1759,6 +1761,7 @@ const wireContinueWatchingActions = () => {
 
         const button = event.target.closest('.ver-btn');
         const movieId = Number(button?.dataset.movieId ?? card.dataset.movieId);
+        console.log('[Buga Catalog] Click continue card - card.dataset.movieId=', card.dataset.movieId, 'button.dataset.movieId=', button?.dataset.movieId, 'movieId=', movieId);
 
         if (!Number.isNaN(movieId)) {
             navigateToMovie(movieId);
