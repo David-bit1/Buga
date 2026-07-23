@@ -900,11 +900,11 @@ const toggleMute = () => {
     if (!activePlayerAdapter) return;
 
     if (activePlayerAdapter.isMuted()) {
-        activePlayerAdapter.unmute(); // Correct: unmute if muted
+        activePlayerAdapter.unmute();
     } else {
-        activePlayerAdapter.mute(); // Correct: mute if not muted
+        activePlayerAdapter.mute();
     }
-    // If unmuting and volume is 0, set a default volume
+
     if (!activePlayerAdapter.isMuted() && Number(volumeInput?.value) === 0) {
         activePlayerAdapter.setVolume(0.5);
         if (volumeInput) {
