@@ -681,8 +681,8 @@ const PlayerManager = {
 
         if (youtubeId) {
             console.log("[B.1.YT] YouTube ID found:", youtubeId);
-            movieVideo.style.display = 'none';
-            externalPlayer.style.display = 'block';
+            if (movieVideo) movieVideo.style.display = 'none';
+            if (externalPlayer) externalPlayer.style.display = 'block';
             console.log("[B.2.YT] ANTES await PlayerManager.loadYoutubeApi");
             await PlayerManager.loadYoutubeApi();
             console.log("[B.3.YT] DESPUÉS await PlayerManager.loadYoutubeApi");
@@ -694,14 +694,14 @@ const PlayerManager = {
         }
 
         if (server.type === 'iframe' || server.type === 'embed') {
-            movieVideo.style.display = 'none';
-            externalPlayer.style.display = 'block';
+            if (movieVideo) movieVideo.style.display = 'none';
+            if (externalPlayer) externalPlayer.style.display = 'block';
             return new IframePlayerAdapter(externalPlayer, server.url);
         }
 
         console.log("[B.1.HTML5] HTML5 player type detected");
-        movieVideo.style.display = 'block';
-        externalPlayer.style.display = 'none';
+        if (movieVideo) movieVideo.style.display = 'block';
+        if (externalPlayer) externalPlayer.style.display = 'none';
         const adapter = new Html5PlayerAdapter(movieVideo);
 
         if (server.type === 'm3u8') {

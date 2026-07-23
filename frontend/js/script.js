@@ -286,8 +286,10 @@ const createMovieCardMedia = (movie, tagLabel = '') => `
 `;
 
 const buildMediaHref = (movieId, mediaType = 'movie') => {
-    const params = new URLSearchParams({ id: String(movieId) });
-    if (mediaType && mediaType !== 'movie') params.set('type', mediaType);
+    const params = new URLSearchParams({ id: movieId });
+    if (mediaType && mediaType !== 'movie') {
+        params.set('type', mediaType);
+    }
     return `/pages/movie.html?${params.toString()}`;
 };
 
@@ -1550,8 +1552,8 @@ const wireMovieActions = () => {
         }
 
         const button = event.target.closest('.ver-btn');
-        const movieId = button?.dataset.movieId ?? card.dataset.movieId;
-        if (movieId) { // Now a string (UUID)
+        const movieId = Number(button?.dataset.movieId ?? card.dataset.movieId);
+        if (!Number.isNaN(movieId)) {
             navigateToMovie(movieId);
         }
     });
@@ -1571,8 +1573,8 @@ const wireMovieActions = () => {
         }
 
         event.preventDefault();
-        const movieId = card.dataset.movieId;
-        if (movieId) {
+        const movieId = Number(card.dataset.movieId);
+        if (!Number.isNaN(movieId)) {
             navigateToMovie(movieId);
         }
     });
@@ -1620,8 +1622,8 @@ const wireTrendingMovieActions = () => {
         }
 
         const button = event.target.closest('.ver-btn');
-        const movieId = button?.dataset.movieId ?? card.dataset.movieId;
-        if (movieId) { // Now a string (UUID)
+        const movieId = Number(button?.dataset.movieId ?? card.dataset.movieId);
+        if (!Number.isNaN(movieId)) {
             navigateToMovie(movieId);
         }
     });
@@ -1641,8 +1643,8 @@ const wireTrendingMovieActions = () => {
         }
 
         event.preventDefault();
-        const movieId = card.dataset.movieId;
-        if (movieId) {
+        const movieId = Number(card.dataset.movieId);
+        if (!Number.isNaN(movieId)) {
             navigateToMovie(movieId);
         }
     });
@@ -1690,8 +1692,8 @@ const wireSeriesActions = () => {
         }
 
         const button = event.target.closest('.ver-btn');
-        const movieId = button?.dataset.movieId ?? card.dataset.movieId;
-        if (movieId) { // Now a string (UUID)
+        const movieId = Number(button?.dataset.movieId ?? card.dataset.movieId);
+        if (!Number.isNaN(movieId)) {
             navigateToMedia(movieId, 'tv');
         }
     });
@@ -1711,8 +1713,8 @@ const wireSeriesActions = () => {
         }
 
         event.preventDefault();
-        const movieId = card.dataset.movieId;
-        if (movieId) {
+        const movieId = Number(card.dataset.movieId);
+        if (!Number.isNaN(movieId)) {
             navigateToMedia(movieId, 'tv');
         }
     });
@@ -1739,8 +1741,8 @@ const wireContinueWatchingActions = () => {
         }
 
         const button = event.target.closest('.ver-btn');
-        const movieId = button?.dataset.movieId ?? card.dataset.movieId;
-        if (movieId) { // Now a string (UUID)
+        const movieId = Number(button?.dataset.movieId ?? card.dataset.movieId);
+        if (!Number.isNaN(movieId)) {
             navigateToMovie(movieId);
         }
     });
@@ -1756,8 +1758,8 @@ const wireContinueWatchingActions = () => {
         }
 
         event.preventDefault();
-        const movieId = card.dataset.movieId;
-        if (movieId) {
+        const movieId = Number(card.dataset.movieId);
+        if (!Number.isNaN(movieId)) {
             navigateToMovie(movieId);
         }
     });

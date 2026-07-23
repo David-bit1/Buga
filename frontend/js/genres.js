@@ -364,8 +364,8 @@ const wireFilters = () => {
             return;
         }
 
-        const movieId = card.dataset.movieId;
-        if (movieId) {
+        const movieId = Number(card.dataset.movieId);
+        if (!Number.isNaN(movieId)) {
             navigateToMovie(movieId);
         }
     });
@@ -381,8 +381,8 @@ const wireFilters = () => {
         }
 
         event.preventDefault();
-        const movieId = card.dataset.movieId;
-        if (movieId) {
+        const movieId = Number(card.dataset.movieId);
+        if (!Number.isNaN(movieId)) {
             navigateToMovie(movieId);
         }
     });

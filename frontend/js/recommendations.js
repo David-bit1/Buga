@@ -302,8 +302,8 @@ const wireEvents = () => {
         }
 
         const card = event.target.closest('.movie-card');
-        const movieId = Number(card?.dataset.movieId);
-        if (!Number.isNaN(movieId)) {
+        const movieId = card?.dataset.movieId;
+        if (movieId) {
             navigateToMovie(movieId);
         }
     });
@@ -319,8 +319,8 @@ const wireEvents = () => {
         }
 
         event.preventDefault();
-        const movieId = Number(card.dataset.movieId);
-        if (!Number.isNaN(movieId)) {
+        const movieId = card.dataset.movieId;
+        if (movieId) {
             navigateToMovie(movieId);
         }
     });
