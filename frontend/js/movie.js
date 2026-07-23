@@ -1139,6 +1139,7 @@ const bootstrap = async () => {
     });
 
     if (!Number.isFinite(movieId)) {
+        console.error('[Buga] Invalid movieId from URL:', movieId);
         movieTitle.textContent = mediaType === 'tv' ? 'Serie no encontrada' : 'Película no encontrada';
         movieDescription.textContent = 'El ID proporcionado no es válido.';
         updateMeta(['N/A', 'N/A', mediaType === 'tv' ? 'Serie' : 'Cine']);
@@ -1147,8 +1148,16 @@ const bootstrap = async () => {
         return;
     }
 
+    let loaderHidden = false;
+    const safeHideMovieLoader = () => {
+        if (!loaderHidden) {
+            loaderHidden = true;
+            hideMoviePageLoader();
+        }
+    };
+
     try {
-        console.log(`[Buga] ID recibido desde URL: ${movieId}`);
+        console.log(`[Buga] ID recibido desde URL: ${movieId} (type: ${mediaType})`);
         const localMovie = await fetchLocalMovie(movieId);
         let movie;
 
@@ -1187,11 +1196,12 @@ const bootstrap = async () => {
         updatePlayerChrome();
 
         if (movie.servers && movie.servers.length > 0) {
-            await setVideoSource(0); // Cargar el primer servidor por defecto
+            await setVideoSource(0);
         } else {
+            console.warn('[Buga] Movie has no servers');
             hidePlayerLoader();
         }
-        hideMoviePageLoader();
+        safeHideMovieLoader();
 
         if (params.get('autoplay') === '1') {
             try {
@@ -1203,6 +1213,8 @@ const bootstrap = async () => {
     } catch (error) {
         console.error('Error fatal en bootstrap de película:', error);
         handleLoadError(error.message);
+    } finally {
+        safeHideMovieLoader();
     }
 };
 
