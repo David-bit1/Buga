@@ -286,16 +286,11 @@ const createMovieCardMedia = (movie, tagLabel = '') => `
 `;
 
 const buildMediaHref = (movieId, mediaType = 'movie') => {
-    const movie = featuredMoviesCache.find(m => m.id === movieId || m.tmdb_id === movieId);
-    const idToUse = movie?.tmdb_id || movieId;
-    const params = new URLSearchParams({ id: String(idToUse) });
+    const params = new URLSearchParams({ id: movieId });
     if (mediaType && mediaType !== 'movie') {
         params.set('type', mediaType);
     }
-
-    const href = `/pages/movie.html?${params.toString()}`;
-    console.log('[Buga Catalog] buildMediaHref movieId=', movieId, 'idToUse=', idToUse, 'href=', href);
-    return href;
+    return `/pages/movie.html?${params.toString()}`;
 };
 
 const createCardOverlayLink = (movieId, mediaType = 'movie', title = '') => `
@@ -1358,14 +1353,12 @@ const wireSearch = () => {
         }
 
         const movieId = Number(resultButton.dataset.searchMovieId);
-        console.log('[Buga Catalog] Click search result - movieId=', movieId);
         if (!Number.isNaN(movieId)) {
             const mediaType = resultButton.dataset.mediaType || 'movie';
             hideSearchResults();
             navigateToMedia(movieId, mediaType);
         }
     });
-
     document.addEventListener('click', (event) => {
         if (!searchResults || !searchInput) {
             return;
@@ -1509,15 +1502,13 @@ const wireMenu = () => {
 };
 
 const navigateToMedia = (mediaId, mediaType = 'movie') => {
-    const params = new URLSearchParams({ id: String(mediaId) });
+    const params = new URLSearchParams({ id: mediaId });
     if (mediaType && mediaType !== 'movie') {
         params.set('type', mediaType);
     }
-
     const targetUrl = `/pages/movie.html?${params.toString()}`;
-    console.log('[Buga Catalog] navigateToMedia mediaId=', mediaId, 'targetUrl=', targetUrl);
     document.body.classList.add('page-leaving');
-    window.location.assign(targetUrl);
+    window.setTimeout(() => window.location.assign(targetUrl), 180);
 };
 
 const navigateToMovie = (movieId) => {
@@ -1568,9 +1559,7 @@ const wireMovieActions = () => {
 
         const button = event.target.closest('.ver-btn');
         const movieId = Number(button?.dataset.movieId ?? card.dataset.movieId);
-        console.log('[Buga Catalog] Click movie card - card.dataset.movieId=', card.dataset.movieId, 'button.dataset.movieId=', button?.dataset.movieId, 'movieId=', movieId);
-
-        if (!Number.isNaN(movieId)) {
+        if (movieId) {
             navigateToMovie(movieId);
         }
     });
@@ -1640,9 +1629,7 @@ const wireTrendingMovieActions = () => {
 
         const button = event.target.closest('.ver-btn');
         const movieId = Number(button?.dataset.movieId ?? card.dataset.movieId);
-        console.log('[Buga Catalog] Click trending card - card.dataset.movieId=', card.dataset.movieId, 'button.dataset.movieId=', button?.dataset.movieId, 'movieId=', movieId);
-
-        if (!Number.isNaN(movieId)) {
+        if (movieId) {
             navigateToMovie(movieId);
         }
     });
@@ -1712,9 +1699,7 @@ const wireSeriesActions = () => {
 
         const button = event.target.closest('.ver-btn');
         const movieId = Number(button?.dataset.movieId ?? card.dataset.movieId);
-        console.log('[Buga Catalog] Click series card - card.dataset.movieId=', card.dataset.movieId, 'button.dataset.movieId=', button?.dataset.movieId, 'movieId=', movieId);
-
-        if (!Number.isNaN(movieId)) {
+        if (movieId) {
             navigateToMedia(movieId, 'tv');
         }
     });
@@ -1762,9 +1747,7 @@ const wireContinueWatchingActions = () => {
 
         const button = event.target.closest('.ver-btn');
         const movieId = Number(button?.dataset.movieId ?? card.dataset.movieId);
-        console.log('[Buga Catalog] Click continue card - card.dataset.movieId=', card.dataset.movieId, 'button.dataset.movieId=', button?.dataset.movieId, 'movieId=', movieId);
-
-        if (!Number.isNaN(movieId)) {
+        if (movieId) {
             navigateToMovie(movieId);
         }
     });

@@ -27,7 +27,7 @@ console.log('recommendationRoutes:', recommendationRoutes);
 // API Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/profiles', protect, profileRoutes);
-app.use('/api/movies', movieRoutes); // Includes public and protected routes inside
+app.use('/api/movies', movieRoutes);
 app.use('/api/admin', protect, admin, adminRoutes);
 app.use('/api/recommendations', protect, recommendationRoutes);
 

@@ -94,22 +94,14 @@ const buildTokenizedUrl = (url, token) => {
 };
 
 const params = new URLSearchParams(window.location.search);
-const movieId = Number(params.get('id'));
+const movieId = params.get('id');
 const mediaType = params.get('type') === 'tv' ? 'tv' : 'movie';
 
-// DEBUG: Trace URL parameter flow
-console.log('[Buga] location.href =', location.href);
-console.log('[Buga] location.search =', location.search);
-console.log('[Buga] URLSearchParams =', new URLSearchParams(location.search).toString());
-console.log('[Buga] params.get("id") =', params.get('id'));
-console.log('[Buga] movieId =', movieId);
-console.log('[Buga] mediaType =', mediaType);
 const mediaLabel = mediaType === 'tv' ? 'Serie' : 'Película';
 let currentMovie = null;
 let lastWatchSaveAt = 0;
 let activePlayerAdapter = null;
 
-// --- Player Architecture ---
 let youtubeApiReady = false;
 
 const formatRuntime = (minutes) => {
@@ -615,6 +607,10 @@ class IframePlayerAdapter extends PlayerAdapter {
         this.iframeElement.src = url;
         this.iframeElement.setAttribute('allow', 'autoplay; encrypted-media; picture-in-picture; web-share');
         this.iframeElement.allowFullscreen = true;
+        // Immediately trigger loadedmetadata and canplay for iframes as they are black boxes
+        setTimeout(() => {
+            this.on('loadedmetadata', () => {});
+        }, 0);
     }
 
     play() {}
@@ -634,8 +630,9 @@ class IframePlayerAdapter extends PlayerAdapter {
     }
 
     on(eventName, callback) {
+        // For iframes, we can only simulate readiness.
         if (['loadedmetadata', 'canplay'].includes(eventName)) {
-            setTimeout(callback, 0);
+            callback();
         }
     }
 
@@ -645,6 +642,7 @@ class IframePlayerAdapter extends PlayerAdapter {
         this.iframeElement.removeAttribute('src');
         this.iframeElement.style.display = 'none';
     }
+
 }
 
 /**
@@ -978,6 +976,20 @@ const handleFavoriteToggle = () => {
 };
 
 const wireAdapterToUI = (adapter) => {
+    const isControllable = adapter instanceof Html5PlayerAdapter || adapter instanceof YouTubePlayerAdapter;
+
+    // Show/hide controls based on adapter type
+    [playPauseButton, muteButton, progressInput, volumeInput, currentTimeLabel, durationTimeLabel, qualitySelect].forEach(el => {
+        if (el) {
+            const controlWrapper = el.closest('.player-control-group') || el;
+            controlWrapper.hidden = !isControllable;
+        }
+    });
+
+    if (!isControllable) {
+        return; // No need to wire events for uncontrollable players like iframes
+    }
+
     adapter.on('loadedmetadata', () => {
         updateProgressChrome();
         restoreWatchProgress();
@@ -1146,7 +1158,7 @@ const bootstrap = async () => {
         }
     });
 
-    if (!Number.isFinite(movieId)) {
+    if (!movieId) {
         console.error('[Buga] Invalid movieId from URL:', movieId);
         movieTitle.textContent = mediaType === 'tv' ? 'Serie no encontrada' : 'Película no encontrada';
         movieDescription.textContent = 'El ID proporcionado no es válido.';
@@ -1165,7 +1177,7 @@ const bootstrap = async () => {
     };
 
     try {
-        console.log(`[Buga] ID recibido desde URL: ${movieId} (type: ${mediaType})`);
+        console.log(`[Buga] Loading content for ID: ${movieId} (type: ${mediaType})`);
         const localMovie = await fetchLocalMovie(movieId);
         let movie;
 
@@ -1185,8 +1197,8 @@ const bootstrap = async () => {
             movie = normalizeMovie(tmdbMovie);
         }
 
-        console.log('[Buga] Objeto de película final:', movie);
-        console.log('[Buga] Servidores encontrados:', movie.servers);
+        console.log('[Buga] Final movie object:', movie);
+        console.log('[Buga] Available servers:', movie.servers);
 
         applyMovie(movie);
         syncPreferenceEvent({

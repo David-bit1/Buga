@@ -59,7 +59,7 @@
         : movie.title || movie.original_title || 'Película sin título';
 
       const genres = Array.isArray(movie.genres)
-        ? movie.genres.map((genre) => (typeof genre === 'string' ? { name: genre } : (genre && genre.name ? genre : { name: '' }))).filter(g => g.name)
+        ? movie.genres.map((genre) => (typeof genre === 'string' ? { name: genre } : (genre && genre.name ? { id: genre.id, name: genre.name } : { name: '' }))).filter(g => g.name)
         : [];
 
     return {
@@ -67,7 +67,7 @@
         tmdb_id: movie.tmdb_id || null,
         mediaType,
         title,
-        original_title: movie.original_title || movie.original_name || '',
+        original_title: movie.original_title || movie.original_name || title,
         overview: movie.overview || movie.description || '',
         description: movie.description || movie.overview || '',
         tagline: movie.tagline || '',
