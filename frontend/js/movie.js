@@ -96,6 +96,14 @@ const buildTokenizedUrl = (url, token) => {
 const params = new URLSearchParams(window.location.search);
 const movieId = Number(params.get('id'));
 const mediaType = params.get('type') === 'tv' ? 'tv' : 'movie';
+
+// DEBUG: Trace URL parameter flow
+console.log('[Buga] location.href =', location.href);
+console.log('[Buga] location.search =', location.search);
+console.log('[Buga] URLSearchParams =', new URLSearchParams(location.search).toString());
+console.log('[Buga] params.get("id") =', params.get('id'));
+console.log('[Buga] movieId =', movieId);
+console.log('[Buga] mediaType =', mediaType);
 const mediaLabel = mediaType === 'tv' ? 'Serie' : 'Película';
 let currentMovie = null;
 let lastWatchSaveAt = 0;

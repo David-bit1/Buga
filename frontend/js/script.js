@@ -293,7 +293,9 @@ const buildMediaHref = (movieId, mediaType = 'movie') => {
         params.set('type', mediaType);
     }
 
-    return `/pages/movie.html?${params.toString()}`;
+    const href = `/pages/movie.html?${params.toString()}`;
+    console.log('[Buga Catalog] buildMediaHref movieId=', movieId, 'idToUse=', idToUse, 'href=', href);
+    return href;
 };
 
 const createCardOverlayLink = (movieId, mediaType = 'movie', title = '') => `
@@ -1512,6 +1514,7 @@ const navigateToMedia = (mediaId, mediaType = 'movie') => {
     }
 
     const targetUrl = `/pages/movie.html?${params.toString()}`;
+    console.log('[Buga Catalog] navigateToMedia mediaId=', mediaId, 'targetUrl=', targetUrl);
     document.body.classList.add('page-leaving');
     window.location.assign(targetUrl);
 };
