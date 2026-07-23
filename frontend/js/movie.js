@@ -1080,12 +1080,23 @@ const wirePlayer = () => {
 
 const fetchLocalMovie = async (id) => {
     try {
-        const response = await fetch(`/api/movies/tmdb/${encodeURIComponent(id)}`);
-        const data = await response.json().catch(() => ({}));
-        if (!response.ok || !data.movie) {
-            return null;
+        // First try local DB ID endpoint (/api/movies/:movieId)
+        let response = await fetch(`/api/movies/${encodeURIComponent(id)}`);
+        let data = await response.json().catch(() => ({}));
+        if (response.ok && data.movie) {
+            console.log('[Buga] Movie found via local ID endpoint');
+            return data.movie;
         }
-        return data.movie;
+
+        // Fallback: try TMDB ID endpoint (/api/movies/tmdb/:tmdbId)
+        response = await fetch(`/api/movies/tmdb/${encodeURIComponent(id)}`);
+        data = await response.json().catch(() => ({}));
+        if (response.ok && data.movie) {
+            console.log('[Buga] Movie found via TMDB ID endpoint');
+            return data.movie;
+        }
+
+        return null;
     } catch (error) {
         console.warn('Local movie fetch failed', error);
         return null;
