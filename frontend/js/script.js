@@ -1519,7 +1519,10 @@ const navigateToMedia = (mediaId, mediaType = 'movie') => {
     window.location.assign(targetUrl);
 };
 
-const navigateToMovie = (movieId) => navigateToMedia(movieId, 'movie');
+const navigateToMovie = (movieId) => {
+    console.log('[Buga Catalog] navigateToMovie called with movieId=', movieId);
+    navigateToMedia(movieId, 'movie');
+};
 
 const wireMovieActions = () => {
     if (!moviesGrid) {
@@ -1564,6 +1567,7 @@ const wireMovieActions = () => {
 
         const button = event.target.closest('.ver-btn');
         const movieId = Number(button?.dataset.movieId ?? card.dataset.movieId);
+        console.log('[Buga Catalog] Click movie card - card.dataset.movieId=', card.dataset.movieId, 'button.dataset.movieId=', button?.dataset.movieId, 'movieId=', movieId);
 
         if (!Number.isNaN(movieId)) {
             navigateToMovie(movieId);
