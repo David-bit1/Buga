@@ -477,44 +477,43 @@ class YouTubePlayerAdapter extends PlayerAdapter {
     }
 
     static async create(playerElementId, videoId) {
-        console.log("ENTER YouTubePlayerAdapter.create");
-
-        return new Promise((resolve, reject) => {
-            try {
-                new YT.Player(playerElementId, {
-                    videoId: videoId,
-                    playerVars: {
-                        autoplay: 1,
-                        controls: 0,
-                        rel: 0,
-                        showinfo: 0,
-                        modestbranding: 1,
-                        iv_load_policy: 3,
-                        playsinline: 1,
-                    },
-                    events: {
-                        onReady: (event) => {
-                            console.log("ENTER YouTube onReady callback");
-                            const adapter = new YouTubePlayerAdapter(event.target, playerElementId);
-                            adapter.trigger('loadedmetadata');
-                            adapter.trigger('durationchange');
-                            adapter.trigger('canplay');
-                            adapter.trigger('playing');
-                            console.log("EXIT YouTube onReady callback");
-                            resolve(adapter);
-                        },
-                        onError: (event) => {
-                            console.error("YouTube Player Error:", event.data);
-                            reject(new Error(`YouTube player error code: ${event.data}`));
-                        }
+        await new Promise((resolve) => {
+            if (window.YT?.Player) {
+                resolve();
+            } else {
+                const check = setInterval(() => {
+                    if (window.YT?.Player) {
+                        clearInterval(check);
+                        resolve();
                     }
-                });
-            } catch (error) {
-                console.error("Failed to instantiate YT.Player:", error);
-                reject(error);
+                }, 50);
             }
-        }).finally(() => {
-            console.log("EXIT YouTubePlayerAdapter.create");
+        });
+
+        return new Promise((resolve) => {
+            const player = new YT.Player(playerElementId, {
+                videoId: videoId,
+                playerVars: {
+                    autoplay: 1,
+                    controls: 0,
+                    rel: 0,
+                    showinfo: 0,
+                    modestbranding: 1,
+                    iv_load_policy: 3,
+                    playsinline: 1,
+                },
+                events: {
+                    onReady: (event) => {
+                        const adapter = new YouTubePlayerAdapter(event.target, playerElementId);
+                        // Emit HTML5-like ready events
+                        adapter.trigger('loadedmetadata');
+                        adapter.trigger('durationchange');
+                        adapter.trigger('canplay');
+                        adapter.trigger('playing');
+                        resolve(adapter);
+                    }
+                }
+            });
         });
     }
 
@@ -651,7 +650,6 @@ class IframePlayerAdapter extends PlayerAdapter {
  * Ensures only one player is active and that resources are cleaned up.
  */
 const PlayerManager = {
-    _youtubeApiPromise: null,
     create: async (server) => {
         if (activePlayerAdapter) {
             activePlayerAdapter.destroy();
@@ -660,25 +658,14 @@ const PlayerManager = {
 
         const youtubeId = PlayerManager.parseYoutubeId(server.url);
 
-        console.log('[5.1] PlayerManager.create, server type check');
         if (youtubeId) {
-            console.log('[5.1.YT.1] YouTube ID found:', youtubeId);
             movieVideo.style.display = 'none';
-            if (externalPlayer) externalPlayer.style.display = 'block';
-            
-            console.log("ANTES await PlayerManager.loadYoutubeApi");
+            externalPlayer.style.display = 'block';
             await PlayerManager.loadYoutubeApi();
-            console.log("DESPUÉS await PlayerManager.loadYoutubeApi");
-
-            console.log('[5.1.YT.2] YouTube API ready, creating adapter');
-            console.log("ANTES await YouTubePlayerAdapter.create");
-            const adapter = await YouTubePlayerAdapter.create('externalPlayer', youtubeId);
-            console.log("DESPUÉS await YouTubePlayerAdapter.create");
-            return adapter;
+            return await YouTubePlayerAdapter.create('externalPlayer', youtubeId);
         }
 
         if (server.type === 'iframe' || server.type === 'embed') {
-            console.log('[5.1.IFRAME] Iframe type found');
             movieVideo.style.display = 'none';
             externalPlayer.style.display = 'block';
             return new IframePlayerAdapter(externalPlayer, server.url);
@@ -688,12 +675,9 @@ const PlayerManager = {
         externalPlayer.style.display = 'none';
         const adapter = new Html5PlayerAdapter(movieVideo);
 
-        console.log('[5.1.HTML5] HTML5 type found');
         if (server.type === 'm3u8') {
-            console.log('[5.1.HTML5.HLS] Loading HLS source');
             adapter.loadSource(server.url, 'hls');
         } else {
-            console.log('[5.1.HTML5.MP4] Loading MP4 source');
             adapter.loadSource(server.url, 'mp4');
         }
 
@@ -707,29 +691,31 @@ const PlayerManager = {
     },
 
     loadYoutubeApi: () => {
-        if (PlayerManager._youtubeApiPromise) {
-            return PlayerManager._youtubeApiPromise;
-        }
-
-        PlayerManager._youtubeApiPromise = new Promise((resolve) => {
-            if (window.YT && window.YT.Player) {
-                return resolve();
+        return new Promise((resolve) => {
+            if (youtubeApiReady && window.YT?.Player) {
+                resolve();
+                return;
+            }
+            if (window.onYouTubeIframeAPIReady) {
+                const originalReady = window.onYouTubeIframeAPIReady;
+                window.onYouTubeIframeAPIReady = () => {
+                    originalReady();
+                    youtubeApiReady = true;
+                    resolve();
+                };
+            } else {
+                window.onYouTubeIframeAPIReady = () => {
+                    youtubeApiReady = true;
+                    resolve();
+                };
             }
 
-            const existingScript = document.querySelector('script[src="https://www.youtube.com/iframe_api"]');
-            
-            window.onYouTubeIframeAPIReady = () => {
-                resolve();
-            };
-
-            if (!existingScript) {
+            if (!document.querySelector('script[src="https://www.youtube.com/iframe_api"]')) {
                 const tag = document.createElement('script');
-                tag.src = 'https://www.youtube.com/iframe_api';
+                tag.src = "https://www.youtube.com/iframe_api";
                 document.head.appendChild(tag);
             }
         });
-
-        return PlayerManager._youtubeApiPromise;
     }
 };
 
@@ -757,7 +743,6 @@ const restoreWatchProgress = () => {
 };
 
 const setVideoSource = async (serverIndex) => {
-    console.log('[5.0] setVideoSource called with index:', serverIndex);
     if (!movieVideo || !currentMovie) {
         return;
     }
@@ -766,7 +751,6 @@ const setVideoSource = async (serverIndex) => {
     const server = servers[serverIndex];
 
     if (!server || !server.url) {
-        console.error('[Buga] setVideoSource failed: server or URL is invalid.');
         notifyToast({ type: 'error', title: 'Servidor no válido', message: 'El servidor seleccionado no tiene una URL válida.' });
         hidePlayerLoader();
         return;
@@ -775,28 +759,21 @@ const setVideoSource = async (serverIndex) => {
     showPlayerLoader();
 
     try {
-        console.log('[5.1] Calling PlayerManager.create');
-        console.log("ANTES await PlayerManager.create");
         const adapter = await PlayerManager.create(server);
-        console.log("DESPUÉS await PlayerManager.create");
-        console.log('[5.2] PlayerManager.create finished, adapter received');
         activePlayerAdapter = adapter; // Store the active adapter
 
         if (!adapter) {
-            console.warn('[Buga] Adapter creation returned null/undefined. This might be an uncontrollable iframe.');
+            // This case is for uncontrollable iframes that don't have a full adapter
             hidePlayerLoader();
             overlayPlayButton.style.display = 'none';
             return;
         }
 
-        console.log('[5.3] Wiring adapter to UI');
         overlayPlayButton.style.display = '';
         wireAdapterToUI(adapter);
-        console.log('[5.4] Adapter wired to UI');
 
     } catch (error) {
-        console.error("Error in setVideoSource:", error);
-        console.trace(error);
+        console.error("Error creating player adapter:", error);
         notifyToast({ type: 'error', title: 'Error del reproductor', message: 'No se pudo inicializar el reproductor.' });
         hidePlayerLoader();
     }
