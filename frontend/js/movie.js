@@ -650,6 +650,7 @@ class IframePlayerAdapter extends PlayerAdapter {
  * Ensures only one player is active and that resources are cleaned up.
  */
 const PlayerManager = {
+    _youtubeApiPromise: null,
     create: async (server) => {
         if (activePlayerAdapter) {
             activePlayerAdapter.destroy();
@@ -658,14 +659,18 @@ const PlayerManager = {
 
         const youtubeId = PlayerManager.parseYoutubeId(server.url);
 
+        console.log('[5.1] PlayerManager.create, server type check');
         if (youtubeId) {
+            console.log('[5.1.YT.1] YouTube ID found:', youtubeId);
             movieVideo.style.display = 'none';
             externalPlayer.style.display = 'block';
             await PlayerManager.loadYoutubeApi();
+            console.log('[5.1.YT.2] YouTube API ready, creating adapter');
             return await YouTubePlayerAdapter.create('externalPlayer', youtubeId);
         }
 
         if (server.type === 'iframe' || server.type === 'embed') {
+            console.log('[5.1.IFRAME] Iframe type found');
             movieVideo.style.display = 'none';
             externalPlayer.style.display = 'block';
             return new IframePlayerAdapter(externalPlayer, server.url);
@@ -675,9 +680,12 @@ const PlayerManager = {
         externalPlayer.style.display = 'none';
         const adapter = new Html5PlayerAdapter(movieVideo);
 
+        console.log('[5.1.HTML5] HTML5 type found');
         if (server.type === 'm3u8') {
+            console.log('[5.1.HTML5.HLS] Loading HLS source');
             adapter.loadSource(server.url, 'hls');
         } else {
+            console.log('[5.1.HTML5.MP4] Loading MP4 source');
             adapter.loadSource(server.url, 'mp4');
         }
 
@@ -691,31 +699,29 @@ const PlayerManager = {
     },
 
     loadYoutubeApi: () => {
-        return new Promise((resolve) => {
-            if (youtubeApiReady && window.YT?.Player) {
-                resolve();
-                return;
-            }
-            if (window.onYouTubeIframeAPIReady) {
-                const originalReady = window.onYouTubeIframeAPIReady;
-                window.onYouTubeIframeAPIReady = () => {
-                    originalReady();
-                    youtubeApiReady = true;
-                    resolve();
-                };
-            } else {
-                window.onYouTubeIframeAPIReady = () => {
-                    youtubeApiReady = true;
-                    resolve();
-                };
+        if (PlayerManager._youtubeApiPromise) {
+            return PlayerManager._youtubeApiPromise;
+        }
+
+        PlayerManager._youtubeApiPromise = new Promise((resolve) => {
+            if (window.YT && window.YT.Player) {
+                return resolve();
             }
 
-            if (!document.querySelector('script[src="https://www.youtube.com/iframe_api"]')) {
+            const existingScript = document.querySelector('script[src="https://www.youtube.com/iframe_api"]');
+            
+            window.onYouTubeIframeAPIReady = () => {
+                resolve();
+            };
+
+            if (!existingScript) {
                 const tag = document.createElement('script');
-                tag.src = "https://www.youtube.com/iframe_api";
+                tag.src = 'https://www.youtube.com/iframe_api';
                 document.head.appendChild(tag);
             }
         });
+
+        return PlayerManager._youtubeApiPromise;
     }
 };
 
@@ -743,6 +749,7 @@ const restoreWatchProgress = () => {
 };
 
 const setVideoSource = async (serverIndex) => {
+    console.log('[5.0] setVideoSource called with index:', serverIndex);
     if (!movieVideo || !currentMovie) {
         return;
     }
@@ -751,6 +758,7 @@ const setVideoSource = async (serverIndex) => {
     const server = servers[serverIndex];
 
     if (!server || !server.url) {
+        console.error('[Buga] setVideoSource failed: server or URL is invalid.');
         notifyToast({ type: 'error', title: 'Servidor no válido', message: 'El servidor seleccionado no tiene una URL válida.' });
         hidePlayerLoader();
         return;
@@ -759,21 +767,28 @@ const setVideoSource = async (serverIndex) => {
     showPlayerLoader();
 
     try {
+        console.log('[5.1] Calling PlayerManager.create');
         const adapter = await PlayerManager.create(server);
+        console.log('[5.2] PlayerManager.create finished, adapter received');
         activePlayerAdapter = adapter; // Store the active adapter
 
         if (!adapter) {
-            // This case is for uncontrollable iframes that don't have a full adapter
+            console.warn('[Buga] Adapter creation returned null/undefined. This might be an uncontrollable iframe.');
             hidePlayerLoader();
             overlayPlayButton.style.display = 'none';
             return;
         }
 
+        console.log('[5.3] Wiring adapter to UI');
         overlayPlayButton.style.display = '';
         wireAdapterToUI(adapter);
+        console.log('[5.4] Adapter wired to UI');
 
     } catch (error) {
         console.error("Error creating player adapter:", error);
+        if (error.stack) {
+            console.trace(error);
+        }
         notifyToast({ type: 'error', title: 'Error del reproductor', message: 'No se pudo inicializar el reproductor.' });
         hidePlayerLoader();
     }
@@ -976,6 +991,7 @@ const handleFavoriteToggle = () => {
 };
 
 const wireAdapterToUI = (adapter) => {
+    console.log('[6.1] wireAdapterToUI started');
     const isControllable = adapter instanceof Html5PlayerAdapter || adapter instanceof YouTubePlayerAdapter;
 
     // Show/hide controls based on adapter type
@@ -987,6 +1003,7 @@ const wireAdapterToUI = (adapter) => {
     });
 
     if (!isControllable) {
+        console.log('[6.2] Uncontrollable player (iframe), skipping event wiring.');
         return; // No need to wire events for uncontrollable players like iframes
     }
 
@@ -1033,7 +1050,7 @@ const wireAdapterToUI = (adapter) => {
         console.error('Error de reproducción:', event);
         notifyToast({ type: 'error', title: 'Error de reproducción', message: 'No se pudo cargar el video. Prueba otro servidor.' });
     });
-    console.log('[6] Reproductor creado');
+    console.log('[6.3] wireAdapterToUI finished');
 };
 
 const wirePlayer = () => {
@@ -1221,6 +1238,7 @@ const bootstrap = async () => {
         console.log('[4] Renderizando descripción y UI del reproductor');
 
         if (movie.servers && movie.servers.length > 0) {
+            console.log('[4.1] Movie has servers, calling setVideoSource');
             await setVideoSource(0);
         } else {
             console.warn('[Buga] Movie has no servers');
@@ -1239,9 +1257,15 @@ const bootstrap = async () => {
         console.log('[8] Loader ocultado. Proceso finalizado.');
     } catch (error) {
         console.error('Error fatal en bootstrap de película:', error);
+        if (error.stack) {
+            console.trace(error);
+        }
         handleLoadError(error.message);
     } finally {
         // Aseguramos que el loader se oculte incluso si hay un error no capturado.
+        if (!loaderHidden) {
+            console.warn('[Buga] Loader was not hidden, hiding in finally block.');
+        }
         safeHideMovieLoader();
     }
 };
