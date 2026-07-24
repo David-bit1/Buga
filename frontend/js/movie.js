@@ -217,7 +217,7 @@ const updatePlayerChrome = () => {
     playerStage.classList.toggle('is-playing', isPlaying);
 
     if (playPauseIcon) {
-        playPauseIcon.textContent = isPlaying ? 'pause' : 'play_arrow';
+        playPauseIcon.textContent = isPlaying ? 'pause' : 'play_arrow'; // Correct icons
     }
 
     if (overlayPlayButton) {
@@ -873,8 +873,13 @@ const populateServerSelect = (movie) => {
 
     serverSelect.innerHTML = servers.map((server, index) => {
         const serverName = server.name || `Servidor ${index + 1}`;
-        // Show type in parentheses for clarity
-        const typeLabel = (server.type || 'iframe').toUpperCase();
+        let typeLabel = (server.type || 'iframe').toUpperCase();
+
+        // Automatically detect YouTube servers
+        if (PlayerManager.parseYoutubeId(server.url)) {
+            typeLabel = 'YOUTUBE';
+        }
+
         return `<option value="${index}">${serverName} (${typeLabel})</option>`;
     }).join('');
     serverSelect.hidden = false;
@@ -900,11 +905,11 @@ const toggleMute = () => {
     if (!activePlayerAdapter) return;
 
     if (activePlayerAdapter.isMuted()) {
-        activePlayerAdapter.unmute();
+        activePlayerAdapter.unmute(); // Correct: unmute if muted
     } else {
-        activePlayerAdapter.mute();
+        activePlayerAdapter.mute(); // Correct: mute if not muted
     }
-
+    // If unmuting and volume is 0, set a default volume
     if (!activePlayerAdapter.isMuted() && Number(volumeInput?.value) === 0) {
         activePlayerAdapter.setVolume(0.5);
         if (volumeInput) {
