@@ -212,12 +212,25 @@ const updatePlayerChrome = () => {
     }
 
     const isPaused = activePlayerAdapter.isPaused();
-    const isPlaying = !isPaused;
 
     playerStage.classList.toggle('is-playing', isPlaying);
 
     if (playPauseIcon) {
-        playPauseIcon.textContent = isPlaying ? 'pause' : 'play_arrow'; // Correct icons
+        playPauseIcon.textContent = isPaused ? 'play_arrow' : 'pause';
+    }
+
+    // --- LOG DE DEPURACIÓN ---
+    // Para verificar la sincronización del estado del reproductor y la UI.
+    if (console.table) {
+        console.table({
+            'Estado': isPaused ? 'Pausado' : 'Reproduciendo',
+            'Icono del Botón': playPauseIcon?.textContent,
+            'isPaused()': isPaused,
+            'Tiempo Actual': formatTime(activePlayerAdapter.getCurrentTime()),
+            'Adapter': activePlayerAdapter.constructor.name
+        });
+    } else {
+        console.log('[PLAYER SYNC]', { isPaused, icon: playPauseIcon?.textContent });
     }
 
     if (overlayPlayButton) {
