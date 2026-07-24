@@ -350,14 +350,14 @@ const saveWatchProgress = (force = false) => {
         force
     });
 
-    if (isFirstSave) {
-        notifyToast({
-            type: 'info',
-            title: 'Añadida a Continuar viendo',
-            message: `${currentMovie.title} quedó guardada en tu historial.`,
-            key: `watch:${currentMovie.id}`
-        });
-    }
+    // if (isFirstSave) {
+    //     notifyToast({
+    //         type: 'info',
+    //         title: 'Añadida a Continuar viendo',
+    //         message: `${currentMovie.title} quedó guardada en tu historial.`,
+    //         key: `watch:${currentMovie.id}`
+    //     });
+    // }
 };
 
 /**
