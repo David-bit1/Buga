@@ -212,24 +212,25 @@ const updatePlayerChrome = () => {
     }
 
     const isPaused = activePlayerAdapter.isPaused();
+    const isPlaying = !isPaused;
 
-    playerStage.classList.toggle('is-playing', !isPaused);
+    playerStage.classList.toggle('is-playing', isPlaying);
 
     if (playPauseButton) {
-        // Corregido: Actualizar el contenido del botón principal, no de un icono interno inexistente.
         playPauseButton.textContent = isPaused ? 'play_arrow' : 'pause';
     }
 
     // --- LOG DE DEPURACIÓN ---
     // Para verificar la sincronización del estado del reproductor y la UI.
     if (console.table) {
-        console.table({
+        console.log('--- Player UI Sync ---');
+        console.table([{
             'Estado': isPaused ? 'Pausado' : 'Reproduciendo',
             'Icono del Botón': playPauseButton?.textContent,
             'isPaused()': isPaused,
             'Tiempo Actual': formatTime(activePlayerAdapter.getCurrentTime()),
             'Adapter': activePlayerAdapter.constructor.name
-        });
+        }]);
     } else {
         console.log('[PLAYER SYNC]', { isPaused, icon: playPauseButton?.textContent });
     }
@@ -238,7 +239,6 @@ const updatePlayerChrome = () => {
         overlayPlayButton.hidden = isPlaying;
     }
 
-    // Note: 'ended' state is handled by the adapter's 'ended' event listener
     if (playerStatus) {
         if (isPaused) {
             playerStatus.textContent = 'Pausado';
