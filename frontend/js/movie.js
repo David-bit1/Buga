@@ -24,6 +24,7 @@ const overlayPlayButton = document.getElementById('overlayPlayButton');
 const playPauseButton = document.getElementById('playPauseButton');
 const playPauseIcon = document.getElementById('playPauseIcon');
 const muteButton = document.getElementById('muteButton');
+const muteIconButton = document.getElementById('muteIconButton');
 const muteIcon = document.getElementById('muteIcon');
 const captionsButton = document.getElementById('captionsButton');
 const fullscreenButton = document.getElementById('fullscreenButton');
@@ -102,6 +103,7 @@ let currentMovie = null;
 let lastWatchSaveAt = 0;
 let activePlayerAdapter = null;
 
+let uiUpdateInterval = null;
 let youtubeApiReady = false;
 
 const formatRuntime = (minutes) => {
@@ -215,25 +217,28 @@ const updatePlayerChrome = () => {
     const isPlaying = !isPaused;
 
     playerStage.classList.toggle('is-playing', isPlaying);
-
     if (playPauseButton) {
         playPauseButton.textContent = isPaused ? 'play_arrow' : 'pause';
     }
 
     // --- LOG DE DEPURACIÓN ---
-    // Para verificar la sincronización del estado del reproductor y la UI.
-    if (console.table) {
-        console.log('--- Player UI Sync ---');
-        console.table([{
-            'Estado': isPaused ? 'Pausado' : 'Reproduciendo',
-            'Icono del Botón': playPauseButton?.textContent,
-            'isPaused()': isPaused,
-            'Tiempo Actual': formatTime(activePlayerAdapter.getCurrentTime()),
-            'Adapter': activePlayerAdapter.constructor.name
-        }]);
-    } else {
-        console.log('[PLAYER SYNC]', { isPaused, icon: playPauseButton?.textContent });
-    }
+    const syncState = {
+        state: isPaused ? 'PAUSED' : 'PLAYING',
+        icon: playPauseButton?.textContent,
+        isPaused: isPaused,
+        currentTime: formatTime(activePlayerAdapter.getCurrentTime()),
+        duration: formatTime(activePlayerAdapter.getDuration()),
+        adapter: activePlayerAdapter.constructor.name
+    };
+    console.log('[SYNC]', syncState);
+
+    const uiState = {
+        playIcon: playPauseButton?.textContent,
+        currentUILabel: currentTimeLabel?.textContent,
+        durationUILabel: durationTimeLabel?.textContent,
+        progressValue: progressInput?.value
+    };
+    console.log('[UI]', uiState);
 
     if (overlayPlayButton) {
         overlayPlayButton.hidden = isPlaying;
@@ -260,13 +265,13 @@ const updateVolumeChrome = () => {
         volumeInput.value = String(volumePercent);
     }
 
-    if (muteIcon) {
+    if (muteIconButton) {
         if (isMuted || volumePercent === 0) {
-            muteIcon.textContent = 'volume_off';
+            muteIconButton.textContent = 'volume_off';
         } else if (volumePercent < 45) {
-            muteIcon.textContent = 'volume_down';
+            muteIconButton.textContent = 'volume_down';
         } else {
-            muteIcon.textContent = 'volume_up';
+            muteIconButton.textContent = 'volume_up';
         }
     }
 
@@ -569,17 +574,13 @@ class YouTubePlayerAdapter extends PlayerAdapter {
     onPlayerStateChange(event) {
         switch (event.data) {
             case YT.PlayerState.PLAYING:
-                this.trigger('play');
                 this.trigger('playing');
-                this.timeUpdateInterval = setInterval(() => this.trigger('timeupdate'), 250);
                 break;
             case YT.PlayerState.PAUSED:
                 this.trigger('pause');
-                clearInterval(this.timeUpdateInterval);
                 break;
             case YT.PlayerState.ENDED:
                 this.trigger('ended');
-                clearInterval(this.timeUpdateInterval);
                 break;
             case YT.PlayerState.BUFFERING:
                 this.trigger('waiting');
@@ -696,9 +697,12 @@ class IframePlayerAdapter extends PlayerAdapter {
  */
 const PlayerManager = {
     _youtubeApiPromise: null,
+    _uiUpdateInterval: null,
     create: async (server) => {
         console.log("[B] ENTER PlayerManager.create");
         if (activePlayerAdapter) {
+            clearInterval(PlayerManager._uiUpdateInterval);
+            PlayerManager._uiUpdateInterval = null;
             activePlayerAdapter.destroy();
             activePlayerAdapter = null;
         }
@@ -931,7 +935,7 @@ const toggleMute = () => {
     if (!activePlayerAdapter) return;
 
     if (activePlayerAdapter.isMuted()) {
-        activePlayerAdapter.unmute(); // Correct: unmute if muted
+        activePlayerAdapter.unmute();
     } else {
         activePlayerAdapter.mute(); // Correct: mute if not muted
     }
@@ -1056,6 +1060,13 @@ const wireAdapterToUI = (adapter) => {
         }
     });
 
+    // Detener el bucle de UI anterior si existe
+    if (PlayerManager._uiUpdateInterval) {
+        clearInterval(PlayerManager._uiUpdateInterval);
+    }
+    // Iniciar el nuevo bucle de actualización de la UI
+    PlayerManager._uiUpdateInterval = setInterval(updatePlayerChrome, 250);
+
     // Hide captions button as it's not supported by current adapters
     if (captionsButton) {
         captionsButton.closest('.player-control-group').hidden = true;
@@ -1084,10 +1095,7 @@ const wireAdapterToUI = (adapter) => {
         }
     });
     adapter.on('durationchange', updateProgressChrome);
-    adapter.on('timeupdate', () => {
-        updateProgressChrome();
-        saveWatchProgress(false);
-    });
+    adapter.on('timeupdate', updateProgressChrome);
     adapter.on('play', updatePlayerChrome);
     adapter.on('pause', updatePlayerChrome);
     adapter.on('ended', () => {
@@ -1135,6 +1143,7 @@ const wirePlayer = () => {
     volumeInput?.addEventListener('input', () => {
         if (!activePlayerAdapter) return;
         activePlayerAdapter.setVolume(Number(volumeInput.value) / 100);
+        saveWatchProgress(false);
         if (Number(volumeInput.value) === 0) activePlayerAdapter.mute();
         else activePlayerAdapter.unmute();
         updateVolumeChrome();
