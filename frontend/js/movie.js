@@ -248,11 +248,11 @@ const updateVolumeChrome = () => {
 
     if (muteIcon) {
         if (isMuted || volumePercent === 0) {
-            muteIcon.textContent = '🔇';
+            muteIcon.textContent = 'volume_off'; // Icono para "silenciado"
         } else if (volumePercent < 45) {
-            muteIcon.textContent = '🔉';
+            muteIcon.textContent = 'volume_down'; // Icono para "volumen bajo"
         } else {
-            muteIcon.textContent = '🔊';
+            muteIcon.textContent = 'volume_up'; // Icono para "volumen alto"
         }
     }
 
@@ -350,14 +350,14 @@ const saveWatchProgress = (force = false) => {
         force
     });
 
-    // if (isFirstSave) {
-    //     notifyToast({
-    //         type: 'info',
-    //         title: 'Añadida a Continuar viendo',
-    //         message: `${currentMovie.title} quedó guardada en tu historial.`,
-    //         key: `watch:${currentMovie.id}`
-    //     });
-    // }
+    if (isFirstSave) {
+        // notifyToast({
+        //     type: 'info',
+        //     title: 'Añadida a Continuar viendo',
+        //     message: `${currentMovie.title} quedó guardada en tu historial.`,
+        //     key: `watch:${currentMovie.id}`
+        // });
+    }
 };
 
 /**
