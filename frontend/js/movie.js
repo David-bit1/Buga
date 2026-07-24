@@ -248,11 +248,11 @@ const updateVolumeChrome = () => {
 
     if (muteIcon) {
         if (isMuted || volumePercent === 0) {
-            muteIcon.textContent = 'volume_off'; // Icono para "silenciado"
+            muteIcon.textContent = 'volume_off';
         } else if (volumePercent < 45) {
-            muteIcon.textContent = 'volume_down'; // Icono para "volumen bajo"
+            muteIcon.textContent = 'volume_down';
         } else {
-            muteIcon.textContent = 'volume_up'; // Icono para "volumen alto"
+            muteIcon.textContent = 'volume_up';
         }
     }
 
@@ -1041,6 +1041,11 @@ const wireAdapterToUI = (adapter) => {
             controlWrapper.hidden = !isControllable;
         }
     });
+
+    // Hide captions button as it's not supported by current adapters
+    if (captionsButton) {
+        captionsButton.closest('.player-control-group').hidden = true;
+    }
 
     if (!isControllable) {
         console.log("[D.2] Uncontrollable player (iframe), skipping event wiring.");
