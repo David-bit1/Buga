@@ -601,13 +601,17 @@ class YouTubePlayerAdapter extends PlayerAdapter {
     onPlayerStateChange(event) {
         switch (event.data) {
             case YT.PlayerState.PLAYING:
+                this.trigger('play');
                 this.trigger('playing');
+                this.timeUpdateInterval = setInterval(() => this.trigger('timeupdate'), 250);
                 break;
             case YT.PlayerState.PAUSED:
                 this.trigger('pause');
+                clearInterval(this.timeUpdateInterval);
                 break;
             case YT.PlayerState.ENDED:
                 this.trigger('ended');
+                clearInterval(this.timeUpdateInterval);
                 break;
             case YT.PlayerState.BUFFERING:
                 this.trigger('waiting');
@@ -1127,13 +1131,6 @@ const wireAdapterToUI = (adapter) => {
         }
     });
 
-    // Iniciar el bucle de actualización de la UI
-    clearInterval(uiUpdateInterval); // Clear any previous interval
-    uiUpdateInterval = setInterval(() => {
-        updatePlayerChrome();
-        updateProgressChrome();
-    }, 250);
-
     // Hide captions button as it's not supported by current adapters
     if (captionsButton) {
         captionsButton.closest('.player-control-group').hidden = true;
@@ -1162,13 +1159,18 @@ const wireAdapterToUI = (adapter) => {
         }
     });
     adapter.on('durationchange', updateProgressChrome);
-    adapter.on('ended', () => { // Keep ended for final save
+    adapter.on('timeupdate', () => {
+        updateProgressChrome();
+        saveWatchProgress(false);
+    });
+    adapter.on('play', updatePlayerChrome);
+    adapter.on('pause', updatePlayerChrome);
+    adapter.on('ended', () => {
         updatePlayerChrome();
         saveWatchProgress(true);
     });
     adapter.on('volumechange', () => {
         updateVolumeChrome();
-        updatePlayerChrome();
     });
     adapter.on('waiting', () => {
         if (playerStatus) playerStatus.textContent = 'Cargando...';
@@ -1177,7 +1179,6 @@ const wireAdapterToUI = (adapter) => {
     adapter.on('playing', () => {
         if (playerStatus) playerStatus.textContent = 'Reproduciendo';
         hidePlayerLoader();
-        updatePlayerChrome();
     });
     adapter.on('canplay', hidePlayerLoader);
     adapter.on('error', (event) => {
