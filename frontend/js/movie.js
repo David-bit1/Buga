@@ -711,7 +711,6 @@ class IframePlayerAdapter extends PlayerAdapter {
  */
 const PlayerManager = {
     _youtubeApiPromise: null,
-
     create: async (server) => {
         console.log("[B] ENTER PlayerManager.create");
         if (activePlayerAdapter) {
@@ -720,44 +719,41 @@ const PlayerManager = {
             activePlayerAdapter = null;
         }
 
-        const detectedType = PlayerManager.detectServerType(server.url, server.type);
-        console.log("[SERVER]", {
-            url: server.url,
-            type: server.type,
-            detectedType: detectedType
-        });
+        const youtubeId = PlayerManager.parseYoutubeId(server.url);
 
-        // Hide all players first, then show the correct one.
-        if (movieVideo) movieVideo.style.display = 'none';
-        if (externalPlayer) externalPlayer.style.display = 'none';
-
-        switch (detectedType) {
-            case 'youtube':
-                if (externalPlayer) externalPlayer.style.display = 'block';
-                await PlayerManager.loadYoutubeApi();
-                const youtubeId = PlayerManager.parseYoutubeId(server.url);
-                return await YouTubePlayerAdapter.create('externalPlayer', youtubeId);
-
-            case 'hls':
-                if (movieVideo) movieVideo.style.display = 'block';
-                const hlsAdapter = new Html5PlayerAdapter(movieVideo);
-                hlsAdapter.loadSource(server.url, 'hls');
-                return hlsAdapter;
-
-            case 'mp4':
-                if (movieVideo) movieVideo.style.display = 'block';
-                const mp4Adapter = new Html5PlayerAdapter(movieVideo);
-                mp4Adapter.loadSource(server.url, 'mp4');
-                return mp4Adapter;
-
-            case 'iframe':
-                if (externalPlayer) externalPlayer.style.display = 'block';
-                return new IframePlayerAdapter(externalPlayer, server.url);
-
-            default:
-                console.error(`Unsupported or invalid server type detected: ${detectedType}`);
-                return null;
+        if (youtubeId) {
+            console.log("[B.1.YT] YouTube ID found:", youtubeId);
+            if (movieVideo) movieVideo.style.display = 'none';
+            if (externalPlayer) externalPlayer.style.display = 'block';
+            console.log("[B.2.YT] ANTES await PlayerManager.loadYoutubeApi");
+            await PlayerManager.loadYoutubeApi();
+            console.log("[B.3.YT] DESPUÉS await PlayerManager.loadYoutubeApi");
+            console.log("[B.4.YT] ANTES await YouTubePlayerAdapter.create");
+            const adapter = await YouTubePlayerAdapter.create('externalPlayer', youtubeId);
+            console.log("[B.5.YT] DESPUÉS await YouTubePlayerAdapter.create");
+            console.log("[B.6.YT] EXIT PlayerManager.create (returning YT adapter)");
+            return adapter;
         }
+
+        if (server.type === 'iframe' || server.type === 'embed') {
+            if (movieVideo) movieVideo.style.display = 'none';
+            if (externalPlayer) externalPlayer.style.display = 'block';
+            return new IframePlayerAdapter(externalPlayer, server.url);
+        }
+
+        console.log("[B.1.HTML5] HTML5 player type detected");
+        if (movieVideo) movieVideo.style.display = 'block';
+        if (externalPlayer) externalPlayer.style.display = 'none';
+        const adapter = new Html5PlayerAdapter(movieVideo);
+
+        if (server.type === 'm3u8') {
+            adapter.loadSource(server.url, 'hls');
+        } else {
+            adapter.loadSource(server.url, 'mp4');
+        }
+
+        console.log("[B.2.HTML5] EXIT PlayerManager.create (returning HTML5 adapter)");
+        return adapter;
     },
 
     parseYoutubeId: (url) => {
