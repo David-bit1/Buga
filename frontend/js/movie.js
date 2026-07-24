@@ -417,6 +417,18 @@ class Html5PlayerAdapter extends PlayerAdapter {
         this.videoElement = videoElement;
         this.hls = null;
         this._boundEvents = new Map();
+
+        console.log("ENTER Html5PlayerAdapter.constructor");
+
+        this.videoElement.addEventListener("loadstart", () => console.log("HTML5 Event: loadstart"));
+        this.videoElement.addEventListener("loadedmetadata", () => console.log("HTML5 Event: loadedmetadata"));
+        this.videoElement.addEventListener("canplay", () => console.log("HTML5 Event: canplay"));
+        this.videoElement.addEventListener("playing", () => console.log("HTML5 Event: playing"));
+        this.videoElement.addEventListener("error", (e) => {
+          console.error("--- VIDEO ERROR ---");
+          console.error("Error details:", this.videoElement.error);
+          console.error("Current Source:", this.videoElement.currentSrc);
+        });
     }
 
     loadSource(url, type) {
@@ -424,6 +436,8 @@ class Html5PlayerAdapter extends PlayerAdapter {
             this.hls.destroy();
             this.hls = null;
         }
+
+        console.log("Video src ANTES:", this.videoElement.src);
 
         if (type === 'hls' && typeof window.Hls !== 'undefined' && window.Hls.isSupported()) {
             this.hls = new window.Hls();
@@ -434,6 +448,8 @@ class Html5PlayerAdapter extends PlayerAdapter {
         } else {
             this.videoElement.src = url;
         }
+
+        console.log("Video src DESPUÉS:", this.videoElement.src);
     }
 
     play() { return this.videoElement.play(); }
@@ -740,18 +756,34 @@ const PlayerManager = {
 
             case 'hls':
                 if (movieVideo) movieVideo.style.display = 'block';
+                console.log("--- HTML5 ADAPTER ---");
+                console.log("Server:", server);
+                console.log("URL:", server.url);
+                console.log("Embed:", server.embed);
+                console.log("Video URL:", server.video_url);
+                console.log("Source:", server.source);
                 const hlsAdapter = new Html5PlayerAdapter(movieVideo);
                 hlsAdapter.loadSource(server.url, 'hls');
                 return hlsAdapter;
 
             case 'mp4':
                 if (movieVideo) movieVideo.style.display = 'block';
+                console.log("--- HTML5 ADAPTER ---");
+                console.log("Server:", server);
+                console.log("URL:", server.url);
+                console.log("Embed:", server.embed);
+                console.log("Video URL:", server.video_url);
+                console.log("Source:", server.source);
                 const mp4Adapter = new Html5PlayerAdapter(movieVideo);
                 mp4Adapter.loadSource(server.url, 'mp4');
                 return mp4Adapter;
 
             case 'iframe':
                 if (externalPlayer) externalPlayer.style.display = 'block';
+                console.log("--- IFRAME ADAPTER ---");
+                console.log("Server:", server);
+                console.log("URL:", server.url);
+                console.log("Embed:", server.embed);
                 return new IframePlayerAdapter(externalPlayer, server.url);
 
             default:
