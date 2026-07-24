@@ -213,10 +213,11 @@ const updatePlayerChrome = () => {
 
     const isPaused = activePlayerAdapter.isPaused();
 
-    playerStage.classList.toggle('is-playing', isPlaying);
+    playerStage.classList.toggle('is-playing', !isPaused);
 
-    if (playPauseIcon) {
-        playPauseIcon.textContent = isPaused ? 'play_arrow' : 'pause';
+    if (playPauseButton) {
+        // Corregido: Actualizar el contenido del botón principal, no de un icono interno inexistente.
+        playPauseButton.textContent = isPaused ? 'play_arrow' : 'pause';
     }
 
     // --- LOG DE DEPURACIÓN ---
@@ -224,13 +225,13 @@ const updatePlayerChrome = () => {
     if (console.table) {
         console.table({
             'Estado': isPaused ? 'Pausado' : 'Reproduciendo',
-            'Icono del Botón': playPauseIcon?.textContent,
+            'Icono del Botón': playPauseButton?.textContent,
             'isPaused()': isPaused,
             'Tiempo Actual': formatTime(activePlayerAdapter.getCurrentTime()),
             'Adapter': activePlayerAdapter.constructor.name
         });
     } else {
-        console.log('[PLAYER SYNC]', { isPaused, icon: playPauseIcon?.textContent });
+        console.log('[PLAYER SYNC]', { isPaused, icon: playPauseButton?.textContent });
     }
 
     if (overlayPlayButton) {
