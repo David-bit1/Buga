@@ -501,6 +501,8 @@ class YouTubePlayerAdapter extends PlayerAdapter {
                 console.log("[F.2] ANTES new YT.Player");
                 new YT.Player(playerElementId, {
                     videoId: videoId,
+                    width: '100%',
+                    height: '100%',
                     playerVars: {
                         autoplay: 1, controls: 0, rel: 0, showinfo: 0,
                         modestbranding: 1, iv_load_policy: 3, playsinline: 1,
@@ -508,6 +510,16 @@ class YouTubePlayerAdapter extends PlayerAdapter {
                     events: {
                         onReady: (event) => {
                             console.log("[H] ENTER YouTube onReady callback");
+                            const player = event.target;
+                            const iframe = player.getIframe();
+
+                            // Forzar estilos para asegurar que el iframe llene el contenedor.
+                            iframe.style.position = 'absolute';
+                            iframe.style.inset = '0';
+                            iframe.style.width = '100%';
+                            iframe.style.height = '100%';
+                            iframe.style.border = '0';
+
                             const adapter = new YouTubePlayerAdapter(event.target, playerElementId);
                             adapter.trigger('loadedmetadata');
                             adapter.trigger('durationchange');
