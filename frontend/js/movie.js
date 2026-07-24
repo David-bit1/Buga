@@ -217,20 +217,14 @@ const updatePlayerChrome = () => {
     const isPlaying = !isPaused;
 
     playerStage.classList.toggle('is-playing', isPlaying);
-    if (playPauseButton) {
-        playPauseButton.textContent = isPaused ? 'play_arrow' : 'pause';
-    }
 
     // --- LOG DE DEPURACIÓN ---
-    const syncState = {
-        state: isPaused ? 'PAUSED' : 'PLAYING',
-        icon: playPauseButton?.textContent,
-        isPaused: isPaused,
-        currentTime: formatTime(activePlayerAdapter.getCurrentTime()),
-        duration: formatTime(activePlayerAdapter.getDuration()),
-        adapter: activePlayerAdapter.constructor.name
-    };
-    console.log('[SYNC]', syncState);
+    console.log('[LOOP]', Date.now());
+    console.log({
+        current: activePlayerAdapter.getCurrentTime(),
+        duration: activePlayerAdapter.getDuration(),
+        playing: !isPaused
+    });
 
     const uiState = {
         playIcon: playPauseButton?.textContent,
@@ -239,6 +233,11 @@ const updatePlayerChrome = () => {
         progressValue: progressInput?.value
     };
     console.log('[UI]', uiState);
+    // --- FIN LOG DE DEPURACIÓN ---
+
+    if (playPauseButton) {
+        playPauseButton.textContent = isPaused ? 'play_arrow' : 'pause';
+    }
 
     if (overlayPlayButton) {
         overlayPlayButton.hidden = isPlaying;
@@ -697,12 +696,10 @@ class IframePlayerAdapter extends PlayerAdapter {
  */
 const PlayerManager = {
     _youtubeApiPromise: null,
-    _uiUpdateInterval: null,
     create: async (server) => {
         console.log("[B] ENTER PlayerManager.create");
         if (activePlayerAdapter) {
-            clearInterval(PlayerManager._uiUpdateInterval);
-            PlayerManager._uiUpdateInterval = null;
+            clearInterval(uiUpdateInterval);
             activePlayerAdapter.destroy();
             activePlayerAdapter = null;
         }
@@ -1060,12 +1057,12 @@ const wireAdapterToUI = (adapter) => {
         }
     });
 
-    // Detener el bucle de UI anterior si existe
-    if (PlayerManager._uiUpdateInterval) {
-        clearInterval(PlayerManager._uiUpdateInterval);
-    }
-    // Iniciar el nuevo bucle de actualización de la UI
-    PlayerManager._uiUpdateInterval = setInterval(updatePlayerChrome, 250);
+    // Iniciar el bucle de actualización de la UI
+    clearInterval(uiUpdateInterval); // Clear any previous interval
+    uiUpdateInterval = setInterval(() => {
+        updatePlayerChrome();
+        updateProgressChrome();
+    }, 250);
 
     // Hide captions button as it's not supported by current adapters
     if (captionsButton) {
@@ -1095,10 +1092,7 @@ const wireAdapterToUI = (adapter) => {
         }
     });
     adapter.on('durationchange', updateProgressChrome);
-    adapter.on('timeupdate', updateProgressChrome);
-    adapter.on('play', updatePlayerChrome);
-    adapter.on('pause', updatePlayerChrome);
-    adapter.on('ended', () => {
+    adapter.on('ended', () => { // Keep ended for final save
         updatePlayerChrome();
         saveWatchProgress(true);
     });
@@ -1143,7 +1137,6 @@ const wirePlayer = () => {
     volumeInput?.addEventListener('input', () => {
         if (!activePlayerAdapter) return;
         activePlayerAdapter.setVolume(Number(volumeInput.value) / 100);
-        saveWatchProgress(false);
         if (Number(volumeInput.value) === 0) activePlayerAdapter.mute();
         else activePlayerAdapter.unmute();
         updateVolumeChrome();
