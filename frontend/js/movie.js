@@ -756,7 +756,7 @@ const PlayerManager = {
 
             case 'hls':
                 if (movieVideo) movieVideo.style.display = 'block';
-                console.log("--- HTML5 ADAPTER ---");
+                console.log("=== HTML5 ADAPTER (HLS) ===");
                 console.log("Server:", server);
                 console.log("URL:", server.url);
                 console.log("Embed:", server.embed);
@@ -768,7 +768,7 @@ const PlayerManager = {
 
             case 'mp4':
                 if (movieVideo) movieVideo.style.display = 'block';
-                console.log("--- HTML5 ADAPTER ---");
+                console.log("=== HTML5 ADAPTER (MP4) ===");
                 console.log("Server:", server);
                 console.log("URL:", server.url);
                 console.log("Embed:", server.embed);
@@ -780,7 +780,7 @@ const PlayerManager = {
 
             case 'iframe':
                 if (externalPlayer) externalPlayer.style.display = 'block';
-                console.log("--- IFRAME ADAPTER ---");
+                console.log("=== IFRAME ADAPTER ===");
                 console.log("Server:", server);
                 console.log("URL:", server.url);
                 console.log("Embed:", server.embed);
