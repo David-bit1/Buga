@@ -16,7 +16,9 @@
                 timeline: true
             });
 
+            console.log('[Html5Adapter] Entrando Html5Adapter');
             this.videoElement = videoElement;
+            console.log('[Html5Adapter] Video creado', this.videoElement);
             this.hls = null;
             this.boundHandlers = [];
             this.attachNativeListeners();
@@ -38,12 +40,25 @@
                 });
             });
             bind('play', () => this.emit('play'));
-            bind('playing', () => this.emit('playing'));
+            bind('playing', () => {
+                console.log('[Html5Adapter] playing');
+                this.emit('playing');
+            });
             bind('pause', () => this.emit('pause'));
             bind('waiting', () => this.emit('waiting'));
             bind('ended', () => this.emit('ended'));
-            bind('canplay', () => this.emit('canplay'));
-            bind('error', (event) => this.emit('error', event));
+            bind('canplay', () => {
+                console.log('[Html5Adapter] canplay');
+                this.emit('canplay');
+            });
+            bind('loadedmetadata', () => {
+                console.log('[Html5Adapter] loadedmetadata');
+                this.emit('loadedmetadata');
+            });
+            bind('error', (event) => {
+                console.error('[Html5Adapter] error', event, this.videoElement.error);
+                this.emit('error', event);
+            });
         }
 
         loadSource(url, sourceType = 'mp4') {
@@ -56,6 +71,7 @@
             this.videoElement.style.display = 'block';
             this.videoElement.removeAttribute('src');
             this.videoElement.load();
+            console.log('[Html5Adapter] video.load()');
 
             if (sourceType === 'hls') {
                 if (window.Hls && window.Hls.isSupported()) {
@@ -73,10 +89,13 @@
             }
 
             this.videoElement.src = url;
+            console.log('[Html5Adapter] SRC asignado', url);
             this.videoElement.load();
+            console.log('[Html5Adapter] video.load()');
         }
 
         play() {
+            console.log('[Html5Adapter] video.play()');
             return this.videoElement.play();
         }
 
