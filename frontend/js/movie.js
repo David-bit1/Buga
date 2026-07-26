@@ -454,47 +454,6 @@ const setVideoSource = async (serverIndex) => {
     }
 };
 
-const showExternalPlayer = () => {
-    // This function is now obsolete, PlayerManager handles visibility.
-};
-
-const hideExternalPlayer = () => {
-    if (externalPlayer) {
-        externalPlayer.style.display = 'none';
-        externalPlayer.removeAttribute('src');
-    }
-};
-
-const populateQualitySelect = (qualities = [], hasHls = false) => {
-    if (!qualitySelect) {
-        return;
-    }
-
-    const options = ['<option value="auto">Auto</option>'];
-
-    if (hasHls) {
-        options.push(...qualities.map((quality) => `<option value="${quality.label}">${quality.label}</option>`));
-    }
-
-    if (!hasHls) {
-        options.push('<option value="mp4">MP4</option>');
-    }
-
-    qualitySelect.innerHTML = options.join('');
-    qualitySelect.disabled = false;
-    qualitySelect.hidden = false;
-    qualitySelect.value = 'auto';
-};
-
-const fetchStreamInfo = async (tmdbId) => {
-    const token = getAuthToken();
-    if (!token) {
-        return null;
-    }
-
-    return fetchAuthJson(`/api/videos/${tmdbId}/stream?token=${encodeURIComponent(token)}`);
-};
-
 const populateServerSelect = (movie) => {
     if (!serverSelect) {
         return;
@@ -521,7 +480,7 @@ const populateServerSelect = (movie) => {
 };
 
 const togglePlayback = async () => {
-    if (!activePlayerAdapter) return;
+    if (!activePlayerAdapter || !playerState.controllable) return;
 
     if (playerState.paused) {
         try {
@@ -535,15 +494,17 @@ const togglePlayback = async () => {
 };
 
 const toggleMute = () => {
-    if (!activePlayerAdapter) return;
+    if (!activePlayerAdapter || !playerState.controllable) return;
 
-    if (playerState.muted) {
+    const wasMuted = playerState.muted;
+
+    if (wasMuted) {
         activePlayerAdapter.unmute();
     } else {
         activePlayerAdapter.mute();
     }
 
-    if (!playerState.muted && Number(volumeInput?.value) === 0) {
+    if (wasMuted && Number(volumeInput?.value) === 0) {
         activePlayerAdapter.setVolume(0.5);
         if (volumeInput) {
             volumeInput.value = '50';
@@ -669,6 +630,11 @@ const wireAdapterToUI = (adapter) => {
     if (!isControllable) {
         adapter.on('loadedmetadata', hidePlayerLoader);
         adapter.on('canplay', hidePlayerLoader);
+        adapter.on('error', (event) => {
+            hidePlayerLoader();
+            console.error('Error de reproducción:', event);
+            notifyToast({ type: 'error', title: 'Error de reproducción', message: 'No se pudo cargar el video. Prueba otro servidor.' });
+        });
         return;
     }
 
@@ -778,7 +744,7 @@ const wirePlayer = () => {
     });
 
     playerStage?.addEventListener('click', (e) => {
-        if (e.target === playerStage || e.target === overlayPlayButton) togglePlayback();
+        if (playerState.controllable && (e.target === playerStage || e.target === overlayPlayButton)) togglePlayback();
     });
 
     playerStage?.addEventListener('dblclick', toggleFullscreen);
