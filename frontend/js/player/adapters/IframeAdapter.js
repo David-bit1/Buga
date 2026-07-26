@@ -30,20 +30,27 @@
             this.iframeElement.className = 'movie-video';
             this.iframeElement.setAttribute('title', server.name || 'Reproductor externo');
             this.iframeElement.setAttribute('loading', 'lazy');
-            this.iframeElement.setAttribute('allow', 'autoplay; encrypted-media; picture-in-picture; web-share; fullscreen');
+            this.iframeElement.setAttribute('allow', 'autoplay; encrypted-media; fullscreen; picture-in-picture; web-share');
             this.iframeElement.allowFullscreen = true;
             this.iframeElement.referrerPolicy = 'origin-when-cross-origin';
             this.iframeElement.style.width = '100%';
             this.iframeElement.style.height = '100%';
             this.iframeElement.style.border = '0';
+            this.iframeElement.style.display = 'block';
+            this.iframeElement.style.visibility = 'visible';
+            console.log('[IframeAdapter] Iframe creado', this.iframeElement);
             this.mountElement.appendChild(this.iframeElement);
 
             this.loadHandler = () => {
+                console.log('[IframeAdapter] Iframe loaded', this.iframeElement.src);
                 this.emit('loadedmetadata');
                 this.emit('durationchange');
                 this.emit('canplay');
             };
 
+            this.iframeElement.addEventListener('error', (event) => {
+                console.error('[IframeAdapter] Iframe error', event);
+            });
             this.iframeElement.addEventListener('load', this.loadHandler);
             this.loadSource(server.url, server.source || '');
         }
@@ -51,17 +58,34 @@
         loadSource(url, rawSource = '') {
             const nextUrl = String(url || '').trim();
             const sourceHtml = String(rawSource || '').trim();
-
-            if (sourceHtml && /<iframe|<embed|<object/i.test(sourceHtml)) {
-                const srcMatch = sourceHtml.match(/<(?:iframe|embed|object)[^>]*\ssrc=["']([^"']+)["']/i);
-                if (srcMatch?.[1]) {
-                    this.iframeElement.src = srcMatch[1];
-                } else {
-                    this.iframeElement.src = nextUrl;
+            const extractSrc = (value) => {
+                const text = String(value || '').trim();
+                if (!text) {
+                    return '';
                 }
-            } else if (nextUrl) {
-                this.iframeElement.src = nextUrl;
+
+                const srcMatch = text.match(/<(?:iframe|embed|object)[^>]*\ssrc=["']([^"']+)["']/i);
+                if (srcMatch?.[1]) {
+                    return srcMatch[1].trim();
+                }
+
+                const dataMatch = text.match(/data-src=["']([^"']+)["']/i);
+                return dataMatch?.[1]?.trim() || '';
+            };
+
+            const sourceMarkup = /<(iframe|embed|object)\b/i.test(sourceHtml) ? sourceHtml : '';
+            const urlMarkup = /<(iframe|embed|object)\b/i.test(nextUrl) ? nextUrl : '';
+            const resolvedSrc = extractSrc(sourceMarkup) || extractSrc(urlMarkup) || nextUrl;
+
+            if (resolvedSrc) {
+                this.iframeElement.src = resolvedSrc;
+                console.log('[IframeAdapter] Src asignado', resolvedSrc);
             }
+
+            this.iframeElement.hidden = false;
+            this.iframeElement.style.display = 'block';
+            this.iframeElement.style.visibility = 'visible';
+            console.log('[IframeAdapter] Iframe visible');
 
             window.clearTimeout(this.loadTimer);
             this.loadTimer = window.setTimeout(() => {
@@ -95,6 +119,9 @@
             window.clearTimeout(this.loadTimer);
             if (this.iframeElement && this.loadHandler) {
                 this.iframeElement.removeEventListener('load', this.loadHandler);
+            }
+            if (this.iframeElement) {
+                this.iframeElement.src = 'about:blank';
             }
             if (this.mountElement) {
                 this.mountElement.innerHTML = '';

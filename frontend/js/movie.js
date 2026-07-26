@@ -235,7 +235,11 @@ const updatePlayerChrome = () => {
     playerStage.classList.toggle('is-playing', isPlaying);
 
     if (playPauseButton) {
-        playPauseButton.textContent = isPaused ? 'play_arrow' : 'pause';
+        if (playPauseIcon) {
+            playPauseIcon.textContent = isPaused ? '▶' : '⏸';
+        } else {
+            playPauseButton.textContent = isPaused ? '▶' : '⏸';
+        }
     }
 
     if (overlayPlayButton) {
@@ -448,6 +452,14 @@ const setVideoSource = async (serverIndex) => {
             overlayPlayButton.hidden = !playerState.controllable;
         }
         wireAdapterToUI(adapter);
+
+        if (adapter.capabilities?.controllable !== false && (adapter.adapterId === 'html5' || adapter.adapterId === 'hls')) {
+            try {
+                await adapter.play();
+            } catch (error) {
+                console.warn('[Buga] Autoplay blocked or failed', error);
+            }
+        }
 
     } catch (error) {
         console.error("[!] Error in setVideoSource:", error);
@@ -663,6 +675,12 @@ const wireAdapterToUI = (adapter) => {
         playerState.paused = true;
         updatePlayerChrome();
         saveWatchProgress(true);
+    });
+    adapter.on('play', () => {
+        playerState.paused = false;
+        if (playerStatus) playerStatus.textContent = 'Reproduciendo';
+        hidePlayerLoader();
+        updatePlayerChrome();
     });
     adapter.on('pause', () => {
         playerState.paused = true;

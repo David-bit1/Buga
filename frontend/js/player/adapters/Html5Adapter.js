@@ -30,7 +30,10 @@
                 this.boundHandlers.push([eventName, handler]);
             };
 
-            bind('loadedmetadata', () => this.emit('loadedmetadata'));
+            bind('loadedmetadata', () => {
+                console.log('[Html5Adapter] loadedmetadata');
+                this.emit('loadedmetadata');
+            });
             bind('durationchange', () => this.emit('durationchange'));
             bind('timeupdate', () => this.emit('timeupdate'));
             bind('volumechange', () => {
@@ -51,12 +54,9 @@
                 console.log('[Html5Adapter] canplay');
                 this.emit('canplay');
             });
-            bind('loadedmetadata', () => {
-                console.log('[Html5Adapter] loadedmetadata');
-                this.emit('loadedmetadata');
-            });
             bind('error', (event) => {
-                console.error('[Html5Adapter] error', event, this.videoElement.error);
+                console.error('[Html5Adapter] error', event);
+                console.error('[Html5Adapter] video.error', this.videoElement.error);
                 this.emit('error', event);
             });
         }
@@ -70,20 +70,21 @@
             this.videoElement.hidden = false;
             this.videoElement.style.display = 'block';
             this.videoElement.removeAttribute('src');
-            this.videoElement.load();
-            console.log('[Html5Adapter] video.load()');
 
             if (sourceType === 'hls') {
                 if (window.Hls && window.Hls.isSupported()) {
+                    console.log('[Html5Adapter] SRC asignado', url);
                     this.hls = new window.Hls();
-                    this.hls.loadSource(url);
                     this.hls.attachMedia(this.videoElement);
+                    this.hls.loadSource(url);
                     return;
                 }
 
                 if (this.videoElement.canPlayType('application/vnd.apple.mpegurl')) {
                     this.videoElement.src = url;
+                    console.log('[Html5Adapter] SRC asignado', url);
                     this.videoElement.load();
+                    console.log('[Html5Adapter] video.load()');
                     return;
                 }
             }
