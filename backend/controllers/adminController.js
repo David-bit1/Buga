@@ -7,6 +7,7 @@ const {
   deleteRows,
   upsertOne
 } = require('../services/supabaseRepository');
+const { parseServers } = require('../services/serverNormalizer');
 
 const { buildTmdbMoviePayload, toInteger, normalizeGenres } = require('../controllers/movieController');
 
@@ -180,7 +181,7 @@ const createMovie = async (req, res, next) => {
       release_year: toInteger(release_year || tmdbPayload?.release_year || 0, 0),
       runtime: toInteger(runtime || tmdbPayload?.runtime || 0, 0),
       genres: normalizedGenres,
-      servers: req.body.servers && req.body.servers.length > 0 ? req.body.servers : (tmdbPayload?.servers || []),
+      servers: parseServers(req.body.servers && req.body.servers.length > 0 ? req.body.servers : (tmdbPayload?.servers || [])),
       featured: Boolean(featured),
       status: String(status || 'published'),
       created_by: req.user.id,
@@ -242,6 +243,10 @@ const updateMovie = async (req, res, next) => {
 
     if (Array.isArray(req.body.genres)) {
       payload.genres = req.body.genres;
+    }
+
+    if (req.body.servers !== undefined) {
+      payload.servers = parseServers(req.body.servers);
     }
 
     if (Object.keys(payload).length === 0) {

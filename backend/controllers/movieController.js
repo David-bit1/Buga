@@ -1,4 +1,5 @@
 const { insertOne, selectMany, selectOne, updateRows, deleteRows } = require('../services/supabaseRepository');
+const { parseServers } = require('../services/serverNormalizer');
 
 const TMDB_API_KEY = process.env.TMDB_API_KEY || 'b24af203b14e23f8c91844baae37cfab';
 const TMDB_BASE_URL = 'https://api.themoviedb.org/3';
@@ -39,105 +40,6 @@ const toInteger = (value, fallback = 0) => {
 
 const toBoolean = (value) =>
   value === true || value === 'true' || value === 1 || value === '1' || value === 'on';
-
-const parseServers = (value) => {
-    if (Array.isArray(value)) {
-        return value
-            .map((entry) => {
-                if (!entry) {
-                    return null;
-                }
-                
-                if (typeof entry === 'string') {
-                    // Check if entry contains iframe HTML content
-                    if (typeof entry === 'string' && entry.includes('<iframe')) {
-                        // Extract iframe src from HTML content
-                        const iframeMatch = entry.match(/<iframe[^>]*src=["']([^"']+)["'][^>]*>/);
-                        if (iframeMatch && iframeMatch[1]) {
-                            return { name: 'Servidor 1', type: 'iframe', url: iframeMatch[1].trim() };
-                        }
-                    }
-                }
-                return { name: 'Servidor 1', type: 'iframe', url: entry.trim() };
-            }
-            
-if (typeof entry === 'string') {
-                    const trimmed = value.trim();
-                    if (!trimmed) {
-                        return [];
-                    }
-                 
-                    try {
-                        const parsed = JSON.parse(trimmed);
-                        return parseServers(parsed);
-                    } catch {
-                        return trimmed
-                            .split(/\n|\r/)
-                            .map((line) => line.trim())
-                            .filter(Boolean)
-                            .map((url, index) => ({
-                                name: `Servidor ${index + 1}`,
-                                type: 'iframe',
-                                url,
-                                status: 'active',
-                                order: index
-                            }));
-                } else {
-                    // Check if entry contains iframe HTML content
-                    if (typeof entry === 'string' && entry.includes('<iframe')) {
-                        // Extract iframe src from HTML content
-                        const iframeMatch = entry.match(/<iframe[^>]*src=["']([^"']+)["'][^>]*>/);
-                        if (iframeMatch && iframeMatch[1]) {
-                            return { name: 'Servidor 1', type: 'iframe', url: iframeMatch[1].trim() };
-                        }
-                    }
-                    
-                    const url = String(entry.url || entry.link || entry.value || '').trim();
-                    if (!url) {
-                        return null;
-                    }
-                    
-                    // Check if this is a YouTube URL
-                    if (/youtu\.be\/.{11}/.test(url) || 
-                        /youtube\.com\/(?:youtu\.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)[^#&?]*/.test(url)) {
-                        return {
-                            name: 'YouTube Server',
-                            type: 'youtube',
-                            url,
-                            status: 'active',
-                            order: 0
-                        };
-                    }
-                }
-    }
-  }
-
-  if (typeof value === 'string') {
-    const trimmed = value.trim();
-    if (!trimmed) {
-      return [];
-    }
-
-    try {
-      const parsed = JSON.parse(trimmed);
-      return parseServers(parsed);
-    } catch {
-      return trimmed
-        .split(/\n|\r/)
-        .map((line) => line.trim())
-        .filter(Boolean)
-        .map((url, index) => ({
-          name: `Servidor ${index + 1}`,
-          type: 'iframe',
-          url,
-          status: 'active',
-          order: index
-        }));
-    }
-  }
-
-  return [];
-};
 
 const serializeMovie = (movie) => {
   const releaseYear = movie.release_year || (movie.release_date ? String(movie.release_date).slice(0, 4) : 0);
