@@ -256,12 +256,13 @@ const updatePlayerChrome = () => {
 };
 
 const getAdapterCapabilities = (adapter) => ({
-    controllable: adapter?.capabilities?.controllable !== false,
-    seekable: adapter?.capabilities?.seekable !== false,
-    volume: adapter?.capabilities?.volume !== false,
-    fullscreen: adapter?.capabilities?.fullscreen !== false,
-    timeline: adapter?.capabilities?.timeline !== false,
-    hls: Boolean(adapter?.capabilities?.hls)
+    ...(adapter?.supports || {}),
+    controllable: (adapter?.supports?.playback ?? adapter?.capabilities?.controllable) !== false,
+    seekable: (adapter?.supports?.seeking ?? adapter?.capabilities?.seekable) !== false,
+    volume: (adapter?.supports?.volume ?? adapter?.capabilities?.volume) !== false,
+    fullscreen: (adapter?.supports?.fullscreen ?? adapter?.capabilities?.fullscreen) !== false,
+    timeline: (adapter?.supports?.timeline ?? adapter?.capabilities?.timeline) !== false,
+    hls: Boolean(adapter?.supports?.hls ?? adapter?.capabilities?.hls)
 });
 
 const setElementVisibility = (element, visible) => {
@@ -330,7 +331,7 @@ const removeFromWatchHistory = (movieMovieId) => {
 };
 
 const saveWatchProgress = (force = false) => {
-    if (!activePlayerAdapter || !currentMovie) return;
+    if (!activePlayerAdapter || !currentMovie || !activePlayerAdapter.capabilities?.seekable || activePlayerAdapter.capabilities?.timeline === false) return;
 
     const duration = activePlayerAdapter.getDuration();
     if (!Number.isFinite(duration) || duration <= 0) return;
