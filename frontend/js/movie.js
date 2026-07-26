@@ -255,6 +255,27 @@ const updatePlayerChrome = () => {
     }
 };
 
+const getAdapterCapabilities = (adapter) => ({
+    controllable: adapter?.capabilities?.controllable !== false,
+    seekable: adapter?.capabilities?.seekable !== false,
+    volume: adapter?.capabilities?.volume !== false,
+    fullscreen: adapter?.capabilities?.fullscreen !== false,
+    timeline: adapter?.capabilities?.timeline !== false,
+    hls: Boolean(adapter?.capabilities?.hls)
+});
+
+const setElementVisibility = (element, visible) => {
+    if (!element) {
+        return;
+    }
+
+    element.hidden = !visible;
+};
+
+const getWrapperFor = (element, selector) => {
+    return element?.closest?.(selector) || null;
+};
+
 const updateVolumeChrome = () => {
     if (!activePlayerAdapter) {
         return;
@@ -382,7 +403,7 @@ const saveWatchProgress = (force = false) => {
 };
 
 const restoreWatchProgress = () => {
-    if (!movieVideo || !currentMovie) {
+    if (!movieVideo || !currentMovie || !activePlayerAdapter?.capabilities?.seekable || activePlayerAdapter?.capabilities?.timeline === false) {
         return;
     }
 
@@ -621,15 +642,27 @@ const handleFavoriteToggle = () => {
 };
 
 const wireAdapterToUI = (adapter) => {
-    const isControllable = adapter?.capabilities?.controllable !== false;
+    const capabilities = getAdapterCapabilities(adapter);
+    const timelineVisible = capabilities.seekable && capabilities.timeline;
+    const volumeVisible = capabilities.volume;
+    const qualityVisible = capabilities.hls;
 
-    // Show/hide controls based on adapter type
-    [playPauseButton, muteButton, progressInput, volumeInput, currentTimeLabel, durationTimeLabel, qualitySelect].forEach(el => {
-        if (el) {
-            const controlWrapper = el.closest('.player-control-group') || el;
-            controlWrapper.hidden = !isControllable;
-        }
-    });
+    setElementVisibility(playPauseButton, capabilities.controllable);
+    setElementVisibility(overlayPlayButton, capabilities.controllable);
+    setElementVisibility(muteButton, volumeVisible);
+    setElementVisibility(fullscreenButton, capabilities.fullscreen);
+
+    const timeWrapper = getWrapperFor(currentTimeLabel, '.player-time');
+    setElementVisibility(timeWrapper, timelineVisible);
+
+    const progressWrapper = getWrapperFor(progressInput, '.progress-bar');
+    setElementVisibility(progressWrapper, timelineVisible);
+
+    const volumeWrapper = getWrapperFor(volumeInput, '.volume-control');
+    setElementVisibility(volumeWrapper, volumeVisible);
+
+    const qualityWrapper = getWrapperFor(qualitySelect, '.player-quality');
+    setElementVisibility(qualityWrapper, qualityVisible);
 
     clearInterval(uiUpdateInterval);
     uiUpdateInterval = setInterval(() => {
@@ -639,10 +672,10 @@ const wireAdapterToUI = (adapter) => {
 
     // Hide captions button as it's not supported by current adapters
     if (captionsButton) {
-        captionsButton.closest('.player-control-group').hidden = true;
+        setElementVisibility(captionsButton, false);
     }
 
-    if (!isControllable) {
+    if (!capabilities.controllable) {
         adapter.on('loadedmetadata', hidePlayerLoader);
         adapter.on('canplay', hidePlayerLoader);
         adapter.on('error', (event) => {
@@ -664,9 +697,9 @@ const wireAdapterToUI = (adapter) => {
             const options = ['<option value="-1">Auto</option>'];
             options.push(...levels.map((level, index) => `<option value="${index}">${level.height}p</option>`));
             qualitySelect.innerHTML = options.join('');
-            qualitySelect.closest('.player-control-group').hidden = false;
+            setElementVisibility(getWrapperFor(qualitySelect, '.player-quality'), true);
         } else if (qualitySelect) {
-            qualitySelect.closest('.player-control-group').hidden = true;
+            setElementVisibility(getWrapperFor(qualitySelect, '.player-quality'), false);
         }
     });
     adapter.on('durationchange', updateProgressChrome);
