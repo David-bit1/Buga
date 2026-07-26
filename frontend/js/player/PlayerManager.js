@@ -43,6 +43,24 @@
         youtubeApiPromise: null
     };
 
+    const CAPABILITY_KEYS = [
+        'controllable',
+        'seekable',
+        'volume',
+        'fullscreen',
+        'timeline',
+        'hls'
+    ];
+
+    const DEFAULT_CAPABILITIES = Object.freeze({
+        controllable: true,
+        seekable: true,
+        volume: true,
+        fullscreen: true,
+        timeline: true,
+        hls: false
+    });
+
     const normalizeString = (value) => String(value || '').trim();
 
     const parseUrl = (value) => {
@@ -234,6 +252,30 @@
         };
     };
 
+    const normalizeCapabilities = (...sources) => {
+        const capabilities = { ...DEFAULT_CAPABILITIES };
+
+        sources.forEach((source) => {
+            if (!source || typeof source !== 'object') {
+                return;
+            }
+
+            CAPABILITY_KEYS.forEach((key) => {
+                if (typeof source[key] === 'boolean') {
+                    capabilities[key] = source[key];
+                }
+            });
+
+            Object.keys(source).forEach((key) => {
+                if (!CAPABILITY_KEYS.includes(key) && typeof source[key] !== 'undefined') {
+                    capabilities[key] = source[key];
+                }
+            });
+        });
+
+        return capabilities;
+    };
+
     const registerAdapter = (definition) => {
         if (!definition || typeof definition !== 'object') {
             throw new Error('Adapter definition must be an object');
@@ -352,6 +394,12 @@
             return null;
         }
 
+        const visibilityTargets = [context.videoElement, context.externalElement].filter(Boolean);
+        visibilityTargets.forEach((element) => {
+            element.hidden = true;
+            element.style.display = 'none';
+        });
+
         const mountContext = {
             ...context,
             server: details,
@@ -367,14 +415,14 @@
         adapter.adapterId = definition.id;
         adapter.definition = definition;
         adapter.server = details;
-        adapter.capabilities = {
-            controllable: true,
-            seekable: true,
-            volume: true,
-            fullscreen: true,
-            timeline: true,
-            ...(definition.capabilities || {}),
-            ...(adapter.capabilities || {})
+        adapter.capabilities = normalizeCapabilities(definition.capabilities, adapter.capabilities);
+        adapter.supports = {
+            playback: Boolean(adapter.capabilities.controllable),
+            seeking: Boolean(adapter.capabilities.seekable),
+            volume: Boolean(adapter.capabilities.volume),
+            fullscreen: Boolean(adapter.capabilities.fullscreen),
+            timeline: Boolean(adapter.capabilities.timeline),
+            hls: Boolean(adapter.capabilities.hls)
         };
 
         state.activeAdapter = adapter;
@@ -389,6 +437,7 @@
         normalizeServer,
         detectServerType: detectServerDetails,
         parseYoutubeId,
+        normalizeCapabilities,
         getActiveAdapter: () => state.activeAdapter,
         resolveAdapter,
         getRegisteredAdapters: () => state.registry.slice()
