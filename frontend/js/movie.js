@@ -417,18 +417,6 @@ class Html5PlayerAdapter extends PlayerAdapter {
         this.videoElement = videoElement;
         this.hls = null;
         this._boundEvents = new Map();
-
-        console.log("ENTER Html5PlayerAdapter.constructor");
-
-        this.videoElement.addEventListener("loadstart", () => console.log("HTML5 Event: loadstart"));
-        this.videoElement.addEventListener("loadedmetadata", () => console.log("HTML5 Event: loadedmetadata"));
-        this.videoElement.addEventListener("canplay", () => console.log("HTML5 Event: canplay"));
-        this.videoElement.addEventListener("playing", () => console.log("HTML5 Event: playing"));
-        this.videoElement.addEventListener("error", (e) => {
-          console.error("--- VIDEO ERROR ---");
-          console.error("Error details:", this.videoElement.error);
-          console.error("Current Source:", this.videoElement.currentSrc);
-        });
     }
 
     loadSource(url, type) {
@@ -436,8 +424,6 @@ class Html5PlayerAdapter extends PlayerAdapter {
             this.hls.destroy();
             this.hls = null;
         }
-
-        console.log("Video src ANTES:", this.videoElement.src);
 
         if (type === 'hls' && typeof window.Hls !== 'undefined' && window.Hls.isSupported()) {
             this.hls = new window.Hls();
@@ -448,8 +434,6 @@ class Html5PlayerAdapter extends PlayerAdapter {
         } else {
             this.videoElement.src = url;
         }
-
-        console.log("Video src DESPUÉS:", this.videoElement.src);
     }
 
     play() { return this.videoElement.play(); }
@@ -530,7 +514,7 @@ class YouTubePlayerAdapter extends PlayerAdapter {
                 let playerContainer = document.getElementById(playerElementId);
                 if (!playerContainer) {
                     throw new Error(`Player container #${playerElementId} not found in DOM.`);
-                }
+                } 
                 console.log(`[F.1] Container #${playerElementId} found:`, playerContainer);
 
                 // --- CAUSA RAÍZ CORREGIDA ---
@@ -601,17 +585,13 @@ class YouTubePlayerAdapter extends PlayerAdapter {
     onPlayerStateChange(event) {
         switch (event.data) {
             case YT.PlayerState.PLAYING:
-                this.trigger('play');
                 this.trigger('playing');
-                this.timeUpdateInterval = setInterval(() => this.trigger('timeupdate'), 250);
                 break;
             case YT.PlayerState.PAUSED:
                 this.trigger('pause');
-                clearInterval(this.timeUpdateInterval);
                 break;
             case YT.PlayerState.ENDED:
                 this.trigger('ended');
-                clearInterval(this.timeUpdateInterval);
                 break;
             case YT.PlayerState.BUFFERING:
                 this.trigger('waiting');
@@ -731,7 +711,6 @@ class IframePlayerAdapter extends PlayerAdapter {
  */
 const PlayerManager = {
     _youtubeApiPromise: null,
-
     create: async (server) => {
         console.log("[B] ENTER PlayerManager.create");
         if (activePlayerAdapter) {
@@ -1166,18 +1145,13 @@ const wireAdapterToUI = (adapter) => {
         }
     });
     adapter.on('durationchange', updateProgressChrome);
-    adapter.on('timeupdate', () => {
-        updateProgressChrome();
-        saveWatchProgress(false);
-    });
-    adapter.on('play', updatePlayerChrome);
-    adapter.on('pause', updatePlayerChrome);
-    adapter.on('ended', () => {
+    adapter.on('ended', () => { // Keep ended for final save
         updatePlayerChrome();
         saveWatchProgress(true);
     });
     adapter.on('volumechange', () => {
         updateVolumeChrome();
+        updatePlayerChrome();
     });
     adapter.on('waiting', () => {
         if (playerStatus) playerStatus.textContent = 'Cargando...';
@@ -1186,6 +1160,7 @@ const wireAdapterToUI = (adapter) => {
     adapter.on('playing', () => {
         if (playerStatus) playerStatus.textContent = 'Reproduciendo';
         hidePlayerLoader();
+        updatePlayerChrome();
     });
     adapter.on('canplay', hidePlayerLoader);
     adapter.on('error', (event) => {
