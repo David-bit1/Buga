@@ -21,21 +21,27 @@
             this.iframeElement = null;
             this.loadTimer = null;
             this.loadHandler = null;
+            this.errorHandler = null;
 
             this.mountElement.hidden = false;
             this.mountElement.style.display = 'block';
+            this.mountElement.style.position = 'absolute';
+            this.mountElement.style.inset = '0';
             this.mountElement.innerHTML = '';
 
             this.iframeElement = document.createElement('iframe');
             this.iframeElement.className = 'movie-video';
             this.iframeElement.setAttribute('title', server.name || 'Reproductor externo');
-            this.iframeElement.setAttribute('loading', 'lazy');
+            this.iframeElement.setAttribute('loading', 'eager');
             this.iframeElement.setAttribute('allow', 'autoplay; encrypted-media; fullscreen; picture-in-picture; web-share');
             this.iframeElement.allowFullscreen = true;
             this.iframeElement.referrerPolicy = 'origin-when-cross-origin';
+            this.iframeElement.style.position = 'absolute';
+            this.iframeElement.style.inset = '0';
             this.iframeElement.style.width = '100%';
             this.iframeElement.style.height = '100%';
             this.iframeElement.style.border = '0';
+            this.iframeElement.style.zIndex = '0';
             this.iframeElement.style.display = 'block';
             this.iframeElement.style.visibility = 'visible';
             console.log('[IframeAdapter] Iframe creado', this.iframeElement);
@@ -48,9 +54,10 @@
                 this.emit('canplay');
             };
 
-            this.iframeElement.addEventListener('error', (event) => {
+            this.errorHandler = (event) => {
                 console.error('[IframeAdapter] Iframe error', event);
-            });
+            };
+            this.iframeElement.addEventListener('error', this.errorHandler);
             this.iframeElement.addEventListener('load', this.loadHandler);
             this.loadSource(server.url, server.source || '');
         }
@@ -120,7 +127,11 @@
             if (this.iframeElement && this.loadHandler) {
                 this.iframeElement.removeEventListener('load', this.loadHandler);
             }
+            if (this.iframeElement && this.errorHandler) {
+                this.iframeElement.removeEventListener('error', this.errorHandler);
+            }
             if (this.iframeElement) {
+                this.iframeElement.removeAttribute('src');
                 this.iframeElement.src = 'about:blank';
             }
             if (this.mountElement) {
