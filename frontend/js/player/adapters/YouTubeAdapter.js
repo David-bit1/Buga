@@ -86,6 +86,7 @@
         handleStateChange(event) {
             switch (event.data) {
                 case YT.PlayerState.PLAYING:
+                    this.emit('play');
                     this.emit('playing');
                     break;
                 case YT.PlayerState.PAUSED:
@@ -145,6 +146,8 @@
         }
 
         destroy() {
+            this.player?.removeEventListener?.('onStateChange', this.boundStateChangeHandler);
+            this.player?.removeEventListener?.('onError', this.boundErrorHandler);
             this.player?.destroy?.();
             this.player = null;
             const mountElement = document.getElementById(this.mountElementId);
