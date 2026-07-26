@@ -30,6 +30,8 @@ Plataforma de streaming premium con frontend estático, backend separado y base 
 
 ## Contrato del reproductor
 
+> Ver también: `docs/player-contract.md`
+
 ### Adaptadores soportados
 
 - `YouTubeAdapter`
