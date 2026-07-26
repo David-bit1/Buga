@@ -348,7 +348,8 @@
             return null;
         }
 
-        adapter.kind = definition.id;
+        adapter.kind = details.kind;
+        adapter.adapterId = definition.id;
         adapter.definition = definition;
         adapter.server = details;
         adapter.capabilities = {
