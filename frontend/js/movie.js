@@ -229,27 +229,10 @@ const updatePlayerChrome = () => {
         return;
     }
 
-    const isPaused = activePlayerAdapter.isPaused();
+    const isPaused = playerState.paused;
     const isPlaying = !isPaused;
 
     playerStage.classList.toggle('is-playing', isPlaying);
-
-    // --- LOG DE DEPURACIÓN ---
-    console.log('[LOOP]', Date.now());
-    console.log({
-        current: activePlayerAdapter.getCurrentTime(),
-        duration: activePlayerAdapter.getDuration(),
-        playing: !isPaused
-    });
-
-    const uiState = {
-        playIcon: playPauseButton?.textContent,
-        currentUILabel: currentTimeLabel?.textContent,
-        durationUILabel: durationTimeLabel?.textContent,
-        progressValue: progressInput?.value
-    };
-    console.log('[UI]', uiState);
-    // --- FIN LOG DE DEPURACIÓN ---
 
     if (playPauseButton) {
         playPauseButton.textContent = isPaused ? 'play_arrow' : 'pause';
@@ -273,8 +256,8 @@ const updateVolumeChrome = () => {
         return;
     }
 
-    const isMuted = activePlayerAdapter.isMuted();
-    const volumePercent = Math.round(isMuted ? 0 : activePlayerAdapter.getVolume() * 100);
+    const isMuted = playerState.muted;
+    const volumePercent = Math.round((playerState.volume || 0) * 100);
 
     if (volumeInput && String(volumeInput.value) !== String(volumePercent)) {
         volumeInput.value = String(volumePercent);
@@ -409,7 +392,7 @@ const restoreWatchProgress = () => {
     const duration = activePlayerAdapter.getDuration() || savedEntry.duration || 0;
     const resumeTime = Math.min(savedEntry.currentTime, Math.max(0, duration - 5));
     if (resumeTime > 0) {
-        activePlayerAdapter.seekTo(resumeTime);
+        activePlayerAdapter.seek(resumeTime);
         if (playerStatus) {
             playerStatus.textContent = `Reanudando en ${formatTime(resumeTime)}`;
         }
@@ -418,7 +401,6 @@ const restoreWatchProgress = () => {
 };
 
 const setVideoSource = async (serverIndex) => {
-    console.log("[A] ENTER setVideoSource");
     if (!movieVideo || !currentMovie) {
         return;
     }
@@ -434,26 +416,35 @@ const setVideoSource = async (serverIndex) => {
     }
 
     showPlayerLoader();
+    playerState.paused = true;
+    playerState.muted = false;
+    playerState.volume = 1;
+    playerState.controllable = false;
+    playerState.kind = 'unknown';
 
     try {
-        console.log("[B] ANTES await PlayerManager.create");
-        const adapter = await PlayerManager.create(server);
-        console.log("[C] DESPUÉS await PlayerManager.create, adapter received:", adapter);
-        activePlayerAdapter = adapter; // Store the active adapter
+        const adapter = await PlayerManager.create(server, {
+            videoElement: movieVideo,
+            externalElement,
+            playerStage
+        });
+        activePlayerAdapter = adapter;
 
         if (!adapter) {
-            // This case is for uncontrollable iframes that don't have a full adapter
-            console.warn("[!] Adapter creation returned null/undefined. This might be an uncontrollable iframe.");
+            console.warn('[!] Adapter creation returned null/undefined.');
             hidePlayerLoader();
-            overlayPlayButton.style.display = 'none';
-            console.log("[C.1] EXIT setVideoSource (no adapter)");
+            if (overlayPlayButton) {
+                overlayPlayButton.hidden = true;
+            }
             return;
         }
 
-        console.log("[D] ANTES wireAdapterToUI");
-        overlayPlayButton.style.display = '';
+        playerState.controllable = adapter.capabilities?.controllable !== false;
+        playerState.kind = adapter.kind || 'unknown';
+        if (overlayPlayButton) {
+            overlayPlayButton.hidden = !playerState.controllable;
+        }
         wireAdapterToUI(adapter);
-        console.log("[E] DESPUÉS wireAdapterToUI");
 
     } catch (error) {
         console.error("[!] Error in setVideoSource:", error);
@@ -461,7 +452,6 @@ const setVideoSource = async (serverIndex) => {
         notifyToast({ type: 'error', title: 'Error del reproductor', message: 'No se pudo inicializar el reproductor.' });
         hidePlayerLoader();
     }
-    console.log("[J] EXIT setVideoSource");
 };
 
 const showExternalPlayer = () => {
@@ -520,12 +510,8 @@ const populateServerSelect = (movie) => {
 
     serverSelect.innerHTML = servers.map((server, index) => {
         const serverName = server.name || `Servidor ${index + 1}`;
-        let typeLabel = (server.type || 'iframe').toUpperCase();
-
-        // Automatically detect YouTube servers
-        if (PlayerManager.parseYoutubeId(server.url)) {
-            typeLabel = 'YOUTUBE';
-        }
+        const detected = PlayerManager.detectServerType(server);
+        const typeLabel = detected.displayType || String(server.type || 'iframe').toUpperCase();
 
         return `<option value="${index}">${serverName} (${typeLabel})</option>`;
     }).join('');
@@ -537,7 +523,7 @@ const populateServerSelect = (movie) => {
 const togglePlayback = async () => {
     if (!activePlayerAdapter) return;
 
-    if (activePlayerAdapter.isPaused()) {
+    if (playerState.paused) {
         try {
             await activePlayerAdapter.play();
         } catch (error) {
@@ -551,13 +537,13 @@ const togglePlayback = async () => {
 const toggleMute = () => {
     if (!activePlayerAdapter) return;
 
-    if (activePlayerAdapter.isMuted()) {
+    if (playerState.muted) {
         activePlayerAdapter.unmute();
     } else {
-        activePlayerAdapter.mute(); // Correct: mute if not muted
+        activePlayerAdapter.mute();
     }
-    // If unmuting and volume is 0, set a default volume
-    if (!activePlayerAdapter.isMuted() && Number(volumeInput?.value) === 0) {
+
+    if (!playerState.muted && Number(volumeInput?.value) === 0) {
         activePlayerAdapter.setVolume(0.5);
         if (volumeInput) {
             volumeInput.value = '50';
@@ -567,11 +553,6 @@ const toggleMute = () => {
 };
 
 const toggleFullscreen = async () => {
-    if (activePlayerAdapter) {
-        activePlayerAdapter.enterFullscreen();
-        return;
-    }
-
     const target = playerStage || externalPlayer || movieVideo;
 
     try {
@@ -580,10 +561,8 @@ const toggleFullscreen = async () => {
             return;
         }
 
-        if (target?.requestFullscreen) { // Standard
+        if (target?.requestFullscreen) {
             await target.requestFullscreen();
-        } else if (target?.webkitEnterFullscreen) { // Safari
-            movieVideo.webkitEnterFullscreen();
         }
     } catch (error) {
         console.warn('Fullscreen failed', error);
@@ -666,8 +645,7 @@ const handleFavoriteToggle = () => {
 };
 
 const wireAdapterToUI = (adapter) => {
-    console.log("[D.1] ENTER wireAdapterToUI");
-    const isControllable = adapter instanceof Html5PlayerAdapter || adapter instanceof YouTubePlayerAdapter;
+    const isControllable = adapter?.capabilities?.controllable !== false;
 
     // Show/hide controls based on adapter type
     [playPauseButton, muteButton, progressInput, volumeInput, currentTimeLabel, durationTimeLabel, qualitySelect].forEach(el => {
@@ -677,8 +655,7 @@ const wireAdapterToUI = (adapter) => {
         }
     });
 
-    // Iniciar el bucle de actualización de la UI
-    clearInterval(uiUpdateInterval); // Clear any previous interval
+    clearInterval(uiUpdateInterval);
     uiUpdateInterval = setInterval(() => {
         updatePlayerChrome();
         updateProgressChrome();
@@ -690,12 +667,12 @@ const wireAdapterToUI = (adapter) => {
     }
 
     if (!isControllable) {
-        console.log("[D.2] Uncontrollable player (iframe), skipping event wiring.");
-        return; // No need to wire events for uncontrollable players like iframes
+        adapter.on('loadedmetadata', hidePlayerLoader);
+        adapter.on('canplay', hidePlayerLoader);
+        return;
     }
 
     adapter.on('loadedmetadata', () => {
-        console.log("[I] EVENT: loadedmetadata");
         updateProgressChrome();
         restoreWatchProgress();
         hidePlayerLoader();
@@ -712,11 +689,29 @@ const wireAdapterToUI = (adapter) => {
         }
     });
     adapter.on('durationchange', updateProgressChrome);
+    adapter.on('timeupdate', updateProgressChrome);
     adapter.on('ended', () => { // Keep ended for final save
+        playerState.paused = true;
         updatePlayerChrome();
         saveWatchProgress(true);
     });
-    adapter.on('volumechange', () => {
+    adapter.on('pause', () => {
+        playerState.paused = true;
+        updatePlayerChrome();
+    });
+    adapter.on('playing', () => {
+        playerState.paused = false;
+        if (playerStatus) playerStatus.textContent = 'Reproduciendo';
+        hidePlayerLoader();
+        updatePlayerChrome();
+    });
+    adapter.on('volumechange', (event = {}) => {
+        if (typeof event.volume === 'number') {
+            playerState.volume = event.volume;
+        }
+        if (typeof event.muted === 'boolean') {
+            playerState.muted = event.muted;
+        }
         updateVolumeChrome();
         updatePlayerChrome();
     });
@@ -724,18 +719,12 @@ const wireAdapterToUI = (adapter) => {
         if (playerStatus) playerStatus.textContent = 'Cargando...';
         showPlayerLoader();
     });
-    adapter.on('playing', () => {
-        if (playerStatus) playerStatus.textContent = 'Reproduciendo';
-        hidePlayerLoader();
-        updatePlayerChrome();
-    });
     adapter.on('canplay', hidePlayerLoader);
     adapter.on('error', (event) => {
         hidePlayerLoader();
         console.error('Error de reproducción:', event);
         notifyToast({ type: 'error', title: 'Error de reproducción', message: 'No se pudo cargar el video. Prueba otro servidor.' });
     });
-    console.log("[D.3] EXIT wireAdapterToUI");
 };
 
 const wirePlayer = () => {
@@ -750,7 +739,7 @@ const wirePlayer = () => {
         if (!duration) {
             return;
         }
-        activePlayerAdapter.seekTo(duration * (Number(progressInput.value) / 1000));
+        activePlayerAdapter.seek(duration * (Number(progressInput.value) / 1000));
         updateProgressChrome();
     });
 
