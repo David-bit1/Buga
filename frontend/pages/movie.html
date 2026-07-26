@@ -96,13 +96,12 @@
                             crossorigin="anonymous"
                         ></video>
 
-                        <iframe
+                        <div
                             id="externalPlayer"
                             class="movie-video"
                             hidden
-                            title="Reproductor externo"
-                            loading="lazy"
-                        ></iframe>
+                            aria-label="Reproductor externo"
+                        ></div>
 
                         <div class="player-loader" id="playerLoader" aria-live="polite" aria-label="Cargando reproductor">
                             <div class="page-loader-spinner" aria-hidden="true"></div>
@@ -171,6 +170,12 @@
     <script src="https://cdn.jsdelivr.net/npm/hls.js@1.5.18"></script>
     <script src="/js/shared.js"></script>
     <script src="/js/auth.js"></script>
+    <script src="/js/player/PlayerBase.js"></script>
+    <script src="/js/player/PlayerManager.js"></script>
+    <script src="/js/player/adapters/Html5Adapter.js"></script>
+    <script src="/js/player/adapters/HlsAdapter.js"></script>
+    <script src="/js/player/adapters/IframeAdapter.js"></script>
+    <script src="/js/player/adapters/YouTubeAdapter.js"></script>
     <script src="/js/movie.js"></script>
 </body>
 </html>
