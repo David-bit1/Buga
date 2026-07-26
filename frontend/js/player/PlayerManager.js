@@ -332,6 +332,21 @@
         const resolved = resolveAdapter(server);
         const { details, definition } = resolved;
 
+        console.log('Servidor recibido:', details);
+        console.log('URL:', details.url);
+        console.log('Tipo detectado:', details.kind);
+        console.log('Adaptador seleccionado:', definition?.id || 'none');
+
+        if (context.videoElement) {
+            context.videoElement.hidden = true;
+            context.videoElement.style.display = 'none';
+        }
+
+        if (context.externalElement) {
+            context.externalElement.hidden = true;
+            context.externalElement.style.display = 'none';
+        }
+
         if (!definition) {
             console.warn('[PlayerManager] No adapter matched server', details);
             return null;
