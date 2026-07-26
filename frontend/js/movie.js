@@ -428,7 +428,7 @@ const setVideoSource = async (serverIndex) => {
     try {
         const adapter = await PlayerManager.create(server, {
             videoElement: movieVideo,
-            externalElement,
+            externalElement: externalPlayer,
             playerStage
         });
         activePlayerAdapter = adapter;
