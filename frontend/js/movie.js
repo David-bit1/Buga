@@ -415,6 +415,9 @@ const setVideoSource = async (serverIndex) => {
         return;
     }
 
+    clearInterval(uiUpdateInterval);
+    uiUpdateInterval = null;
+    activePlayerAdapter = null;
     showPlayerLoader();
     playerState.paused = true;
     playerState.muted = false;

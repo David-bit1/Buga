@@ -147,6 +147,11 @@
         destroy() {
             this.player?.destroy?.();
             this.player = null;
+            const mountElement = document.getElementById(this.mountElementId);
+            if (mountElement) {
+                mountElement.innerHTML = '';
+                mountElement.hidden = true;
+            }
             super.destroy();
         }
     }
