@@ -239,7 +239,7 @@ const updatePlayerChrome = () => {
     }
 
     if (overlayPlayButton) {
-        overlayPlayButton.hidden = isPlaying;
+        overlayPlayButton.hidden = playerState.controllable ? isPlaying : true;
     }
 
     if (playerStatus) {
