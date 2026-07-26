@@ -27,6 +27,8 @@
 
 ## Reproductor
 
+> Ver también: `docs/player-contract.md`
+
 ### Adaptadores soportados
 
 - `YouTubeAdapter`
