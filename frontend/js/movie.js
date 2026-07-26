@@ -1131,6 +1131,13 @@ const wireAdapterToUI = (adapter) => {
         }
     });
 
+    // Iniciar el bucle de actualización de la UI
+    clearInterval(uiUpdateInterval); // Clear any previous interval
+    uiUpdateInterval = setInterval(() => {
+        updatePlayerChrome();
+        updateProgressChrome();
+    }, 250);
+
     // Hide captions button as it's not supported by current adapters
     if (captionsButton) {
         captionsButton.closest('.player-control-group').hidden = true;
