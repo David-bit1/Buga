@@ -283,7 +283,7 @@ const autoFillFromTmdb = async () => {
             movieTitle.value = movie.title || '';
         }
         if (!movieOriginalTitle.value.trim()) {
-            movieOriginalTitle.value = movie.original_title || ''; // Corrected from movieOriginalTitle
+n            movieOriginalTitle.value = movie.original_title || ''; // Corrected from movieOriginalTitle
         }
         if (!movieOverview.value.trim()) {
             movieOverview.value = movie.overview || ''; // Corrected from movieOverview

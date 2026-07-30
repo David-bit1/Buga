@@ -110,7 +110,7 @@ const mediaLabel = mediaType === 'tv' ? 'Serie' : 'Película';
 let currentMovie = null;
 let lastWatchSaveAt = 0;
 let activePlayerAdapter = null;
-const playerState = {
+ const playerState = {
     paused: true,
     muted: false,
     volume: 1,
@@ -749,7 +749,7 @@ const wireAdapterToUI = (adapter) => {
     setElementVisibility(qualityWrapper, qualityVisible);
 
     clearInterval(uiUpdateInterval);
-    if (captionsButton) {
+Auto    if (captionsButton) {
         setElementVisibility(captionsButton, false);
     }
 
