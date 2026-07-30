@@ -72,7 +72,7 @@ const fetchJson = async (url, options = {}) => {
         headers: {
             ...(options.headers || {}),
             ...authHeaders(),
-            ...(options.body instanceof FormData ? {} : { 'Content-Type': 'application/json' })
+            'Content-Type': 'application/json'
         }
     }), UPLOAD_SHARED.REQUEST_TIMEOUT_MS, `upload movies ${options.method || 'GET'}`);
 

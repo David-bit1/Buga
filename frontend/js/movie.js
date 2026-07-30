@@ -110,7 +110,6 @@ const mediaLabel = mediaType === 'tv' ? 'Serie' : 'Película';
 let currentMovie = null;
 let lastWatchSaveAt = 0;
 let activePlayerAdapter = null;
-const PlayerManager = window.BugaPlayerManager;
 const playerState = {
     paused: true,
     muted: false,
@@ -120,7 +119,6 @@ const playerState = {
 };
 
 let uiUpdateInterval = null;
-let youtubeApiReady = false;
 
 const formatRuntime = (minutes) => {
     if (!Number.isFinite(minutes) || minutes <= 0) {
@@ -555,49 +553,27 @@ const setVideoSource = async (serverIndex) => {
     playerState.kind = 'unknown';
 
     try {
-        const adapter = await PlayerManager.create(server, {
-            videoElement: movieVideo,
-            externalElement: externalPlayer,
-            playerStage
-        });
         const adapter = await PlayerManager.create(server);
         activePlayerAdapter = adapter;
 
         if (!adapter) {
             console.warn('[!] Adapter creation returned null/undefined.');
             hidePlayerLoader();
-            if (overlayPlayButton) {
-                overlayPlayButton.hidden = true;
-            }
             return;
         }
 
-        playerState.controllable = adapter.capabilities?.controllable !== false;
         const capabilities = getAdapterCapabilities(adapter);
         playerState.controllable = capabilities.controllable;
         playerState.kind = adapter.kind || 'unknown';
-        if (overlayPlayButton) {
-            overlayPlayButton.hidden = !playerState.controllable;
-        }
 
         wireAdapterToUI(adapter);
 
-        if (adapter.capabilities?.controllable !== false && (adapter.adapterId === 'html5' || adapter.adapterId === 'hls')) {
-            try {
-                await adapter.play();
-            } catch (error) {
-                console.warn('[Buga] Autoplay blocked or failed', error);
-            }
-        }
-
     } catch (error) {
         console.error("[!] Error in setVideoSource:", error);
-        console.error(error.stack);
         notifyToast({ type: 'error', title: 'Error del reproductor', message: 'No se pudo inicializar el reproductor.' });
         hidePlayerLoader();
     }
 };
-
 const populateServerSelect = (movie) => {
     if (!serverSelect) {
         return;
@@ -613,7 +589,6 @@ const populateServerSelect = (movie) => {
 
     serverSelect.innerHTML = servers.map((server, index) => {
         const serverName = server.name || `Servidor ${index + 1}`;
-        const detected = PlayerManager.detectServerType(server);
         const detected = { displayType: PlayerManager.detectServerType(server.url, server.type) };
         const typeLabel = detected.displayType || String(server.type || 'iframe').toUpperCase();
 
@@ -774,12 +749,6 @@ const wireAdapterToUI = (adapter) => {
     setElementVisibility(qualityWrapper, qualityVisible);
 
     clearInterval(uiUpdateInterval);
-    uiUpdateInterval = setInterval(() => {
-        updatePlayerChrome();
-        updateProgressChrome();
-    }, 250);
-
-    // Hide captions button as it's not supported by current adapters
     if (captionsButton) {
         setElementVisibility(captionsButton, false);
     }
@@ -817,29 +786,18 @@ const wireAdapterToUI = (adapter) => {
         }
     });
     adapter.on('durationchange', updateProgressChrome);
-    adapter.on('timeupdate', updateProgressChrome);
-    adapter.on('ended', () => { // Keep ended for final save
-        playerState.paused = true;
-        updatePlayerChrome();
-        saveWatchProgress(true);
     adapter.on('timeupdate', () => {
         updateProgressChrome();
         saveWatchProgress(false);
     });
     adapter.on('play', () => {
         playerState.paused = false;
-        if (playerStatus) playerStatus.textContent = 'Reproduciendo';
-        hidePlayerLoader();
         updatePlayerChrome();
     });
     adapter.on('pause', () => {
         playerState.paused = true;
         updatePlayerChrome();
     });
-    adapter.on('playing', () => {
-        playerState.paused = false;
-        if (playerStatus) playerStatus.textContent = 'Reproduciendo';
-        hidePlayerLoader();
     adapter.on('ended', () => {
         playerState.paused = true;
         updatePlayerChrome();
@@ -853,7 +811,6 @@ const wireAdapterToUI = (adapter) => {
             playerState.muted = event.muted;
         }
         updateVolumeChrome();
-        updatePlayerChrome();
     });
     adapter.on('waiting', () => {
         if (playerStatus) playerStatus.textContent = 'Cargando...';
