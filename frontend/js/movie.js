@@ -426,6 +426,109 @@ const restoreWatchProgress = () => {
     }
 };
 
+const PlayerManager = {
+    _youtubeApiPromise: null,
+
+    create: async (server) => {
+        console.log("[B] ENTER PlayerManager.create");
+        if (activePlayerAdapter) {
+            clearInterval(uiUpdateInterval);
+            activePlayerAdapter.destroy();
+            activePlayerAdapter = null;
+        }
+
+        const detectedType = PlayerManager.detectServerType(server.url, server.type);
+        console.log("[SERVER]", {
+            url: server.url,
+            type: server.type,
+            detectedType: detectedType
+        });
+
+        // Hide all players first, then show the correct one.
+        if (movieVideo) movieVideo.style.display = 'none';
+        if (externalPlayer) externalPlayer.style.display = 'none';
+
+        switch (detectedType) {
+            case 'youtube':
+                if (externalPlayer) externalPlayer.style.display = 'block';
+                await PlayerManager.loadYoutubeApi();
+                const youtubeId = PlayerManager.parseYoutubeId(server.url);
+                return await window.YouTubePlayerAdapter.create('externalPlayer', youtubeId);
+
+            case 'hls':
+                if (movieVideo) movieVideo.style.display = 'block';
+                const hlsAdapter = new window.Html5PlayerAdapter(movieVideo);
+                hlsAdapter.loadSource(server.url, 'hls');
+                return hlsAdapter;
+
+            case 'mp4':
+                if (movieVideo) movieVideo.style.display = 'block';
+                const mp4Adapter = new window.Html5PlayerAdapter(movieVideo);
+                mp4Adapter.loadSource(server.url, 'mp4');
+                return mp4Adapter;
+
+            case 'iframe':
+                if (externalPlayer) externalPlayer.style.display = 'block';
+                return new window.IframePlayerAdapter(externalPlayer, server.url);
+
+            default:
+                console.error(`Unsupported or invalid server type detected: ${detectedType}`);
+                return null;
+        }
+    },
+
+    parseYoutubeId: (url) => {
+        if (!url) return null;
+        const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/;
+        const match = url.match(regExp);
+        return (match && match[2].length === 11) ? match[2] : null;
+    },
+
+    detectServerType: (url, declaredType) => {
+        if (!url) return 'invalid';
+
+        if (PlayerManager.parseYoutubeId(url)) {
+            return 'youtube';
+        }
+        if (url.includes('.m3u8')) {
+            return 'hls';
+        }
+        if (url.includes('.mp4')) {
+            return 'mp4';
+        }
+        // If the DB declares it as a specific type, trust it.
+        if (declaredType === 'm3u8') return 'hls';
+        if (declaredType === 'mp4') return 'mp4';
+        // Default any other valid URL to iframe
+        return 'iframe';
+    },
+
+    loadYoutubeApi: () => {
+        if (PlayerManager._youtubeApiPromise) {
+            return PlayerManager._youtubeApiPromise;
+        }
+
+        PlayerManager._youtubeApiPromise = new Promise((resolve) => {
+            if (window.YT && window.YT.Player) {
+                resolve();
+                return;
+            }
+
+            const tag = document.createElement('script');
+            tag.src = "https://www.youtube.com/iframe_api";
+            const firstScriptTag = document.getElementsByTagName('script')[0];
+            firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
+
+            window.onYouTubeIframeAPIReady = () => {
+                resolve();
+            };
+        });
+
+        return PlayerManager._youtubeApiPromise;
+    }
+};
+
+
 const setVideoSource = async (serverIndex) => {
     if (!movieVideo || !currentMovie) {
         return;
@@ -457,6 +560,7 @@ const setVideoSource = async (serverIndex) => {
             externalElement: externalPlayer,
             playerStage
         });
+        const adapter = await PlayerManager.create(server);
         activePlayerAdapter = adapter;
 
         if (!adapter) {
@@ -469,10 +573,13 @@ const setVideoSource = async (serverIndex) => {
         }
 
         playerState.controllable = adapter.capabilities?.controllable !== false;
+        const capabilities = getAdapterCapabilities(adapter);
+        playerState.controllable = capabilities.controllable;
         playerState.kind = adapter.kind || 'unknown';
         if (overlayPlayButton) {
             overlayPlayButton.hidden = !playerState.controllable;
         }
+
         wireAdapterToUI(adapter);
 
         if (adapter.capabilities?.controllable !== false && (adapter.adapterId === 'html5' || adapter.adapterId === 'hls')) {
@@ -507,6 +614,7 @@ const populateServerSelect = (movie) => {
     serverSelect.innerHTML = servers.map((server, index) => {
         const serverName = server.name || `Servidor ${index + 1}`;
         const detected = PlayerManager.detectServerType(server);
+        const detected = { displayType: PlayerManager.detectServerType(server.url, server.type) };
         const typeLabel = detected.displayType || String(server.type || 'iframe').toUpperCase();
 
         return `<option value="${index}">${serverName} (${typeLabel})</option>`;
@@ -687,6 +795,11 @@ const wireAdapterToUI = (adapter) => {
         return;
     }
 
+    uiUpdateInterval = setInterval(() => {
+        updatePlayerChrome();
+        updateProgressChrome();
+    }, 250);
+
     adapter.on('loadedmetadata', () => {
         updateProgressChrome();
         restoreWatchProgress();
@@ -709,6 +822,9 @@ const wireAdapterToUI = (adapter) => {
         playerState.paused = true;
         updatePlayerChrome();
         saveWatchProgress(true);
+    adapter.on('timeupdate', () => {
+        updateProgressChrome();
+        saveWatchProgress(false);
     });
     adapter.on('play', () => {
         playerState.paused = false;
@@ -724,7 +840,10 @@ const wireAdapterToUI = (adapter) => {
         playerState.paused = false;
         if (playerStatus) playerStatus.textContent = 'Reproduciendo';
         hidePlayerLoader();
+    adapter.on('ended', () => {
+        playerState.paused = true;
         updatePlayerChrome();
+        saveWatchProgress(true);
     });
     adapter.on('volumechange', (event = {}) => {
         if (typeof event.volume === 'number') {
@@ -739,6 +858,10 @@ const wireAdapterToUI = (adapter) => {
     adapter.on('waiting', () => {
         if (playerStatus) playerStatus.textContent = 'Cargando...';
         showPlayerLoader();
+    });
+    adapter.on('playing', () => {
+        if (playerStatus) playerStatus.textContent = 'Reproduciendo';
+        hidePlayerLoader();
     });
     adapter.on('canplay', hidePlayerLoader);
     adapter.on('error', (event) => {
@@ -767,6 +890,7 @@ const wirePlayer = () => {
     volumeInput?.addEventListener('input', () => {
         if (!activePlayerAdapter) return;
         activePlayerAdapter.setVolume(Number(volumeInput.value) / 100);
+        saveWatchProgress(false);
         if (Number(volumeInput.value) === 0) activePlayerAdapter.mute();
         else activePlayerAdapter.unmute();
         updateVolumeChrome();
