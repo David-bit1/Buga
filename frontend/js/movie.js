@@ -110,7 +110,7 @@ const mediaLabel = mediaType === 'tv' ? 'Serie' : 'Película';
 let currentMovie = null;
 let lastWatchSaveAt = 0;
 let activePlayerAdapter = null;
- const playerState = {
+const playerState = {
     paused: true,
     muted: false,
     volume: 1,
@@ -749,10 +749,6 @@ const wireAdapterToUI = (adapter) => {
     setElementVisibility(qualityWrapper, qualityVisible);
 
     clearInterval(uiUpdateInterval);
-Auto    if (captionsButton) {
-        setElementVisibility(captionsButton, false);
-    }
-
     if (!capabilities.controllable) {
         adapter.on('loadedmetadata', hidePlayerLoader);
         adapter.on('canplay', hidePlayerLoader);
@@ -762,6 +758,10 @@ Auto    if (captionsButton) {
             notifyToast({ type: 'error', title: 'Error de reproducción', message: 'No se pudo cargar el video. Prueba otro servidor.' });
         });
         return;
+    }
+
+    if (captionsButton) {
+        setElementVisibility(captionsButton, false);
     }
 
     uiUpdateInterval = setInterval(() => {
