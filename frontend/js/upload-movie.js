@@ -72,7 +72,7 @@ const fetchJson = async (url, options = {}) => {
         headers: {
             ...(options.headers || {}),
             ...authHeaders(),
-            'Content-Type': 'application/json'
+            ...(options.body instanceof FormData ? {} : { 'Content-Type': 'application/json' })
         }
     }), UPLOAD_SHARED.REQUEST_TIMEOUT_MS, `upload movies ${options.method || 'GET'}`);
 
@@ -283,7 +283,7 @@ const autoFillFromTmdb = async () => {
             movieTitle.value = movie.title || '';
         }
         if (!movieOriginalTitle.value.trim()) {
-n            movieOriginalTitle.value = movie.original_title || ''; // Corrected from movieOriginalTitle
+            movieOriginalTitle.value = movie.original_title || ''; // Corrected from movieOriginalTitle
         }
         if (!movieOverview.value.trim()) {
             movieOverview.value = movie.overview || ''; // Corrected from movieOverview
