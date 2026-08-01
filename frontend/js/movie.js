@@ -492,6 +492,7 @@ const setVideoSource = async (serverIndex) => {
         return;
     }
 
+    console.log('ENTER setVideoSource', { serverIndex, serverUrl: server.url, serverKind: server.kind });
     clearInterval(uiUpdateInterval);
     uiUpdateInterval = null;
     activePlayerAdapter = null;
@@ -505,6 +506,7 @@ const setVideoSource = async (serverIndex) => {
             videoElement: movieVideo,
             externalElement: externalPlayer
         });
+        console.log('EXIT PlayerManager.create', { adapterId: adapter?.adapterId, adapterKind: adapter?.kind, adapterExists: Boolean(adapter) });
         activePlayerAdapter = adapter;
 
         if (!adapter) {
@@ -678,6 +680,7 @@ const handleFavoriteToggle = () => {
 };
 
 const wireAdapterToUI = (adapter) => {
+    console.log('ENTER wireAdapterToUI', { adapterId: adapter?.adapterId, adapterKind: adapter?.kind, capabilities: adapter?.capabilities });
     const capabilities = getAdapterCapabilities(adapter);
     activePlayerCapabilities = capabilities;
     const timelineVisible = capabilities.seek;
@@ -708,8 +711,14 @@ const wireAdapterToUI = (adapter) => {
 
     clearInterval(uiUpdateInterval);
     if (!playVisible) {
-        adapter.on('loadedmetadata', hidePlayerLoader);
-        adapter.on('canplay', hidePlayerLoader);
+        adapter.on('loadedmetadata', () => {
+            console.log('WIRE EVENT loadedmetadata (no playVisible)');
+            hidePlayerLoader();
+        });
+        adapter.on('canplay', () => {
+            console.log('WIRE EVENT canplay (no playVisible)');
+            hidePlayerLoader();
+        });
         adapter.on('error', (event) => {
             hidePlayerLoader();
             console.error('Error de reproducción:', event);
@@ -717,6 +726,7 @@ const wireAdapterToUI = (adapter) => {
         });
         updateVolumeChrome();
         updateProgressChrome();
+        console.log('EXIT wireAdapterToUI (no playVisible)');
         return;
     }
 
@@ -726,6 +736,7 @@ const wireAdapterToUI = (adapter) => {
     }, 250);
 
     adapter.on('loadedmetadata', () => {
+        console.log('WIRE EVENT loadedmetadata');
         syncVolumeStateFromAdapter();
         updateProgressChrome();
         restoreWatchProgress();
@@ -742,25 +753,33 @@ const wireAdapterToUI = (adapter) => {
             setElementVisibility(getWrapperFor(qualitySelect, '.player-quality'), false);
         }
     });
-    adapter.on('durationchange', updateProgressChrome);
+    adapter.on('durationchange', () => {
+        console.log('WIRE EVENT durationchange');
+        updateProgressChrome();
+    });
     adapter.on('timeupdate', () => {
+        console.log('WIRE EVENT timeupdate');
         updateProgressChrome();
         saveWatchProgress(false);
     });
     adapter.on('play', () => {
+        console.log('WIRE EVENT play');
         playerState.paused = false;
         updatePlayerChrome();
     });
     adapter.on('pause', () => {
+        console.log('WIRE EVENT pause');
         playerState.paused = true;
         updatePlayerChrome();
     });
     adapter.on('ended', () => {
+        console.log('WIRE EVENT ended');
         playerState.paused = true;
         updatePlayerChrome();
         saveWatchProgress(true);
     });
     adapter.on('volumechange', (event = {}) => {
+        console.log('WIRE EVENT volumechange', event);
         if (typeof event.volume === 'number') {
             playerState.volume = event.volume;
         }
@@ -772,19 +791,26 @@ const wireAdapterToUI = (adapter) => {
         updateVolumeChrome();
     });
     adapter.on('waiting', () => {
+        console.log('WIRE EVENT waiting');
         if (playerStatus) playerStatus.textContent = 'Cargando...';
         showPlayerLoader();
     });
     adapter.on('playing', () => {
+        console.log('WIRE EVENT playing');
         if (playerStatus) playerStatus.textContent = 'Reproduciendo';
         hidePlayerLoader();
     });
-    adapter.on('canplay', hidePlayerLoader);
+    adapter.on('canplay', () => {
+        console.log('WIRE EVENT canplay');
+        hidePlayerLoader();
+    });
     adapter.on('error', (event) => {
+        console.log('WIRE EVENT error', event);
         hidePlayerLoader();
         console.error('Error de reproducción:', event);
         notifyToast({ type: 'error', title: 'Error de reproducción', message: 'No se pudo cargar el video. Prueba otro servidor.' });
     });
+    console.log('EXIT wireAdapterToUI');
 };
 
 const wirePlayer = () => {

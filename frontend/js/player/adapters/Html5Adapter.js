@@ -22,7 +22,7 @@
                 timeline: true
             });
 
-            console.log('[Html5Adapter] Entrando Html5Adapter');
+            console.log('ENTER Html5Adapter.create');
             this.videoElement = videoElement;
             console.log('[Html5Adapter] Video creado', this.videoElement);
             this.hls = null;
@@ -37,12 +37,19 @@
             };
 
             bind('loadedmetadata', () => {
-                console.log('[Html5Adapter] loadedmetadata');
+                console.log('EVENT loadedmetadata');
                 this.emit('loadedmetadata');
             });
-            bind('durationchange', () => this.emit('durationchange'));
-            bind('timeupdate', () => this.emit('timeupdate'));
+            bind('durationchange', () => {
+                console.log('EVENT durationchange');
+                this.emit('durationchange');
+            });
+            bind('timeupdate', () => {
+                console.log('EVENT timeupdate');
+                this.emit('timeupdate');
+            });
             bind('volumechange', () => {
+                console.log('EVENT volumechange', { volume: this.videoElement.volume, muted: this.videoElement.muted });
                 this.emit('volumechange', {
                     volume: this.videoElement.volume,
                     muted: this.videoElement.muted
@@ -68,6 +75,7 @@
         }
 
         loadSource(url, sourceType = 'mp4') {
+            console.log('ENTER Html5Adapter.loadSource', { url, sourceType });
             if (this.hls) {
                 this.hls.destroy();
                 this.hls = null;

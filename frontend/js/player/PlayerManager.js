@@ -381,6 +381,7 @@
     };
 
     const create = async (server, context = {}) => {
+        console.log('ENTER PlayerManager.create', { server, context: { hasVideoElement: Boolean(context.videoElement), hasExternalElement: Boolean(context.externalElement) } });
         destroyCurrent();
 
         const resolved = resolveAdapter(server);
@@ -418,7 +419,9 @@
             manager: api
         };
 
+        console.log('ENTER adapter.create', { adapterId: definition.id });
         const adapter = await definition.create(mountContext);
+        console.log('EXIT adapter.create', { adapter: Boolean(adapter), adapterId: definition.id });
         if (!adapter) {
             return null;
         }

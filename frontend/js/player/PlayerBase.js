@@ -30,6 +30,7 @@
         }
 
         emit(eventName, payload) {
+            console.log('EMIT', eventName, payload);
             const callbacks = this.listeners.get(eventName);
             if (!callbacks) {
                 return;
