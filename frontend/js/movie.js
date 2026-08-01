@@ -83,6 +83,16 @@ const mediaLabel = mediaType === 'tv' ? 'Serie' : 'Película';
 let currentMovie = null;
 let lastWatchSaveAt = 0;
 let activePlayerAdapter = null;
+let activePlayerCapabilities = {
+    play: false,
+    pause: false,
+    seek: false,
+    volume: false,
+    mute: false,
+    fullscreen: false,
+    quality: false,
+    subtitles: false
+};
 const playerState = {
     paused: true,
     muted: false,
@@ -214,7 +224,7 @@ const updatePlayerChrome = () => {
     }
 
     if (overlayPlayButton) {
-        overlayPlayButton.hidden = playerState.controllable ? isPlaying : true;
+        overlayPlayButton.hidden = !(activePlayerCapabilities.play && activePlayerCapabilities.pause) || isPlaying;
     }
 
     if (playerStatus) {
@@ -227,14 +237,83 @@ const updatePlayerChrome = () => {
 };
 
 const getAdapterCapabilities = (adapter) => ({
-    ...(adapter?.supports || {}),
-    controllable: (adapter?.supports?.playback ?? adapter?.capabilities?.controllable) !== false,
-    seekable: (adapter?.supports?.seeking ?? adapter?.capabilities?.seekable) !== false,
-    volume: (adapter?.supports?.volume ?? adapter?.capabilities?.volume) !== false,
-    fullscreen: (adapter?.supports?.fullscreen ?? adapter?.capabilities?.fullscreen) !== false,
-    timeline: (adapter?.supports?.timeline ?? adapter?.capabilities?.timeline) !== false,
-    hls: Boolean(adapter?.supports?.hls ?? adapter?.capabilities?.hls)
+    play: adapter?.capabilities?.play !== false && adapter?.capabilities?.controllable !== false,
+    pause: adapter?.capabilities?.pause !== false && adapter?.capabilities?.controllable !== false,
+    seek: adapter?.capabilities?.seek !== false && adapter?.capabilities?.seekable !== false,
+    volume: adapter?.capabilities?.volume !== false,
+    mute: adapter?.capabilities?.mute !== false,
+    fullscreen: adapter?.capabilities?.fullscreen !== false,
+    quality: Boolean(adapter?.capabilities?.quality),
+    subtitles: Boolean(adapter?.capabilities?.subtitles)
 });
+
+const resetPlayerChrome = () => {
+    activePlayerCapabilities = {
+        play: false,
+        pause: false,
+        seek: false,
+        volume: false,
+        mute: false,
+        fullscreen: false,
+        quality: false,
+        subtitles: false
+    };
+
+    playerState.paused = true;
+    playerState.muted = false;
+    playerState.volume = 1;
+    playerState.controllable = false;
+    playerState.kind = 'unknown';
+
+    if (playerStage) {
+        playerStage.classList.remove('is-playing', 'is-fullscreen');
+    }
+
+    if (playPauseButton) playPauseButton.hidden = true;
+    if (overlayPlayButton) overlayPlayButton.hidden = true;
+    if (muteButton) muteButton.hidden = true;
+    if (fullscreenButton) fullscreenButton.hidden = true;
+    if (captionsButton) captionsButton.hidden = true;
+    if (qualitySelect) qualitySelect.hidden = true;
+
+    const timeWrapper = getWrapperFor(currentTimeLabel, '.player-time');
+    setElementVisibility(timeWrapper, false);
+
+    const progressWrapper = getWrapperFor(progressInput, '.progress-bar');
+    setElementVisibility(progressWrapper, false);
+
+    const volumeWrapper = getWrapperFor(volumeInput, '.volume-control');
+    setElementVisibility(volumeWrapper, false);
+
+    if (currentTimeLabel) currentTimeLabel.textContent = '0:00';
+    if (durationTimeLabel) durationTimeLabel.textContent = '0:00';
+    if (progressInput) progressInput.value = '0';
+    if (volumeInput) volumeInput.value = '100';
+    if (playerStatus) playerStatus.textContent = 'Cargando reproductor…';
+    if (playPauseIcon) playPauseIcon.textContent = '▶';
+    if (muteIcon) muteIcon.textContent = 'volume_up';
+    if (volumeIndicator) volumeIndicator.textContent = 'volume_up';
+};
+
+const syncVolumeStateFromAdapter = () => {
+    if (!activePlayerAdapter) {
+        return;
+    }
+
+    if (typeof activePlayerAdapter.isMuted === 'function') {
+        const muted = activePlayerAdapter.isMuted();
+        if (typeof muted === 'boolean') {
+            playerState.muted = muted;
+        }
+    }
+
+    if (typeof activePlayerAdapter.getVolume === 'function') {
+        const volume = Number(activePlayerAdapter.getVolume());
+        if (Number.isFinite(volume)) {
+            playerState.volume = volume > 1 ? volume / 100 : volume;
+        }
+    }
+};
 
 const setElementVisibility = (element, visible) => {
     if (!element) {
@@ -253,6 +332,7 @@ const updateVolumeChrome = () => {
         return;
     }
 
+    syncVolumeStateFromAdapter();
     const isMuted = playerState.muted;
     const volumePercent = Math.round((playerState.volume || 0) * 100);
 
@@ -302,7 +382,7 @@ const removeFromWatchHistory = (movieMovieId) => {
 };
 
 const saveWatchProgress = (force = false) => {
-    if (!activePlayerAdapter || !currentMovie || !activePlayerAdapter.capabilities?.seekable || activePlayerAdapter.capabilities?.timeline === false) return;
+    if (!activePlayerAdapter || !currentMovie || !activePlayerCapabilities.seek) return;
 
     const duration = activePlayerAdapter.getDuration();
     if (!Number.isFinite(duration) || duration <= 0) return;
@@ -375,7 +455,7 @@ const saveWatchProgress = (force = false) => {
 };
 
 const restoreWatchProgress = () => {
-    if (!movieVideo || !currentMovie || !activePlayerAdapter?.capabilities?.seekable || activePlayerAdapter?.capabilities?.timeline === false) {
+    if (!movieVideo || !currentMovie || !activePlayerCapabilities.seek) {
         return;
     }
 
@@ -415,12 +495,8 @@ const setVideoSource = async (serverIndex) => {
     clearInterval(uiUpdateInterval);
     uiUpdateInterval = null;
     activePlayerAdapter = null;
+    resetPlayerChrome();
     showPlayerLoader();
-    playerState.paused = true;
-    playerState.muted = false;
-    playerState.volume = 1;
-    playerState.controllable = false;
-    playerState.kind = 'unknown';
 
     try {
         const adapter = await window.BugaPlayerManager.create(server, {
@@ -436,7 +512,8 @@ const setVideoSource = async (serverIndex) => {
         }
 
         const capabilities = getAdapterCapabilities(adapter);
-        playerState.controllable = capabilities.controllable;
+        activePlayerCapabilities = capabilities;
+        playerState.controllable = capabilities.play && capabilities.pause;
         playerState.kind = adapter.kind || 'unknown';
 
         wireAdapterToUI(adapter);
@@ -473,7 +550,7 @@ const populateServerSelect = (movie) => {
 };
 
 const togglePlayback = async () => {
-    if (!activePlayerAdapter || !playerState.controllable) return;
+    if (!activePlayerAdapter || !(activePlayerCapabilities.play && activePlayerCapabilities.pause)) return;
 
     if (playerState.paused) {
         try {
@@ -487,7 +564,7 @@ const togglePlayback = async () => {
 };
 
 const toggleMute = () => {
-    if (!activePlayerAdapter || !playerState.controllable) return;
+    if (!activePlayerAdapter || !activePlayerCapabilities.mute) return;
 
     const wasMuted = playerState.muted;
 
@@ -497,6 +574,7 @@ const toggleMute = () => {
         activePlayerAdapter.mute();
     }
 
+    syncVolumeStateFromAdapter();
     if (wasMuted && Number(volumeInput?.value) === 0) {
         activePlayerAdapter.setVolume(0.5);
         if (volumeInput) {
@@ -600,13 +678,16 @@ const handleFavoriteToggle = () => {
 
 const wireAdapterToUI = (adapter) => {
     const capabilities = getAdapterCapabilities(adapter);
-    const timelineVisible = capabilities.seekable && capabilities.timeline;
+    activePlayerCapabilities = capabilities;
+    const timelineVisible = capabilities.seek;
     const volumeVisible = capabilities.volume;
-    const qualityVisible = capabilities.hls;
+    const qualityVisible = capabilities.quality;
+    const playVisible = capabilities.play && capabilities.pause;
+    const muteVisible = capabilities.mute && capabilities.volume;
 
-    setElementVisibility(playPauseButton, capabilities.controllable);
-    setElementVisibility(overlayPlayButton, capabilities.controllable);
-    setElementVisibility(muteButton, volumeVisible);
+    setElementVisibility(playPauseButton, playVisible);
+    setElementVisibility(overlayPlayButton, playVisible);
+    setElementVisibility(muteButton, muteVisible);
     setElementVisibility(fullscreenButton, capabilities.fullscreen);
 
     const timeWrapper = getWrapperFor(currentTimeLabel, '.player-time');
@@ -620,9 +701,12 @@ const wireAdapterToUI = (adapter) => {
 
     const qualityWrapper = getWrapperFor(qualitySelect, '.player-quality');
     setElementVisibility(qualityWrapper, qualityVisible);
+    if (captionsButton) {
+        setElementVisibility(captionsButton, capabilities.subtitles);
+    }
 
     clearInterval(uiUpdateInterval);
-    if (!capabilities.controllable) {
+    if (!playVisible) {
         adapter.on('loadedmetadata', hidePlayerLoader);
         adapter.on('canplay', hidePlayerLoader);
         adapter.on('error', (event) => {
@@ -630,11 +714,9 @@ const wireAdapterToUI = (adapter) => {
             console.error('Error de reproducción:', event);
             notifyToast({ type: 'error', title: 'Error de reproducción', message: 'No se pudo cargar el video. Prueba otro servidor.' });
         });
+        updateVolumeChrome();
+        updateProgressChrome();
         return;
-    }
-
-    if (captionsButton) {
-        setElementVisibility(captionsButton, false);
     }
 
     uiUpdateInterval = setInterval(() => {
@@ -643,6 +725,7 @@ const wireAdapterToUI = (adapter) => {
     }, 250);
 
     adapter.on('loadedmetadata', () => {
+        syncVolumeStateFromAdapter();
         updateProgressChrome();
         restoreWatchProgress();
         hidePlayerLoader();
@@ -682,6 +765,8 @@ const wireAdapterToUI = (adapter) => {
         }
         if (typeof event.muted === 'boolean') {
             playerState.muted = event.muted;
+        } else {
+            syncVolumeStateFromAdapter();
         }
         updateVolumeChrome();
     });
@@ -708,7 +793,7 @@ const wirePlayer = () => {
     fullscreenButton?.addEventListener('click', toggleFullscreen);
 
     progressInput?.addEventListener('input', () => {
-        if (!activePlayerAdapter) return;
+        if (!activePlayerAdapter || !activePlayerCapabilities.seek) return;
         const duration = activePlayerAdapter.getDuration() || 0;
         if (!duration) {
             return;
@@ -718,11 +803,14 @@ const wirePlayer = () => {
     });
 
     volumeInput?.addEventListener('input', () => {
-        if (!activePlayerAdapter) return;
+        if (!activePlayerAdapter || !activePlayerCapabilities.volume) return;
         activePlayerAdapter.setVolume(Number(volumeInput.value) / 100);
         saveWatchProgress(false);
-        if (Number(volumeInput.value) === 0) activePlayerAdapter.mute();
-        else activePlayerAdapter.unmute();
+        if (activePlayerCapabilities.mute) {
+            if (Number(volumeInput.value) === 0) activePlayerAdapter.mute();
+            else activePlayerAdapter.unmute();
+        }
+        syncVolumeStateFromAdapter();
         updateVolumeChrome();
     });
 
@@ -753,7 +841,7 @@ const wirePlayer = () => {
     });
 
     playerStage?.addEventListener('click', (e) => {
-        if (playerState.controllable && (e.target === playerStage || e.target === overlayPlayButton)) togglePlayback();
+        if (activePlayerCapabilities.play && activePlayerCapabilities.pause && (e.target === playerStage || e.target === overlayPlayButton)) togglePlayback();
     });
 
     playerStage?.addEventListener('dblclick', toggleFullscreen);
