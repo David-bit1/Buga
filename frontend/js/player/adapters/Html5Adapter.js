@@ -95,6 +95,10 @@
             console.log('[Html5Adapter] video.load()');
         }
 
+        load(url, sourceType = 'mp4') {
+            this.loadSource(url, sourceType);
+        }
+
         play() {
             console.log('[Html5Adapter] video.play()');
             return this.videoElement.play();

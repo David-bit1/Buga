@@ -14,6 +14,10 @@
         loadSource(url) {
             super.loadSource(url, 'hls');
         }
+
+        load(url) {
+            this.loadSource(url);
+        }
     }
 
     PlayerManager.registerAdapter({

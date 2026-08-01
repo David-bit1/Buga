@@ -137,6 +137,10 @@
             this.player.seekTo(Number(time) || 0, true);
         }
 
+        load() {
+            return this;
+        }
+
         getCurrentTime() {
             return this.player.getCurrentTime();
         }

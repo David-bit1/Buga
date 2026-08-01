@@ -1,7 +1,6 @@
 (function () {
 const MOVIE_SHARED = window.BugaShared;
 
-const movieHero = document.getElementById('movieHero');
 const movieBackdrop = document.getElementById('movieBackdrop');
 const moviePoster = document.getElementById('moviePoster');
 const movieTitle = document.getElementById('movieTitle');
@@ -24,7 +23,6 @@ const overlayPlayButton = document.getElementById('overlayPlayButton');
 const playPauseButton = document.getElementById('playPauseButton');
 const playPauseIcon = document.getElementById('playPauseIcon');
 const muteButton = document.getElementById('muteButton');
-const muteIconButton = document.getElementById('muteIconButton');
 const muteIcon = document.getElementById('muteIcon');
 const captionsButton = document.getElementById('captionsButton');
 const fullscreenButton = document.getElementById('fullscreenButton');
@@ -75,31 +73,6 @@ const WATCH_HISTORY_KEY = getScopedStorageKey(MOVIE_SHARED.STORAGE_KEYS.WATCH_HI
 
 const syncPreferenceEvent = (payload) => { 
     window.BugaAuth?.recordPreferenceEvent?.(payload);
-};
-
-const getAuthToken = () => getAuthSession()?.token || '';
-
-const fetchAuthJson = async (url) => {
-    const response = await fetch(url, {
-        headers: {
-            Authorization: `Bearer ${getAuthToken()}`
-        }
-    });
-    const data = await response.json().catch(() => ({}));
-    if (!response.ok) {
-        const error = new Error(data.message || 'No se pudo cargar el stream');
-        error.status = response.status;
-        throw error;
-    }
-    return data;
-};
-
-const buildTokenizedUrl = (url, token) => {
-    if (!url) {
-        return '';
-    }
-
-    return `${url}${url.includes('?') ? '&' : '?'}token=${encodeURIComponent(token)}`;
 };
 
 const params = new URLSearchParams(window.location.search);
@@ -287,13 +260,13 @@ const updateVolumeChrome = () => {
         volumeInput.value = String(volumePercent);
     }
 
-    if (muteIconButton) {
+    if (muteIcon) {
         if (isMuted || volumePercent === 0) {
-            muteIconButton.textContent = 'volume_off';
+            muteIcon.textContent = 'volume_off';
         } else if (volumePercent < 45) {
-            muteIconButton.textContent = 'volume_down';
+            muteIcon.textContent = 'volume_down';
         } else {
-            muteIconButton.textContent = 'volume_up';
+            muteIcon.textContent = 'volume_up';
         }
     }
 
@@ -424,109 +397,6 @@ const restoreWatchProgress = () => {
     }
 };
 
-const PlayerManager = {
-    _youtubeApiPromise: null,
-
-    create: async (server) => {
-        console.log("[B] ENTER PlayerManager.create");
-        if (activePlayerAdapter) {
-            clearInterval(uiUpdateInterval);
-            activePlayerAdapter.destroy();
-            activePlayerAdapter = null;
-        }
-
-        const detectedType = PlayerManager.detectServerType(server.url, server.type);
-        console.log("[SERVER]", {
-            url: server.url,
-            type: server.type,
-            detectedType: detectedType
-        });
-
-        // Hide all players first, then show the correct one.
-        if (movieVideo) movieVideo.style.display = 'none';
-        if (externalPlayer) externalPlayer.style.display = 'none';
-
-        switch (detectedType) {
-            case 'youtube':
-                if (externalPlayer) externalPlayer.style.display = 'block';
-                await PlayerManager.loadYoutubeApi();
-                const youtubeId = PlayerManager.parseYoutubeId(server.url);
-                return await window.YouTubePlayerAdapter.create('externalPlayer', youtubeId);
-
-            case 'hls':
-                if (movieVideo) movieVideo.style.display = 'block';
-                const hlsAdapter = new window.Html5PlayerAdapter(movieVideo);
-                hlsAdapter.loadSource(server.url, 'hls');
-                return hlsAdapter;
-
-            case 'mp4':
-                if (movieVideo) movieVideo.style.display = 'block';
-                const mp4Adapter = new window.Html5PlayerAdapter(movieVideo);
-                mp4Adapter.loadSource(server.url, 'mp4');
-                return mp4Adapter;
-
-            case 'iframe':
-                if (externalPlayer) externalPlayer.style.display = 'block';
-                return new window.IframePlayerAdapter(externalPlayer, server.url);
-
-            default:
-                console.error(`Unsupported or invalid server type detected: ${detectedType}`);
-                return null;
-        }
-    },
-
-    parseYoutubeId: (url) => {
-        if (!url) return null;
-        const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/;
-        const match = url.match(regExp);
-        return (match && match[2].length === 11) ? match[2] : null;
-    },
-
-    detectServerType: (url, declaredType) => {
-        if (!url) return 'invalid';
-
-        if (PlayerManager.parseYoutubeId(url)) {
-            return 'youtube';
-        }
-        if (url.includes('.m3u8')) {
-            return 'hls';
-        }
-        if (url.includes('.mp4')) {
-            return 'mp4';
-        }
-        // If the DB declares it as a specific type, trust it.
-        if (declaredType === 'm3u8') return 'hls';
-        if (declaredType === 'mp4') return 'mp4';
-        // Default any other valid URL to iframe
-        return 'iframe';
-    },
-
-    loadYoutubeApi: () => {
-        if (PlayerManager._youtubeApiPromise) {
-            return PlayerManager._youtubeApiPromise;
-        }
-
-        PlayerManager._youtubeApiPromise = new Promise((resolve) => {
-            if (window.YT && window.YT.Player) {
-                resolve();
-                return;
-            }
-
-            const tag = document.createElement('script');
-            tag.src = "https://www.youtube.com/iframe_api";
-            const firstScriptTag = document.getElementsByTagName('script')[0];
-            firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
-
-            window.onYouTubeIframeAPIReady = () => {
-                resolve();
-            };
-        });
-
-        return PlayerManager._youtubeApiPromise;
-    }
-};
-
-
 const setVideoSource = async (serverIndex) => {
     if (!movieVideo || !currentMovie) {
         return;
@@ -553,7 +423,10 @@ const setVideoSource = async (serverIndex) => {
     playerState.kind = 'unknown';
 
     try {
-        const adapter = await PlayerManager.create(server);
+        const adapter = await window.BugaPlayerManager.create(server, {
+            videoElement: movieVideo,
+            externalElement: externalPlayer
+        });
         activePlayerAdapter = adapter;
 
         if (!adapter) {
@@ -589,8 +462,8 @@ const populateServerSelect = (movie) => {
 
     serverSelect.innerHTML = servers.map((server, index) => {
         const serverName = server.name || `Servidor ${index + 1}`;
-        const detected = { displayType: PlayerManager.detectServerType(server.url, server.type) };
-        const typeLabel = detected.displayType || String(server.type || 'iframe').toUpperCase();
+        const detected = window.BugaPlayerManager.detectServerType(server);
+        const typeLabel = detected?.displayType || String(server.type || 'iframe').toUpperCase();
 
         return `<option value="${index}">${serverName} (${typeLabel})</option>`;
     }).join('');

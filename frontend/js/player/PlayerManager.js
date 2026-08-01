@@ -36,6 +36,12 @@
         'www.dropbox.com'
     ];
 
+    const ARCHIVE_HOSTS = [
+        'archive.org',
+        'www.archive.org',
+        'web.archive.org'
+    ];
+
     const state = {
         activeAdapter: null,
         registry: [],
@@ -200,6 +206,11 @@
             return 'embed';
         }
 
+        const host = getHostname(text);
+        if (host && ARCHIVE_HOSTS.some((knownHost) => host === knownHost || host.endsWith(`.${knownHost}`))) {
+            return 'archive';
+        }
+
         const extension = getPathExtension(text);
         if (extension === 'm3u8' || declared === 'm3u8' || declared === 'hls') {
             return 'hls';
@@ -209,7 +220,6 @@
             return 'mp4';
         }
 
-        const host = getHostname(text);
         if (host && (YOUTUBE_HOSTS.includes(host) || host.endsWith('.youtube.com') || host.endsWith('.youtube-nocookie.com'))) {
             return 'youtube';
         }
@@ -237,6 +247,7 @@
             hls: 'HLS',
             mp4: extension ? extension.toUpperCase() : 'MP4',
             embed: 'EMBED',
+            archive: 'ARCHIVE',
             iframe: 'IFRAME',
             invalid: 'INVALID'
         }[kind] || kind.toUpperCase();
@@ -320,6 +331,7 @@
             hls: 'hls',
             mp4: 'html5',
             embed: 'iframe',
+            archive: 'iframe',
             iframe: 'iframe'
         }[details.kind] || 'iframe';
 

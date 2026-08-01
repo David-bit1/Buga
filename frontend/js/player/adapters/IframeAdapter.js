@@ -102,6 +102,10 @@
             }, 0);
         }
 
+        load(url, rawSource = '') {
+            this.loadSource(url, rawSource);
+        }
+
         play() {}
 
         pause() {}
@@ -152,7 +156,7 @@
             fullscreen: true,
             timeline: false
         },
-        match: (server) => server.kind === 'embed' || server.kind === 'iframe',
+        match: (server) => server.kind === 'embed' || server.kind === 'archive' || server.kind === 'iframe',
         create: async ({ externalElement, server }) => {
             if (!externalElement) {
                 return null;
