@@ -27,7 +27,13 @@
             controllable: true,
             seekable: true,
             volume: true,
+            mute: true,
+            play: true,
+            pause: true,
+            seek: true,
             fullscreen: true,
+            quality: true,
+            subtitles: false,
             timeline: true,
             hls: true
         },

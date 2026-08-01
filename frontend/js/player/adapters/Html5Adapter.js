@@ -12,7 +12,13 @@
                 controllable: true,
                 seekable: true,
                 volume: true,
+                mute: true,
+                play: true,
+                pause: true,
+                seek: true,
                 fullscreen: true,
+                quality: false,
+                subtitles: false,
                 timeline: true
             });
 
@@ -144,6 +150,14 @@
             return this.videoElement.duration || 0;
         }
 
+        getVolume() {
+            return this.videoElement.volume;
+        }
+
+        isMuted() {
+            return Boolean(this.videoElement.muted);
+        }
+
         getHlsLevels() {
             return this.hls?.levels || [];
         }
@@ -179,7 +193,13 @@
             controllable: true,
             seekable: true,
             volume: true,
+            mute: true,
+            play: true,
+            pause: true,
+            seek: true,
             fullscreen: true,
+            quality: false,
+            subtitles: false,
             timeline: true
         },
         match: (server) => server.kind === 'mp4',

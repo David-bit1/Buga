@@ -12,7 +12,13 @@
                 controllable: true,
                 seekable: true,
                 volume: true,
+                mute: true,
+                play: true,
+                pause: true,
+                seek: true,
                 fullscreen: true,
+                quality: true,
+                subtitles: false,
                 timeline: true
             });
 
@@ -149,6 +155,14 @@
             return this.player.getDuration();
         }
 
+        getVolume() {
+            return this.player.getVolume() / 100;
+        }
+
+        isMuted() {
+            return this.player.isMuted?.() || false;
+        }
+
         destroy() {
             this.player?.removeEventListener?.('onStateChange', this.boundStateChangeHandler);
             this.player?.removeEventListener?.('onError', this.boundErrorHandler);
@@ -170,7 +184,13 @@
             controllable: true,
             seekable: true,
             volume: true,
+            mute: true,
+            play: true,
+            pause: true,
+            seek: true,
             fullscreen: true,
+            quality: true,
+            subtitles: false,
             timeline: true
         },
         match: (server) => server.kind === 'youtube',

@@ -12,7 +12,13 @@
                 controllable: false,
                 seekable: false,
                 volume: false,
+                mute: false,
+                play: false,
+                pause: false,
+                seek: false,
                 fullscreen: true,
+                quality: false,
+                subtitles: false,
                 timeline: false
             });
 
@@ -93,13 +99,6 @@
             this.iframeElement.style.display = 'block';
             this.iframeElement.style.visibility = 'visible';
             console.log('[IframeAdapter] Iframe visible');
-
-            window.clearTimeout(this.loadTimer);
-            this.loadTimer = window.setTimeout(() => {
-                this.emit('loadedmetadata');
-                this.emit('durationchange');
-                this.emit('canplay');
-            }, 0);
         }
 
         load(url, rawSource = '') {
@@ -127,7 +126,6 @@
         }
 
         destroy() {
-            window.clearTimeout(this.loadTimer);
             if (this.iframeElement && this.loadHandler) {
                 this.iframeElement.removeEventListener('load', this.loadHandler);
             }
