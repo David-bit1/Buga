@@ -83,6 +83,7 @@ const mediaLabel = mediaType === 'tv' ? 'Serie' : 'Película';
 let currentMovie = null;
 let lastWatchSaveAt = 0;
 let activePlayerAdapter = null;
+let activeServerSelection = null;
 let activePlayerCapabilities = {
     play: false,
     pause: false,
@@ -172,6 +173,91 @@ const showPlayerLoader = () => {
 const hidePlayerLoader = () => {
     console.log('ENTER hidePlayerLoader');
     playerLoader?.classList.add('is-hidden');
+};
+
+const debugGetControlsVisibility = () => ({
+    playPause: playPauseButton ? !playPauseButton.hidden : null,
+    overlayPlay: overlayPlayButton ? !overlayPlayButton.hidden : null,
+    mute: muteButton ? !muteButton.hidden : null,
+    fullscreen: fullscreenButton ? !fullscreenButton.hidden : null,
+    captions: captionsButton ? !captionsButton.hidden : null,
+    quality: qualitySelect ? !qualitySelect.hidden : null,
+    progress: progressInput ? !progressInput.closest('.progress-bar')?.hidden : null,
+    volume: volumeInput ? !volumeInput.closest('.volume-control')?.hidden : null,
+    time: currentTimeLabel ? !currentTimeLabel.closest('.player-time')?.hidden : null
+});
+
+const debugCollectRuntimeState = (label = 'snapshot') => {
+    const snapshot = {
+        label,
+        currentMovieTitle: currentMovie?.title || null,
+        currentMovieServers: Array.isArray(currentMovie?.servers) ? currentMovie.servers : null,
+        serverSelected: activeServerSelection ? {
+            index: activeServerSelection.index,
+            name: activeServerSelection.server?.name || null,
+            kind: activeServerSelection.server?.kind || null,
+            type: activeServerSelection.server?.type || null,
+            url: activeServerSelection.server?.url || null
+        } : null,
+        detectedType: activePlayerAdapter?.server ? window.BugaPlayerManager?.detectServerType?.(activePlayerAdapter.server)?.kind : null,
+        adapterSelected: activePlayerAdapter?.adapterId || null,
+        adapterCreated: Boolean(activePlayerAdapter),
+        capabilities: activePlayerCapabilities,
+        controlsVisible: debugGetControlsVisibility(),
+        time: activePlayerAdapter?.getCurrentTime ? activePlayerAdapter.getCurrentTime() : null,
+        duration: activePlayerAdapter?.getDuration ? activePlayerAdapter.getDuration() : null,
+        mute: activePlayerAdapter?.isMuted ? activePlayerAdapter.isMuted() : null,
+        playPauseState: playerState.paused ? 'paused' : 'playing'
+    };
+
+    console.log('[DEBUG SNAPSHOT]', snapshot);
+    return snapshot;
+};
+
+const debugRunScenario = async (serverKind) => {
+    if (!currentMovie) {
+        console.warn('[DEBUG] No hay currentMovie para ejecutar escenario');
+        return null;
+    }
+
+    const scenarioServers = {
+        youtube: {
+            name: 'DEBUG YouTube',
+            type: 'youtube',
+            kind: 'youtube',
+            url: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ'
+        },
+        mp4: {
+            name: 'DEBUG MP4',
+            type: 'mp4',
+            kind: 'mp4',
+            url: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4'
+        },
+        embed: {
+            name: 'DEBUG Embed',
+            type: 'embed',
+            kind: 'embed',
+            url: '<iframe src="https://example.com"></iframe>'
+        },
+        iframe: {
+            name: 'DEBUG Iframe',
+            type: 'iframe',
+            kind: 'iframe',
+            url: 'https://example.com'
+        }
+    };
+
+    const server = scenarioServers[String(serverKind).toLowerCase()];
+    if (!server) {
+        console.warn('[DEBUG] Escenario desconocido', serverKind);
+        return null;
+    }
+
+    currentMovie.servers = [server];
+    populateServerSelect(currentMovie);
+    console.log('[DEBUG] Escenario', { serverKind, server });
+    await setVideoSource(0);
+    return debugCollectRuntimeState(`scenario:${serverKind}`);
 };
 
 const navigateWithTransition = (url) => {
@@ -486,6 +572,9 @@ const setVideoSource = async (serverIndex) => {
     }
 
     const servers = Array.isArray(currentMovie.servers) ? currentMovie.servers : [];
+    console.log('currentMovie', currentMovie);
+    console.log('currentMovie.servers', servers);
+    console.log('currentMovie.servers.length', servers.length);
     const server = servers[serverIndex];
 
     if (!server || !server.url) {
@@ -496,6 +585,7 @@ const setVideoSource = async (serverIndex) => {
     }
 
     console.log('ENTER setVideoSource', { serverIndex, serverUrl: server.url, serverKind: server.kind });
+    activeServerSelection = { index: serverIndex, server };
     clearInterval(uiUpdateInterval);
     uiUpdateInterval = null;
     activePlayerAdapter = null;
@@ -505,10 +595,15 @@ const setVideoSource = async (serverIndex) => {
     showPlayerLoader();
 
     try {
+        const detected = window.BugaPlayerManager?.detectServerType?.(server);
+        console.log('Servidor seleccionado', { index: serverIndex, name: server.name, type: server.type, kind: server.kind, url: server.url });
+        console.log('Tipo detectado', detected?.kind || detected?.displayType || null);
         const adapter = await window.BugaPlayerManager.create(server, {
             videoElement: movieVideo,
             externalElement: externalPlayer
         });
+        console.log('Adapter seleccionado', adapter?.adapterId || null);
+        console.log('Adapter creado', adapter || null);
         console.log('EXIT PlayerManager.create', { adapterId: adapter?.adapterId, adapterKind: adapter?.kind, adapterExists: Boolean(adapter) });
         activePlayerAdapter = adapter;
 
@@ -522,8 +617,9 @@ const setVideoSource = async (serverIndex) => {
         activePlayerCapabilities = capabilities;
         playerState.controllable = capabilities.play && capabilities.pause;
         playerState.kind = adapter.kind || 'unknown';
-
+        console.log('Capacidades', capabilities);
         wireAdapterToUI(adapter);
+        debugCollectRuntimeState('after-create');
 
     } catch (error) {
         console.error("[!] Error in setVideoSource:", error);
@@ -559,6 +655,8 @@ const populateServerSelect = (movie) => {
 const togglePlayback = async () => {
     if (!activePlayerAdapter || !(activePlayerCapabilities.play && activePlayerCapabilities.pause)) return;
 
+    console.log('Play/Pause action', { paused: playerState.paused, adapterId: activePlayerAdapter.adapterId });
+
     if (playerState.paused) {
         try {
             await activePlayerAdapter.play();
@@ -572,6 +670,8 @@ const togglePlayback = async () => {
 
 const toggleMute = () => {
     if (!activePlayerAdapter || !activePlayerCapabilities.mute) return;
+
+    console.log('Mute action', { adapterId: activePlayerAdapter.adapterId });
 
     if (typeof activePlayerAdapter.isMuted === 'function') {
         const currentlyMuted = activePlayerAdapter.isMuted();
@@ -685,6 +785,7 @@ const handleFavoriteToggle = () => {
 const wireAdapterToUI = (adapter) => {
     console.log('ENTER wireAdapterToUI', { adapterId: adapter?.adapterId, adapterKind: adapter?.kind, capabilities: adapter?.capabilities });
     const capabilities = getAdapterCapabilities(adapter);
+    console.log('Controles visibles', debugGetControlsVisibility());
     activePlayerCapabilities = capabilities;
     const timelineVisible = capabilities.seek;
     const volumeVisible = capabilities.volume;
@@ -716,10 +817,12 @@ const wireAdapterToUI = (adapter) => {
     if (!playVisible) {
         adapter.on('loadedmetadata', () => {
             console.log('WIRE EVENT loadedmetadata (no playVisible)');
+            debugCollectRuntimeState('event:loadedmetadata:no-play-visible');
             hidePlayerLoader();
         });
         adapter.on('canplay', () => {
             console.log('WIRE EVENT canplay (no playVisible)');
+            debugCollectRuntimeState('event:canplay:no-play-visible');
             hidePlayerLoader();
         });
         adapter.on('error', (event) => {
@@ -740,6 +843,7 @@ const wireAdapterToUI = (adapter) => {
 
     adapter.on('loadedmetadata', () => {
         console.log('WIRE EVENT loadedmetadata');
+        debugCollectRuntimeState('event:loadedmetadata');
         syncVolumeStateFromAdapter();
         updateProgressChrome();
         restoreWatchProgress();
@@ -758,31 +862,37 @@ const wireAdapterToUI = (adapter) => {
     });
     adapter.on('durationchange', () => {
         console.log('WIRE EVENT durationchange');
+        debugCollectRuntimeState('event:durationchange');
         updateProgressChrome();
     });
     adapter.on('timeupdate', () => {
         console.log('WIRE EVENT timeupdate');
+        debugCollectRuntimeState('event:timeupdate');
         updateProgressChrome();
         saveWatchProgress(false);
     });
     adapter.on('play', () => {
         console.log('WIRE EVENT play');
+        debugCollectRuntimeState('event:play');
         playerState.paused = false;
         updatePlayerChrome();
     });
     adapter.on('pause', () => {
         console.log('WIRE EVENT pause');
+        debugCollectRuntimeState('event:pause');
         playerState.paused = true;
         updatePlayerChrome();
     });
     adapter.on('ended', () => {
         console.log('WIRE EVENT ended');
+        debugCollectRuntimeState('event:ended');
         playerState.paused = true;
         updatePlayerChrome();
         saveWatchProgress(true);
     });
     adapter.on('volumechange', (event = {}) => {
         console.log('WIRE EVENT volumechange', event);
+        debugCollectRuntimeState('event:volumechange');
         if (typeof event.volume === 'number') {
             playerState.volume = event.volume;
         }
@@ -795,20 +905,24 @@ const wireAdapterToUI = (adapter) => {
     });
     adapter.on('waiting', () => {
         console.log('WIRE EVENT waiting');
+        debugCollectRuntimeState('event:waiting');
         if (playerStatus) playerStatus.textContent = 'Cargando...';
         showPlayerLoader();
     });
     adapter.on('playing', () => {
         console.log('WIRE EVENT playing');
+        debugCollectRuntimeState('event:playing');
         if (playerStatus) playerStatus.textContent = 'Reproduciendo';
         hidePlayerLoader();
     });
     adapter.on('canplay', () => {
         console.log('WIRE EVENT canplay');
+        debugCollectRuntimeState('event:canplay');
         hidePlayerLoader();
     });
     adapter.on('error', (event) => {
         console.log('WIRE EVENT error', event);
+        debugCollectRuntimeState('event:error');
         hidePlayerLoader();
         console.error('Error de reproducción:', event);
         notifyToast({ type: 'error', title: 'Error de reproducción', message: 'No se pudo cargar el video. Prueba otro servidor.' });
@@ -885,16 +999,17 @@ const wirePlayer = () => {
 
 const fetchLocalMovie = async (id) => {
     try {
-        // First try local DB ID endpoint (/api/movies/:movieId)
-        let response = await fetch(`/api/movies/${encodeURIComponent(id)}`);
+        const movieEndpoint = MOVIE_SHARED.resolveApiUrl(`/api/movies/${encodeURIComponent(id)}`);
+        const tmdbEndpoint = MOVIE_SHARED.resolveApiUrl(`/api/movies/tmdb/${encodeURIComponent(id)}`);
+
+        let response = await fetch(movieEndpoint);
         let data = await response.json().catch(() => ({}));
         if (response.ok && data.movie) {
             console.log('[Buga] Movie found via local ID endpoint');
             return data.movie;
         }
 
-        // Fallback: try TMDB ID endpoint (/api/movies/tmdb/:tmdbId)
-        response = await fetch(`/api/movies/tmdb/${encodeURIComponent(id)}`);
+        response = await fetch(tmdbEndpoint);
         data = await response.json().catch(() => ({}));
         if (response.ok && data.movie) {
             console.log('[Buga] Movie found via TMDB ID endpoint');
@@ -1003,6 +1118,9 @@ const bootstrap = async () => {
         updatePlayerChrome();
 
         console.log('[4] Renderizando descripción y UI del reproductor');
+        console.log('currentMovie', currentMovie);
+        console.log('currentMovie.servers', currentMovie?.servers);
+        console.log('currentMovie.servers.length', Array.isArray(currentMovie?.servers) ? currentMovie.servers.length : 0);
 
         if (movie.servers && movie.servers.length > 0) {
             console.log('[4.1] Movie has servers, ANTES await setVideoSource');
@@ -1033,6 +1151,19 @@ const bootstrap = async () => {
         }
         safeHideMovieLoader();
     }
+};
+
+window.__BugaMovieDebug = {
+    runScenario: debugRunScenario,
+    snapshot: debugCollectRuntimeState
+};
+
+window.__BugaMovieDebugInject = async (movieData) => {
+    currentMovie = movieData;
+    applyMovie(movieData);
+    populateServerSelect(movieData);
+    await setVideoSource(0);
+    return debugCollectRuntimeState('injected');
 };
 
 bootstrap();

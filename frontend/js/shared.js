@@ -2,7 +2,9 @@
     const shared = window.BugaShared || {};
     
     const sharedConfig = {
-        API_ORIGIN: 'https://buga.onrender.com',
+        API_ORIGIN: (window.location.hostname === '127.0.0.1' || window.location.hostname === 'localhost')
+            ? 'http://127.0.0.1:3100'
+            : 'https://buga.onrender.com',
         API_KEY: 'b24af203b14e23f8c91844baae37cfab',
         TMDB_BASE_URL: 'https://api.themoviedb.org/3',
         IMAGE_BASE_URL: 'https://image.tmdb.org/t/p/w500',
@@ -36,6 +38,19 @@
                 window.setTimeout(() => reject(new Error(`${label} timeout`)), timeoutMs);
             })
         ]);
+
+    const resolveApiUrl = (path) => {
+        if (!path) {
+            return path;
+        }
+
+        if (/^https?:\/\//i.test(path)) {
+            return path;
+        }
+
+        const normalizedPath = String(path).startsWith('/') ? String(path) : `/${path}`;
+        return `${sharedConfig.API_ORIGIN}${normalizedPath}`;
+    };
 
     const getProfileStorageKey = (suffix) => { // Renamed from getProfileStorageKey to avoid conflict
         if (window.BugaAuth?.getProfileStorageKey) {
@@ -95,6 +110,7 @@
         ...shared,
         ...sharedConfig,
         requestWithTimeout,
+        resolveApiUrl,
         getProfileStorageKey,
         normalizeMovie: normalizeMovieData
     };
