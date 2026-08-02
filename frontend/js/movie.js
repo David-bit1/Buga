@@ -170,6 +170,7 @@ const showPlayerLoader = () => {
 };
 
 const hidePlayerLoader = () => {
+    console.log('ENTER hidePlayerLoader');
     playerLoader?.classList.add('is-hidden');
 };
 
@@ -356,7 +357,9 @@ const updateVolumeChrome = () => {
 };
 
 const updateProgressChrome = () => {
+    console.log('ENTER updateProgressChrome');
     if (!activePlayerAdapter) {
+        console.log('EXIT updateProgressChrome (no activePlayerAdapter)');
         return;
     }
 
