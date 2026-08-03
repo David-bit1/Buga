@@ -23,6 +23,11 @@ router.post('/register', register);
 router.post('/login', login);
 router.get('/me', protect, me);
 router.all(['/register', '/login'], (_req, res) => {
+app.use(cors({
+  origin: (origin, callback) => {
+    callback(null, allowedOrigins.includes('*') || allowedOrigins.includes(origin));
+  }
+}));
   res.status(405).json({ message: 'Método no permitido. Usa POST.' });
 });
 
