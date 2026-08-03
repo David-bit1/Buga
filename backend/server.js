@@ -13,7 +13,16 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 
 // Middleware
-app.use(cors({ origin: process.env.CLIENT_ORIGIN || '*' }));
+const allowedOrigins = (process.env.CLIENT_ORIGIN || '').split(',').map(origin => origin.trim()).filter(Boolean);
+if (allowedOrigins.length === 0) {
+  allowedOrigins.push('*'); // Fallback to allow all if not specified
+}
+
+app.use(cors({
+  origin: (origin, callback) => {
+    callback(null, allowedOrigins.includes('*') || allowedOrigins.includes(origin));
+  }
+}));
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
