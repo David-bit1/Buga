@@ -567,12 +567,15 @@ const restoreWatchProgress = () => {
 };
 
 const setVideoSource = async (serverIndex) => {
+    console.log('Entró a setVideoSource');
     if (!movieVideo || !currentMovie) {
         return;
     }
 
     const servers = Array.isArray(currentMovie.servers) ? currentMovie.servers : [];
-    console.log('currentMovie', currentMovie);
+    console.log('Movie:', currentMovie);
+    console.log('Servers:', currentMovie?.servers);
+    console.log('Servers length:', currentMovie?.servers?.length);
     console.log('currentMovie.servers', servers);
     console.log('currentMovie.servers.length', servers.length);
     const server = servers[serverIndex];
@@ -628,6 +631,7 @@ const setVideoSource = async (serverIndex) => {
     }
 };
 const populateServerSelect = (movie) => {
+    console.log('Entró a populateServerSelect');
     if (!serverSelect) {
         return;
     }
@@ -708,6 +712,7 @@ const toggleFullscreen = async () => {
 };
 
 const applyMovie = (movie) => {
+    console.log('Entró a applyMovie');
     currentMovie = movie;
 
     document.title = `${movie.title} | Buga`;
@@ -739,8 +744,10 @@ const applyMovie = (movie) => {
 };
 
 const fetchMovieFromTMDB = async (id) => {
+    console.log('Entró a fetchMovie');
     const endpoint = mediaType === 'tv' ? 'tv' : 'movie';
     const response = await fetch(`${MOVIE_SHARED.TMDB_BASE_URL}/${endpoint}/${id}?api_key=${MOVIE_SHARED.API_KEY}&language=es-ES`);
+    console.log('Respuesta API:', response.status);
 
     if (!response.ok) {
         throw new Error(`TMDB responded with ${response.status}`);
@@ -999,10 +1006,13 @@ const wirePlayer = () => {
 
 const fetchLocalMovie = async (id) => {
     try {
+        console.log('Entró a fetchLocalMovie');
+        console.log('Movie ID:', id);
         const movieEndpoint = MOVIE_SHARED.resolveApiUrl(`/api/movies/${encodeURIComponent(id)}`);
         const tmdbEndpoint = MOVIE_SHARED.resolveApiUrl(`/api/movies/tmdb/${encodeURIComponent(id)}`);
 
         let response = await fetch(movieEndpoint);
+        console.log('Respuesta API:', response.status);
         let data = await response.json().catch(() => ({}));
         if (response.ok && data.movie) {
             console.log('[Buga] Movie found via local ID endpoint');
@@ -1010,6 +1020,7 @@ const fetchLocalMovie = async (id) => {
         }
 
         response = await fetch(tmdbEndpoint);
+        console.log('Respuesta API:', response.status);
         data = await response.json().catch(() => ({}));
         if (response.ok && data.movie) {
             console.log('[Buga] Movie found via TMDB ID endpoint');
@@ -1024,6 +1035,7 @@ const fetchLocalMovie = async (id) => {
 };
 
 const handleLoadError = (errorMessage) => {
+    console.log('Entró a handleLoadError');
     hideMoviePageLoader();
     movieTitle.textContent = 'Contenido no disponible';
     movieDescription.textContent = errorMessage || 'La película o serie que buscas no se encuentra o no está disponible.';
@@ -1059,6 +1071,7 @@ const bootstrap = async () => {
     });
 
     if (!movieId) {
+        console.log('Condición de "Contenido no disponible" -> !movieId');
         console.error('[Buga] Invalid movieId from URL:', movieId);
         movieTitle.textContent = mediaType === 'tv' ? 'Serie no encontrada' : 'Película no encontrada';
         movieDescription.textContent = 'El ID proporcionado no es válido.';
@@ -1092,6 +1105,7 @@ const bootstrap = async () => {
                 return null;
             });
             if (!tmdbMovie) {
+                console.log('Condición de "Contenido no disponible" -> no localMovie y no tmdbMovie');
                 handleLoadError('No se encontró la película en la base de datos local ni en TMDb.');
                 return;
             }
