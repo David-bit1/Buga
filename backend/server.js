@@ -12,26 +12,7 @@ const { protect, requireAdmin: admin } = require('./middleware/authMiddleware');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// Middleware
-const express = require('express');
-const { login, register, me } = require('../controllers/authController');
-const { protect } = require('../middleware/authMiddleware');
-
-const router = express.Router();
-
-router.post('/register', register);
-router.post('/login', login);
-router.get('/me', protect, me);
-router.all(['/register', '/login'], (_req, res) => {
-app.use(cors({
-  origin: (origin, callback) => {
-    callback(null, allowedOrigins.includes('*') || allowedOrigins.includes(origin));
-  }
-}));
-  res.status(405).json({ message: 'Método no permitido. Usa POST.' });
-});
-
-module.exports = router;
+// Middleware Setup
 const allowedOrigins = (process.env.CLIENT_ORIGIN || '').split(',').map(origin => origin.trim()).filter(Boolean);
 if (allowedOrigins.length === 0) {
   allowedOrigins.push('*'); // Fallback to allow all if not specified
