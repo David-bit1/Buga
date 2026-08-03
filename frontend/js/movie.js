@@ -571,8 +571,11 @@ const setVideoSource = async (serverIndex) => {
     if (!movieVideo || !currentMovie) {
         return;
     }
-
+    
     const servers = Array.isArray(currentMovie.servers) ? currentMovie.servers : [];
+    console.log("Movie:", currentMovie);
+    console.log("Servers:", currentMovie?.servers);
+    console.log("Servers length:", currentMovie?.servers?.length);
     console.log('Movie:', currentMovie);
     console.log('Servers:', currentMovie?.servers);
     console.log('Servers length:', currentMovie?.servers?.length);
@@ -746,6 +749,7 @@ const applyMovie = (movie) => {
 const fetchMovieFromTMDB = async (id) => {
     console.log('Entró a fetchMovie');
     const endpoint = mediaType === 'tv' ? 'tv' : 'movie';
+    console.log("Movie ID:", id);
     const response = await fetch(`${MOVIE_SHARED.TMDB_BASE_URL}/${endpoint}/${id}?api_key=${MOVIE_SHARED.API_KEY}&language=es-ES`);
     console.log('Respuesta API:', response.status);
 
@@ -1007,11 +1011,13 @@ const wirePlayer = () => {
 const fetchLocalMovie = async (id) => {
     try {
         console.log('Entró a fetchLocalMovie');
+        console.log("Movie ID:", id);
         console.log('Movie ID:', id);
         const movieEndpoint = MOVIE_SHARED.resolveApiUrl(`/api/movies/${encodeURIComponent(id)}`);
         const tmdbEndpoint = MOVIE_SHARED.resolveApiUrl(`/api/movies/tmdb/${encodeURIComponent(id)}`);
 
         let response = await fetch(movieEndpoint);
+        console.log('Respuesta API:', response.status);
         console.log('Respuesta API:', response.status);
         let data = await response.json().catch(() => ({}));
         if (response.ok && data.movie) {
@@ -1020,6 +1026,7 @@ const fetchLocalMovie = async (id) => {
         }
 
         response = await fetch(tmdbEndpoint);
+        console.log('Respuesta API:', response.status);
         console.log('Respuesta API:', response.status);
         data = await response.json().catch(() => ({}));
         if (response.ok && data.movie) {
@@ -1115,6 +1122,7 @@ const bootstrap = async () => {
         console.log('[2] Movie cargada:', movie);
 
         applyMovie(movie);
+        console.log("Movie:", currentMovie);
         console.log('[3] Renderizando banner y metadata');
 
         syncPreferenceEvent({
