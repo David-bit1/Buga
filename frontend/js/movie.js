@@ -595,6 +595,11 @@ const setVideoSource = async (serverIndex) => {
     clearInterval(uiUpdateInterval);
     uiUpdateInterval = null;
     activePlayerAdapter = null;
+
+    if (activePlayerAdapter && typeof activePlayerAdapter.destroy === 'function') {
+        activePlayerAdapter.destroy();
+    }
+
     resetPlayerChrome();
     updateProgressChrome();
     updateVolumeChrome();
@@ -798,10 +803,10 @@ const wireAdapterToUI = (adapter) => {
     const capabilities = getAdapterCapabilities(adapter);
     console.log('Controles visibles', debugGetControlsVisibility());
     activePlayerCapabilities = capabilities;
-    const timelineVisible = capabilities.seek;
-    const volumeVisible = capabilities.volume;
-    const qualityVisible = capabilities.quality;
+
     const playVisible = capabilities.play && capabilities.pause;
+    const seekVisible = capabilities.seek;
+    const volumeVisible = capabilities.volume && capabilities.mute;
     const muteVisible = capabilities.mute;
 
     setElementVisibility(playPauseButton, playVisible);
@@ -810,13 +815,13 @@ const wireAdapterToUI = (adapter) => {
     setElementVisibility(fullscreenButton, capabilities.fullscreen);
 
     const timeWrapper = getWrapperFor(currentTimeLabel, '.player-time');
-    setElementVisibility(timeWrapper, capabilities.seek);
+    setElementVisibility(timeWrapper, seekVisible);
 
     const progressWrapper = getWrapperFor(progressInput, '.progress-bar');
-    setElementVisibility(progressWrapper, capabilities.seek);
+    setElementVisibility(progressWrapper, seekVisible);
 
     const volumeWrapper = getWrapperFor(volumeInput, '.volume-control');
-    setElementVisibility(volumeWrapper, capabilities.volume);
+    setElementVisibility(volumeWrapper, volumeVisible);
 
     const qualityWrapper = getWrapperFor(qualitySelect, '.player-quality');
     setElementVisibility(qualityWrapper, capabilities.quality);
@@ -825,25 +830,23 @@ const wireAdapterToUI = (adapter) => {
     }
 
     clearInterval(uiUpdateInterval);
-    if (!playVisible) {
-        adapter.on('loadedmetadata', () => {
-            console.log('WIRE EVENT loadedmetadata (no playVisible)');
-            debugCollectRuntimeState('event:loadedmetadata:no-play-visible');
-            hidePlayerLoader();
-        });
-        adapter.on('canplay', () => {
-            console.log('WIRE EVENT canplay (no playVisible)');
-            debugCollectRuntimeState('event:canplay:no-play-visible');
-            hidePlayerLoader();
-        });
-        adapter.on('error', (event) => {
-            hidePlayerLoader();
-            console.error('Error de reproducción:', event);
-            notifyToast({ type: 'error', title: 'Error de reproducción', message: 'No se pudo cargar el video. Prueba otro servidor.' });
-        });
-        updateVolumeChrome();
-        updateProgressChrome();
-        console.log('EXIT wireAdapterToUI (no playVisible)');
+
+    // Eventos que siempre deben funcionar para manejar el estado de carga
+    adapter.on('ready', () => {
+        console.log('WIRE EVENT ready');
+        debugCollectRuntimeState('event:ready');
+        hidePlayerLoader();
+    });
+    adapter.on('error', (event) => {
+        console.log('WIRE EVENT error', event);
+        debugCollectRuntimeState('event:error');
+        hidePlayerLoader();
+        console.error('Error de reproducción:', event);
+        notifyToast({ type: 'error', title: 'Error de reproducción', message: 'No se pudo cargar el video. Prueba otro servidor.' });
+    });
+
+    // Si el reproductor no es controlable, no conectamos el resto de la UI.
+    if (!playVisible && !seekVisible) {
         return;
     }
 
