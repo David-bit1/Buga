@@ -270,59 +270,38 @@ const autoFillFromTmdb = async () => {
     if (!tmdbId) {
         return;
     }
-
+    
+    movieSubmit.disabled = true;
+    
     try {
-        const response = await fetch(`/api/movies/tmdb/${encodeURIComponent(tmdbId)}`);
+        // Usamos fetchJson para incluir las cabeceras de autenticación
+        const response = await fetchJson(`/api/movies/tmdb/${encodeURIComponent(tmdbId)}`);
         const data = await response.json().catch(() => ({}));
-        if (!response.ok || !data.movie) {
+
+        // La API devuelve el objeto de la película directamente en `data`
+        const movie = data;
+
+        if (!response.ok || !movie.id) {
+            notify({ type: 'error', title: 'No se encontró', message: `No se encontró película con ID ${tmdbId} en TMDb.` });
             return;
         }
 
-        const movie = data.movie;
-        if (!movieTitle.value.trim()) {
-            movieTitle.value = movie.title || '';
-        }
-        if (!movieOriginalTitle.value.trim()) {
-            movieOriginalTitle.value = movie.original_title || ''; // Corrected from movieOriginalTitle
-        }
-        if (!movieOverview.value.trim()) {
-            movieOverview.value = movie.overview || ''; // Corrected from movieOverview
-        }
-        if (!movieDescription.value.trim()) {
-            movieDescription.value = movie.description || movie.overview || '';
-        }
-        if (!movieGenres.value.trim()) {
-            movieGenres.value = Array.isArray(movie.genres) ? movie.genres.join(', ') : '';
-        }
-        if (!movieYear.value) {
-            movieYear.value = movie.release_year || '';
-        }
-        if (!movieDuration.value) {
-            movieDuration.value = movie.runtime || '';
-        }
-        if (!movieCountry.value) {
-            movieCountry.value = movie.country || '';
-        }
-        if (!movieLanguage.value) {
-            movieLanguage.value = movie.language || '';
-        }
-        if (!movieRating.value) {
-            movieRating.value = movie.rating || '';
-        }
-        if (!movieCast.value) {
-            movieCast.value = Array.isArray(movie.cast) ? movie.cast.join(', ') : '';
-        }
-        if (!movieDirector.value) {
-            movieDirector.value = movie.director || '';
-        }
-        if (!movieTrailer.value) {
-            movieTrailer.value = movie.trailer || '';
-        }
-        if (!movieReleaseDate.value) {
-            movieReleaseDate.value = movie.release_date || '';
-        }
-        if (!moviePopularity.value) {
-            moviePopularity.value = movie.popularity || '';
+        // Sobrescribimos los campos con los datos de TMDb
+        movieTitle.value = movie.title || '';
+        movieOriginalTitle.value = movie.original_title || '';
+        movieOverview.value = movie.overview || '';
+        movieDescription.value = movie.overview || ''; // Usamos overview como descripción base
+        movieYear.value = movie.release_date ? movie.release_date.substring(0, 4) : '';
+        movieDuration.value = movie.runtime || '';
+        moviePopularity.value = movie.popularity || '';
+        movieReleaseDate.value = movie.release_date || '';
+
+        const imageBaseUrl = 'https://image.tmdb.org/t/p/original';
+        if (movie.poster_path) moviePosterUrl.value = `${imageBaseUrl}${movie.poster_path}`;
+        if (movie.backdrop_path) movieBannerUrl.value = `${imageBaseUrl}${movie.backdrop_path}`;
+
+        if (Array.isArray(movie.genres)) {
+            movieGenres.value = movie.genres.map(g => g.name).join(', ');
         }
         
         notify({
@@ -332,6 +311,9 @@ const autoFillFromTmdb = async () => {
         });
     } catch (error) {
         console.warn('TMDb autofill failed', error);
+        notify({ type: 'error', title: 'Error al autocompletar', message: error.message || 'No se pudo obtener la información.' });
+    } finally {
+        movieSubmit.disabled = false;
     }
 };
 
