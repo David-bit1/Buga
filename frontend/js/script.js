@@ -299,13 +299,15 @@ const createCardOverlayLink = (movieId, mediaType = 'movie', title = '') => `
 
 const getMediaDetails = async (mediaType, mediaId) => {
     const type = mediaType === 'tv' ? 'tv' : 'movie';
-    const response = await HOME_SHARED.requestWithTimeout(fetch(`/api/movies/tmdb/${mediaId}?type=${type}`), HOME_REQUEST_TIMEOUT_MS, `tmdb ${type} ${mediaId}`);
+    const response = await HOME_SHARED.requestWithTimeout(fetch(`/api/movies/tmdb/${mediaId}?type=${type}`), HOME_SHARED.REQUEST_TIMEOUT_MS, `tmdb ${type} ${mediaId}`);
 
     if (!response.ok) {
-        throw new Error(`TMDB responded with ${response.status}`);
+        const data = await response.json().catch(() => ({}));
+        throw new Error(data.message || `TMDB responded with ${response.status}`);
     }
 
-    return response.json();
+    const data = await response.json();
+    return data.movie || data;
 };
 
 const getMovieDetails = async (movieId) => getMediaDetails('movie', movieId);

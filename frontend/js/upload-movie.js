@@ -276,14 +276,16 @@ const autoFillFromTmdb = async () => {
     movieSubmit.textContent = 'Buscando película...';
 
     try {
+        notify({ type: 'info', title: 'Buscando película...', message: `Consultando TMDb para ID ${tmdbId}` });
+
         // Usamos fetchJson para incluir las cabeceras de autenticación
         const data = await fetchJson(`/api/movies/tmdb/${encodeURIComponent(tmdbId)}`);
 
-        // La API devuelve el objeto de la película directamente en `data`
-        const movie = data;
+        // La API devuelve { movie: ... }
+        const movie = data.movie;
 
         if (!movie || !(movie.tmdb_id || movie.id)) {
-            notify({ type: 'error', title: 'No se encontró', message: `No se encontró película con ID ${tmdbId} en TMDb.` });
+            notify({ type: 'error', title: 'Película no encontrada', message: `No se encontró película con ID ${tmdbId} en TMDb.` });
             return;
         }
 
@@ -294,20 +296,20 @@ const autoFillFromTmdb = async () => {
         if (movieDescription) movieDescription.value = movie.description || movie.overview || '';
         if (movieYear) movieYear.value = movie.release_year || '';
         if (movieDuration) movieDuration.value = movie.runtime || '';
+        if (movieReleaseDate) movieReleaseDate.value = movie.release_date || '';
         if (movieCountry) movieCountry.value = movie.country || '';
         if (movieLanguage) movieLanguage.value = movie.language || '';
         if (movieRating) movieRating.value = movie.rating || '';
         if (movieCast) movieCast.value = Array.isArray(movie.cast) ? movie.cast.join(', ') : '';
         if (movieDirector) movieDirector.value = movie.director || '';
         if (movieTrailer) movieTrailer.value = movie.trailer || '';
-        if (movieReleaseDate) movieReleaseDate.value = movie.release_date || '';
         if (moviePopularity) moviePopularity.value = movie.popularity || '';
         if (moviePosterUrl) moviePosterUrl.value = movie.poster_url || '';
         if (movieBannerUrl) movieBannerUrl.value = movie.banner_url || '';
-        if (movieGenres && Array.isArray(movie.genres)) movieGenres.value = movie.genres.join(', ');
+        if (movieGenres && Array.isArray(movie.genres)) movieGenres.value = movie.genres.map(g => g.name || g).join(', ');
 
         notify({
-            type: 'info',
+            type: 'success',
             title: 'Película encontrada',
             message: movie.title || 'La información se completó automáticamente.'
         });

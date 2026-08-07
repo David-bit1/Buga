@@ -21,9 +21,11 @@ const fetchTmdbDataButton = document.getElementById('fetchTmdbData'); // Added f
 const movieTitle = document.getElementById('movieTitle'); // Keep
 const movieOriginalTitle = document.getElementById('movieOriginalTitle');
 const movieOverview = document.getElementById('movieOverview'); // Keep
+const movieDescription = document.getElementById('movieDescription');
 const moviePosterUrl = document.getElementById('moviePosterUrl'); // Keep
 const movieBannerUrl = document.getElementById('movieBannerUrl'); // Keep
 const movieReleaseYear = document.getElementById('movieReleaseYear');
+const movieReleaseDate = document.getElementById('movieReleaseDate');
 const movieRuntime = document.getElementById('movieRuntime');
 const movieCountry = document.getElementById('movieCountry');
 const movieLanguage = document.getElementById('movieLanguage');
@@ -544,6 +546,9 @@ const handleAutoFillFromTmdb = async () => {
         return;
     }
 
+    showLoader?.();
+    notify({ type: 'info', title: 'Buscando película...', message: `Consultando TMDb para ID ${tmdbId}` });
+
     try {
         const response = await adminAuthFetch(`/api/movies/tmdb/${encodeURIComponent(tmdbId)}`);
         const data = await response.json().catch(() => ({}));
@@ -552,36 +557,46 @@ const handleAutoFillFromTmdb = async () => {
             throw new Error(data.message || `No se encontró una película con el ID ${tmdbId}`);
         }
 
-        const movie = data; // The API returns the movie object directly
+        const movie = data.movie;
 
-        // Fill only if the form field is empty
-        if (!movieTitle.value) movieTitle.value = movie.title || '';
-        if (!movieOriginalTitle.value) movieOriginalTitle.value = movie.original_title || '';
-        if (!movieOverview.value) movieOverview.value = movie.overview || '';
-        if (!movieReleaseYear.value) movieReleaseYear.value = movie.release_date ? movie.release_date.substring(0, 4) : '';
-        if (!movieRuntime.value) movieRuntime.value = movie.runtime || '';
-        if (!moviePopularity.value) moviePopularity.value = movie.popularity || 0;
+        if (!movie) {
+            throw new Error(`No se encontró una película con el ID ${tmdbId}`);
+        }
 
-        const imageBaseUrl = 'https://image.tmdb.org/t/p/original';
-        if (!moviePosterUrl.value && movie.poster_path) moviePosterUrl.value = `${imageBaseUrl}${movie.poster_path}`;
-        if (!movieBannerUrl.value && movie.backdrop_path) movieBannerUrl.value = `${imageBaseUrl}${movie.backdrop_path}`;
-
-        if (!movieGenres.value && Array.isArray(movie.genres)) {
+        if (movieTitle) movieTitle.value = movie.title || '';
+        if (movieOriginalTitle) movieOriginalTitle.value = movie.original_title || '';
+        if (movieOverview) movieOverview.value = movie.overview || '';
+        if (movieDescription) movieDescription.value = movie.description || movie.overview || '';
+        if (movieReleaseYear) movieReleaseYear.value = movie.release_date ? movie.release_date.substring(0, 4) : '';
+        if (movieReleaseDate) movieReleaseDate.value = movie.release_date || '';
+        if (movieRuntime) movieRuntime.value = movie.runtime || '';
+        if (movieCountry) movieCountry.value = movie.country || '';
+        if (movieLanguage) movieLanguage.value = movie.language || '';
+        if (movieGenres && Array.isArray(movie.genres)) {
             movieGenres.value = movie.genres.map(g => g.name).join(', ');
         }
-        
+        if (movieRating) movieRating.value = movie.rating || '';
+        if (movieCast) movieCast.value = Array.isArray(movie.cast) ? movie.cast.join(', ') : '';
+        if (movieDirector) movieDirector.value = movie.director || '';
+        if (movieTrailer) movieTrailer.value = movie.trailer || '';
+        if (moviePopularity) moviePopularity.value = movie.popularity || 0;
+        if (moviePosterUrl) moviePosterUrl.value = movie.poster_url || '';
+        if (movieBannerUrl) movieBannerUrl.value = movie.banner_url || '';
+
         notify({
-            type: 'info',
-            title: 'Datos de TMDb cargados',
+            type: 'success',
+            title: 'Película encontrada',
             message: movie.title || 'La información se completó automáticamente.'
         });
     } catch (error) {
         console.warn('TMDb autofill failed', error);
-        notify({ 
+        notify({
             type: 'error',
             title: 'Error al autocompletar',
             message: error.message || 'No se pudo obtener la información desde TMDb.'
         });
+    } finally {
+        hideLoader?.();
     }
 };
 

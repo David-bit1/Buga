@@ -121,19 +121,23 @@ const buildTmdbMoviePayload = async (tmdbId) => {
     ? movie.genres.map((genre) => genre.name).filter(Boolean)
     : [];
 
-  // Get trailer from videos (first YouTube trailer)
-  const trailer = (Array.isArray(videos.results) ? videos.results : [])
-    .find(video => 
-      video.site === 'YouTube' && 
-      (video.type === 'Trailer' || video.type === 'Teaser')
-    )?.key || '';
+  // Get trailer from videos (prefer official YouTube trailer)
+  const trailerVideos = (Array.isArray(videos.results) ? videos.results : [])
+    .filter(video => video.site === 'YouTube' && (video.type === 'Trailer' || video.type === 'Teaser'));
+
+  const trailer = trailerVideos.find(video => video.official)?.key
+    || trailerVideos[0]?.key
+    || '';
 
   // Get cast (top 10)
   const cast = Array.isArray(credits.cast) ? credits.cast.slice(0, 10).map(c => c.name) : [];
 
-  // Get director
+  // Get director (prefer department=Directing + job=Director)
   const director = (Array.isArray(credits.crew) ? credits.crew : [])
-    .find(person => person.job === 'Director')?.name || '';
+    .find(person => person.department === 'Directing' && person.job === 'Director')?.name
+    || (Array.isArray(credits.crew) ? credits.crew : [])
+        .find(person => person.job === 'Director')?.name
+    || '';
 
   const payload = {
     tmdb_id: Number(movie.id),
@@ -151,7 +155,7 @@ const buildTmdbMoviePayload = async (tmdbId) => {
       : '',
     language: movie.original_language || '',
     genres,
-    rating: movie.vote_average > 0 ? String(movie.vote_average.toFixed(1)) : '',
+    rating: Number.isFinite(movie.vote_average) ? String(movie.vote_average.toFixed(1)) : '',
     cast,
     director,
     trailer: trailer ? `https://www.youtube.com/watch?v=${trailer}` : '',
@@ -216,7 +220,7 @@ const getMovieByTmdbId = async (req, res, next) => {
     const movie = await selectOne('movies', { filters: [{ type: 'eq', column: 'tmdb_id', value: tmdbId }] });
     console.log('AUDIT getMovieByTmdbId Supabase result:', JSON.stringify(movie, null, 2));
     if (movie) {
-      return res.json(serializeMovie(movie));
+      return res.json({ movie: serializeMovie(movie) });
     }
 
     const tmdbPayload = await buildTmdbMoviePayload(tmdbId);
@@ -225,7 +229,7 @@ const getMovieByTmdbId = async (req, res, next) => {
       return res.status(404).json({ message: 'Película no encontrada' });
     }
 
-    return res.json({ ...serializeMovie({ ...tmdbPayload, id: null }), tmdb: true });
+    return res.json({ movie: { ...serializeMovie({ ...tmdbPayload, id: null }), tmdb: true } });
   } catch (error) {
     return next(error);
   }
