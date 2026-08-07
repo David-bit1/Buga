@@ -212,7 +212,7 @@ const getMovieByTmdbId = async (req, res, next) => {
     const movie = await selectOne('movies', { filters: [{ type: 'eq', column: 'tmdb_id', value: tmdbId }] });
     console.log('AUDIT getMovieByTmdbId Supabase result:', JSON.stringify(movie, null, 2));
     if (movie) {
-      return res.json({ movie: serializeMovie(movie) });
+      return res.json(serializeMovie(movie));
     }
 
     const tmdbPayload = await buildTmdbMoviePayload(tmdbId);
@@ -221,7 +221,7 @@ const getMovieByTmdbId = async (req, res, next) => {
       return res.status(404).json({ message: 'Película no encontrada' });
     }
 
-    return res.json({ movie: { ...serializeMovie({ ...tmdbPayload, id: null }), tmdb: true } });
+    return res.json({ ...serializeMovie({ ...tmdbPayload, id: null }), tmdb: true });
   } catch (error) {
     return next(error);
   }
