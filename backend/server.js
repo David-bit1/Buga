@@ -20,23 +20,21 @@ if (allowedOrigins.length === 0) {
 
 app.use(cors({
   origin: (origin, callback) => {
-    console.log("CLIENT_ORIGIN =", process.env.CLIENT_ORIGIN);
-    console.log("allowedOrigins =", allowedOrigins);
-    console.log("Origin recibido =", origin);
+    // Permitir peticiones sin 'origin' (como Postman, apps móviles, o peticiones de servidor a servidor)
+    if (!origin) return callback(null, true);
+
     const isAllowed = allowedOrigins.includes('*') || allowedOrigins.includes(origin);
-    console.log("¿Está permitido?", isAllowed);
+
+    if (!isAllowed) {
+      console.warn(`CORS: Origen denegado: ${origin}. Orígenes permitidos: ${allowedOrigins.join(', ')}`);
+      return callback(new Error('El origen de esta petición no está permitido por la política de CORS.'));
+    }
+
     callback(null, isAllowed);
   }
 }));
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
-
-// Debug logs for route imports
-console.log('authRoutes:', authRoutes);
-console.log('profileRoutes:', profileRoutes);
-console.log('movieRoutes:', movieRoutes);
-console.log('adminRoutes:', adminRoutes);
-console.log('recommendationRoutes:', recommendationRoutes);
 
 // API Routes
 app.use('/api/auth', authRoutes);
