@@ -111,9 +111,11 @@ const buildTmdbMoviePayload = async (tmdbId) => {
     return null;
   }
 
-  const movie = await tmdbFetch(`/movie/${tmdbId}`);
-  const credits = await tmdbFetch(`/movie/${tmdbId}/credits`);
-  const videos = await tmdbFetch(`/movie/${tmdbId}/videos`);
+  // Usar append_to_response para obtener créditos y videos en una sola llamada a la API
+  const movie = await tmdbFetch(`/movie/${tmdbId}?append_to_response=credits,videos`);
+
+  const credits = movie.credits || {};
+  const videos = movie.videos || {};
 
   const genres = Array.isArray(movie.genres)
     ? movie.genres.map((genre) => genre.name).filter(Boolean)
