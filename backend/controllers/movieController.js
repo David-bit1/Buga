@@ -55,6 +55,7 @@ const serializeMovie = (movie) => {
     poster_url: movie.poster_url || '',
     banner_url: movie.banner_url || '',
     release_year: parsedYear,
+    release_date: movie.release_date || (parsedYear > 0 ? `${parsedYear}-01-01` : ''),
     runtime: movie.runtime || 0,
     country: movie.country || '',
     language: movie.language || '',
@@ -141,13 +142,14 @@ const buildTmdbMoviePayload = async (tmdbId) => {
     poster_url: movie.poster_path ? `${TMDB_IMAGE_BASE}${movie.poster_path}` : '',
     banner_url: movie.backdrop_path ? `https://image.tmdb.org/t/p/w780${movie.backdrop_path}` : '',
     release_year: toInteger(String(movie.release_date || '').slice(0, 4), 0),
+    release_date: movie.release_date || '',
     runtime: toInteger(movie.runtime, 0),
     country: movie.origin_country && Array.isArray(movie.origin_country) && movie.origin_country.length > 0 
       ? movie.origin_country[0] 
       : '',
     language: movie.original_language || '',
     genres,
-    rating: '',
+    rating: String(movie.vote_average > 0 ? movie.vote_average.toFixed(1) : ''),
     cast,
     director,
     trailer: trailer ? `https://www.youtube.com/watch?v=${trailer}` : '',

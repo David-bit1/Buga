@@ -286,25 +286,25 @@ const autoFillFromTmdb = async () => {
         }
 
         // Sobrescribimos los campos con los datos de TMDb
-        movieTitle.value = movie.title || '';
-        movieOriginalTitle.value = movie.original_title || '';
-        movieOverview.value = movie.description || '';
-        movieDescription.value = movie.description || ''; // Usamos overview como descripción base
-        movieYear.value = movie.release_year || '';
-        movieDuration.value = movie.runtime || '';
-        moviePopularity.value = movie.popularity || '';
-        movieReleaseDate.value = movie.release_year ? `${movie.release_year}-01-01` : '';
-        movieCast.value = Array.isArray(movie.cast) ? movie.cast.join(', ') : '';
-        movieDirector.value = movie.director || '';
-        movieTrailer.value = movie.trailer || '';
-        movieRating.value = movie.rating || '';
+        if (movieTitle) movieTitle.value = movie.title || '';
+        if (movieOriginalTitle) movieOriginalTitle.value = movie.original_title || '';
+        if (movieOverview) movieOverview.value = movie.overview || movie.description || '';
+        if (movieDescription) movieDescription.value = movie.description || movie.overview || '';
+        if (movieYear) movieYear.value = movie.release_year || '';
+        if (movieDuration) movieDuration.value = movie.runtime || '';
+        if (moviePopularity) moviePopularity.value = movie.popularity || '';
+        if (movieReleaseDate) movieReleaseDate.value = movie.release_date || '';
+        if (movieCast) movieCast.value = Array.isArray(movie.cast) ? movie.cast.join(', ') : '';
+        if (movieDirector) movieDirector.value = movie.director || '';
+        if (movieTrailer) movieTrailer.value = movie.trailer || '';
+        if (movieRating) movieRating.value = movie.rating || '';
 
         const imageBaseUrl = 'https://image.tmdb.org/t/p/original';
-        if (movie.poster_url) moviePosterUrl.value = movie.poster_url.replace(/w500/g, 'original');
-        if (movie.banner_url) movieBannerUrl.value = movie.banner_url.replace(/w780/g, 'original');
+        if (moviePosterUrl && movie.poster_url) moviePosterUrl.value = movie.poster_url.replace(/w500/g, 'original');
+        if (movieBannerUrl && movie.banner_url) movieBannerUrl.value = movie.banner_url.replace(/w780/g, 'original');
 
-        if (Array.isArray(movie.genres)) {
-            movieGenres.value = movie.genres.map(g => g.name).join(', ');
+        if (movieGenres && Array.isArray(movie.genres)) {
+            movieGenres.value = movie.genres.map(g => g.name || g).join(', ');
         }
 
         notify({
