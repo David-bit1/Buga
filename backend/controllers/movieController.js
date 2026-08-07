@@ -151,7 +151,7 @@ const buildTmdbMoviePayload = async (tmdbId) => {
       : '',
     language: movie.original_language || '',
     genres,
-    rating: String(movie.vote_average > 0 ? movie.vote_average.toFixed(1) : ''),
+    rating: movie.vote_average > 0 ? String(movie.vote_average.toFixed(1)) : '',
     cast,
     director,
     trailer: trailer ? `https://www.youtube.com/watch?v=${trailer}` : '',
