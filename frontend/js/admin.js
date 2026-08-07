@@ -17,6 +17,7 @@ const genresTable = document.getElementById('genresTable');
 const movieForm = document.getElementById('movieForm');
 const movieId = document.getElementById('movieId');
 const movieTmdbId = document.getElementById('movieTmdbId');
+const fetchTmdbDataButton = document.getElementById('fetchTmdbData'); // Added for autofill
 const movieTitle = document.getElementById('movieTitle'); // Keep
 const movieOriginalTitle = document.getElementById('movieOriginalTitle');
 const movieOverview = document.getElementById('movieOverview'); // Keep
@@ -536,53 +537,53 @@ const handleSettingsSubmit = async (event) => {
     }
 };
 
-const autoFillFromTmdb = async () => {
+const handleAutoFillFromTmdb = async () => {
     const tmdbId = movieTmdbId.value.trim();
     if (!tmdbId) {
+        notify({ type: 'info', title: 'ID Requerido', message: 'Por favor, introduce un ID de TMDb para buscar.' });
         return;
     }
 
     try {
-        // This endpoint should be available in your movieRoutes
-        const response = await fetch(`/api/movies/tmdb/${encodeURIComponent(tmdbId)}`);
+        const response = await adminAuthFetch(`/api/movies/tmdb/${encodeURIComponent(tmdbId)}`);
         const data = await response.json().catch(() => ({}));
-        if (!response.ok || !data.movie) {
-            notify({ type: 'error', title: 'TMDB no encontrado', message: `No se encontró una película con el ID ${tmdbId}` });
-            return;
+
+        if (!response.ok) {
+            throw new Error(data.message || `No se encontró una película con el ID ${tmdbId}`);
         }
 
-        const movie = data.movie;
-        if (!movieTitle.value.trim()) movieTitle.value = movie.title || '';
-        if (!movieOriginalTitle.value.trim()) movieOriginalTitle.value = movie.original_title || '';
-        if (!movieOverview.value.trim()) movieOverview.value = movie.overview || '';
-        if (!moviePosterUrl.value) moviePosterUrl.value = movie.poster_url || '';
-        if (!movieBannerUrl.value) movieBannerUrl.value = movie.banner_url || '';
-        if (!movieReleaseYear.value) movieReleaseYear.value = movie.release_year || '';
+        const movie = data; // The API returns the movie object directly
+
+        // Fill only if the form field is empty
+        if (!movieTitle.value) movieTitle.value = movie.title || '';
+        if (!movieOriginalTitle.value) movieOriginalTitle.value = movie.original_title || '';
+        if (!movieOverview.value) movieOverview.value = movie.overview || '';
+        if (!movieReleaseYear.value) movieReleaseYear.value = movie.release_date ? movie.release_date.substring(0, 4) : '';
         if (!movieRuntime.value) movieRuntime.value = movie.runtime || '';
-        if (!movieCountry.value) movieCountry.value = movie.country || '';
-        if (!movieLanguage.value) movieLanguage.value = movie.language || '';
-        if (!movieGenres.value) movieGenres.value = Array.isArray(movie.genres) ? movie.genres.map(g => g.name).join(', ') : '';
-        if (!movieRating.value) movieRating.value = movie.rating || '';
-        if (!movieCast.value) movieCast.value = Array.isArray(movie.cast) ? movie.cast.join(', ') : '';
-        if (!movieDirector.value) movieDirector.value = movie.director || '';
-        if (!movieTrailer.value) movieTrailer.value = movie.trailer || '';
-        if (!moviePopularity.value) moviePopularity.value = movie.popularity || '';
+        if (!moviePopularity.value) moviePopularity.value = movie.popularity || 0;
+
+        const imageBaseUrl = 'https://image.tmdb.org/t/p/original';
+        if (!moviePosterUrl.value && movie.poster_path) moviePosterUrl.value = `${imageBaseUrl}${movie.poster_path}`;
+        if (!movieBannerUrl.value && movie.backdrop_path) movieBannerUrl.value = `${imageBaseUrl}${movie.backdrop_path}`;
+
+        if (!movieGenres.value && Array.isArray(movie.genres)) {
+            movieGenres.value = movie.genres.map(g => g.name).join(', ');
+        }
         
-        window.BugaToast?.show?.({
+        notify({
             type: 'info',
             title: 'Datos de TMDb cargados',
             message: movie.title || 'La información se completó automáticamente.'
         });
     } catch (error) {
         console.warn('TMDb autofill failed', error);
-        notify({
-            type: 'error', // Corrected from window.BugaToast?.show?
+        notify({ 
+            type: 'error',
             title: 'Error al autocompletar',
-            message: 'No se pudo obtener la información desde TMDB. Revisa la conexión.'
+            message: error.message || 'No se pudo obtener la información desde TMDb.'
         });
     }
 };
-
 
 const handleTableActions = async (event) => {
     const editMovie = event.target.closest('[data-edit-movie]');
@@ -668,7 +669,14 @@ const bootstrap = async () => {
     clearMovieFormButton?.addEventListener('click', resetMovieForm);
     clearGenreFormButton?.addEventListener('click', resetGenreForm);
 
-    movieTmdbId?.addEventListener('blur', autoFillFromTmdb);
+    fetchTmdbDataButton?.addEventListener('click', handleAutoFillFromTmdb);
+    movieTmdbId?.addEventListener('keydown', (event) => {
+        if (event.key === 'Enter') {
+            event.preventDefault();
+            handleAutoFillFromTmdb();
+        }
+    });
+
     addServerButton?.addEventListener('click', () => {
         const row = document.createElement('div');
         row.className = 'admin-server-row';
