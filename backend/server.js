@@ -20,7 +20,12 @@ if (allowedOrigins.length === 0) {
 
 app.use(cors({
   origin: (origin, callback) => {
-    callback(null, allowedOrigins.includes('*') || allowedOrigins.includes(origin));
+    console.log("CLIENT_ORIGIN =", process.env.CLIENT_ORIGIN);
+    console.log("allowedOrigins =", allowedOrigins);
+    console.log("Origin recibido =", origin);
+    const isAllowed = allowedOrigins.includes('*') || allowedOrigins.includes(origin);
+    console.log("¿Está permitido?", isAllowed);
+    callback(null, isAllowed);
   }
 }));
 app.use(express.json({ limit: '10mb' }));
