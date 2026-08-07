@@ -150,8 +150,8 @@ const buildTmdbMoviePayload = async (tmdbId) => {
     release_year: toInteger(String(movie.release_date || '').slice(0, 4), 0),
     release_date: movie.release_date || '',
     runtime: toInteger(movie.runtime, 0),
-    country: movie.origin_country && Array.isArray(movie.origin_country) && movie.origin_country.length > 0 
-      ? movie.origin_country[0] 
+    country: Array.isArray(movie.production_countries) && movie.production_countries.length > 0
+      ? movie.production_countries[0].name
       : '',
     language: movie.original_language || '',
     genres,
@@ -217,19 +217,48 @@ const getMovieByTmdbId = async (req, res, next) => {
       return res.status(400).json({ message: 'tmdbId inválido' });
     }
 
-    const movie = await selectOne('movies', { filters: [{ type: 'eq', column: 'tmdb_id', value: tmdbId }] });
-    console.log('AUDIT getMovieByTmdbId Supabase result:', JSON.stringify(movie, null, 2));
-    if (movie) {
-      return res.json({ movie: serializeMovie(movie) });
-    }
+    const localMovie = await selectOne('movies', { filters: [{ type: 'eq', column: 'tmdb_id', value: tmdbId }] });
+    console.log('AUDIT getMovieByTmdbId Supabase result:', JSON.stringify(localMovie, null, 2));
 
     const tmdbPayload = await buildTmdbMoviePayload(tmdbId);
-    console.log('AUDIT getMovieByTmdbId TMDb fallback payload:', JSON.stringify(tmdbPayload, null, 2));
+    console.log('AUDIT getMovieByTmdbId TMDb payload:', JSON.stringify(tmdbPayload, null, 2));
     if (!tmdbPayload) {
       return res.status(404).json({ message: 'Película no encontrada' });
     }
 
-    return res.json({ movie: { ...serializeMovie({ ...tmdbPayload, id: null }), tmdb: true } });
+    const tmdbMovie = serializeMovie({ ...tmdbPayload, id: localMovie?.id || null });
+
+    if (localMovie) {
+      const base = serializeMovie(localMovie);
+
+      const mergeFields = [
+        'title', 'original_title', 'description', 'overview',
+        'poster_url', 'banner_url', 'release_year', 'release_date',
+        'runtime', 'country', 'language', 'genres', 'rating',
+        'cast', 'director', 'trailer', 'popularity'
+      ];
+
+      mergeFields.forEach((field) => {
+        const localValue = base[field];
+        const tmdbValue = tmdbMovie[field];
+
+        const isEmpty = localValue === '' || localValue === null || localValue === undefined ||
+          (Array.isArray(localValue) && localValue.length === 0);
+
+        const hasValue = tmdbValue !== '' && tmdbValue !== null && tmdbValue !== undefined &&
+          !(Array.isArray(tmdbValue) && tmdbValue.length === 0);
+
+        if (isEmpty && hasValue) {
+          base[field] = tmdbValue;
+        }
+      });
+
+      base.tmdb_id = localMovie.tmdb_id || tmdbPayload.tmdb_id;
+
+      return res.json({ movie: base });
+    }
+
+    return res.json({ movie: { ...tmdbMovie, tmdb: true } });
   } catch (error) {
     return next(error);
   }
