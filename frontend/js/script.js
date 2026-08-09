@@ -1051,7 +1051,7 @@ const loadHeroSlides = async () => {
         heroMoviesCache = catalogMovies;
         renderHeroIndicators();
         setHeroSlide(0, 1, true);
-        prefetchTrailerKeys(catalogMovies);
+        prefetchTrailerKeys(catalogMovies, false);
         startHeroAutoplay();
     } catch (error) {
         console.warn('Hero slides failed', error);
@@ -1193,7 +1193,7 @@ const loadTrendingMovies = async () => {
 
         trendingWindowStart = 0;
         renderTrendingMovies();
-        prefetchTrailerKeys(trendingMoviesCache);
+        prefetchTrailerKeys(trendingMoviesCache, false);
         startTrendingAutoplay();
     } catch (error) {
         console.warn('Trending movies failed', error);
