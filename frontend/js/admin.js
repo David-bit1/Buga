@@ -46,7 +46,11 @@ const addServerButton = document.getElementById('addServerButton');
 const movieSubmit = document.getElementById('movieSubmit');
 const clearMovieFormButton = document.getElementById('clearMovieForm');
 
-const genreForm = document.getElementById('genreForm');
+const seriesForm = document.getElementById('seriesForm');
+const seriesId = document.getElementById('seriesId');
+const seriesTmdbId = document.getElementById('seriesTmdbId');
+const seriesTitle = document.getElementById('seriesTitle');
+const seriesOriginalTitle = document.getElement<|tool_call_begin|>api<|tool_call_begin|><|tool_call_begin|>orm<|tool_call_begin|>ant<|tool_call_begin|>a
 const genreId = document.getElementById('genreId');
 const genreName = document.getElementById('genreName');
 const genreTmdbId = document.getElementById('genreTmdbId');
