@@ -1,6 +1,6 @@
 (function () {
 const UPLOAD_SHARED = window.BugaShared;
-const MOVIES_API = '/api/movies';
+const ADMIN_API = '/api/admin/movies';
 const uploadForm = document.getElementById('movieUploadForm');
 const movieIdInput = document.getElementById('movieId');
 const movieTmdbId = document.getElementById('movieTmdbId');
@@ -128,22 +128,6 @@ const resetServerRows = (servers = []) => {
     fallbackSources.forEach(addServerRow);
 };
 
-const getServerRows = () => {
-    if (!serverRows) {
-        return [];
-    }
-
-    return Array.from(serverRows.querySelectorAll('.admin-server-row'))
-        .map((row) => ({
-            name: row.querySelector('.server-name')?.value?.trim() || '',
-            type: row.querySelector('.server-type')?.value || 'iframe',
-            url: row.querySelector('.server-url')?.value?.trim() || '',
-            status: row.querySelector('.server-status')?.value || 'active',
-            order: parseInt(row.querySelector('.server-order')?.value) || 0
-        }))
-        .filter((server) => server.name && server.url);
-};
-
 const fillForm = (movie) => {
     movieIdInput.value = movie?.id || '';
     movieTmdbId.value = movie?.tmdb_id || movie?.tmdbId || '';
@@ -226,7 +210,7 @@ const renderMovies = () => {
 const loadMovies = async () => {
     showLoader();
     try {
-        const data = await fetchJson(MOVIES_API);
+        const data = await fetchJson(ADMIN_API);
         moviesCache = Array.isArray(data.movies) ? data.movies : [];
         renderMovies();
     } catch (error) {
@@ -253,7 +237,7 @@ const autoFillFromTmdb = async () => {
 
     try {
         // Usamos fetchJson para incluir las cabeceras de autenticación
-        const data = await fetchJson(`/api/movies/tmdb/${encodeURIComponent(tmdbId)}`);
+        const data = await fetchJson(`/api/admin/movies/tmdb/${encodeURIComponent(tmdbId)}`);
 
         // La API devuelve { movie: ... }
         const movie = data.movie || data; // Handles both direct object and nested object
@@ -299,6 +283,21 @@ const autoFillFromTmdb = async () => {
 const handleSubmit = async (event) => {
     event.preventDefault();
 
+    const getServerRows = () => {
+        if (!serverRows) return [];
+        return Array.from(serverRows.querySelectorAll('.admin-server-row'))
+            .map((row) => ({
+                name: row.querySelector('.server-name')?.value?.trim() || '',
+                type: row.querySelector('.server-type')?.value || 'iframe',
+                url: row.querySelector('.server-url')?.value?.trim() || '',
+                status: row.querySelector('.server-status')?.value || 'active',
+                order: parseInt(row.querySelector('.server-order')?.value) || 0
+            }))
+            .filter((server) => server.name && server.url);
+    };
+
+
+
     const payload = {
         tmdbId: movieTmdbId.value.trim() ? Number(movieTmdbId.value) : null,
         title: movieTitle.value.trim(),
@@ -337,7 +336,7 @@ const handleSubmit = async (event) => {
 
     try {
         const isEditing = Boolean(movieIdInput.value);
-        const endpoint = isEditing ? `/api/admin/movies/${movieIdInput.value}` : '/api/admin/movies';
+        const endpoint = isEditing ? `${ADMIN_API}/${movieIdInput.value}` : ADMIN_API;
         const method = isEditing ? 'PUT' : 'POST';
         await fetchJson(endpoint, {
             method,
@@ -386,7 +385,7 @@ const handleTableAction = async (event) => {
         }
 
         try {
-            await fetchJson(`${MOVIES_API}/${movieId}`, { method: 'DELETE' });
+            await fetchJson(`${ADMIN_API}/${movieId}`, { method: 'DELETE' });
             notify({ type: 'success', title: 'Película eliminada', message: movie.title });
             await loadMovies();
         } catch (error) {
