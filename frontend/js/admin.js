@@ -17,15 +17,759 @@ const genresTable = document.getElementById('genresTable');
 const movieForm = document.getElementById('movieForm');
 const movieId = document.getElementById('movieId');
 const movieTmdbId = document.getElementById('movieTmdbId');
-const fetchTmdbDataButton = document.getElementById('fetchTmdbData');
-const movieTitle = document.getElementById('movieTitle');
+const fetchTmdbDataButton = document.getElementById('fetchTmdbData'); // Added for autofill
+const movieTitle = document.getElementById('movieTitle'); // Keep
 const movieOriginalTitle = document.getElementById('movieOriginalTitle');
-const movieOverview = document.getElementById('movieOverview');
+const movieOverview = document.getElementById('movieOverview'); // Keep
 const movieDescription = document.getElementById('movieDescription');
-const moviePosterUrl = document.getElementById('moviePosterUrl');
-const movieBannerUrl = document.getElementById('movieBannerUrl');
+const moviePosterUrl = document.getElementById('moviePosterUrl'); // Keep
+const movieBannerUrl = document.getElementById('movieBannerUrl'); // Keep
 const movieReleaseYear = document.getElementById('movieReleaseYear');
 const movieReleaseDate = document.getElementById('movieReleaseDate');
 const movieRuntime = document.getElementById('movieRuntime');
 const movieCountry = document.getElementById('movieCountry');
-const movieLanguage = document.getElement<|tool_call_begin|>api<|tool_call_begin|><|tool_call_begin|>orm<|tool_call_begin|>ant<|tool_call_begin|>a
+const movieLanguage = document.getElementById('movieLanguage');
+const movieGenres = document.getElementById('movieGenres'); // Keep
+const movieRating = document.getElementById('movieRating');
+const movieCast = document.getElementById('movieCast');
+const movieDirector = document.getElementById('movieDirector');
+const movieTrailer = document.getElementById('movieTrailer');
+const moviePopularity = document.getElementById('moviePopularity');
+const movieStatus = document.getElementById('movieStatus');
+const movieContentType = document.getElementById('movieContentType');
+const movieCreatorName = document.getElementById('movieCreatorName');
+const movieRightsHolder = document.getElementById('movieRightsHolder');
+const movieLicenseInfo = document.getElementById('movieLicenseInfo');
+const movieSourceUrl = document.getElementById('movieSourceUrl');
+const serverRows = document.getElementById('serverRows');
+const addServerButton = document.getElementById('addServerButton');
+const movieSubmit = document.getElementById('movieSubmit');
+const clearMovieFormButton = document.getElementById('clearMovieForm');
+
+const genreForm = document.getElementById('genreForm');
+const genreId = document.getElementById('genreId');
+const genreName = document.getElementById('genreName');
+const genreTmdbId = document.getElementById('genreTmdbId');
+const genreColor = document.getElementById('genreColor');
+const genreActive = document.getElementById('genreActive');
+const genreDescription = document.getElementById('genreDescription');
+const genreSubmit = document.getElementById('genreSubmit');
+const clearGenreFormButton = document.getElementById('clearGenreForm');
+
+const settingsForm = document.getElementById('settingsForm');
+const settingFeaturedLimit = document.getElementById('settingFeaturedLimit');
+const settingTrendingLimit = document.getElementById('settingTrendingLimit');
+const settingUserUploads = document.getElementById('settingUserUploads');
+const settingTheme = document.getElementById('settingTheme');
+const settingAccent = document.getElementById('settingAccent');
+
+let dashboardCache = null;
+let moviesCache = [];
+let usersCache = [];
+let genresCache = [];
+let settingsCache = { catalog: {}, ui: {} };
+
+const adminAuthFetch = (url, options = {}) => window.BugaAuth?.authFetch?.(url, options) || fetch(url, options);
+const notify = (options) => window.BugaToast?.show?.(options);
+const authMultipartFetch = (url, formData) => {
+    const token = window.BugaAuth?.getAuthToken?.();
+    const headers = {};
+
+    if (token) {
+        headers.Authorization = `Bearer ${token}`;
+    }
+
+    return fetch(url, {
+        method: 'POST',
+        headers,
+        body: formData
+    });
+};
+
+const requireAdmin = () => {
+    const session = window.BugaAuth?.getAuthSession?.();
+    if (!session?.token) {
+        window.location.href = '/pages/login.html';
+        return false;
+    }
+
+    if (session.user?.role !== 'admin') {
+        window.location.href = '/index.html';
+        return false;
+    }
+
+    return true;
+};
+
+const showLoader = () => {
+    document.body.classList.add('is-loading');
+    pageLoader?.setAttribute('aria-busy', 'true');
+};
+
+const hideLoader = () => {
+    document.body.classList.remove('is-loading');
+    pageLoader?.setAttribute('aria-busy', 'false');
+};
+
+const escapeText = (value) =>
+    String(value || '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+
+const slugify = (value) =>
+    String(value || '')
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .toLowerCase()
+        .trim()
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/^-+|-+$/g, '');
+
+const setActiveSection = (sectionName) => {
+    document.querySelectorAll('[data-admin-section]').forEach((section) => {
+        section.classList.toggle('is-active', section.dataset.adminSection === sectionName);
+    });
+
+    document.querySelectorAll('[data-admin-tab]').forEach((button) => {
+        button.classList.toggle('is-active', button.dataset.adminTab === sectionName);
+    });
+};
+
+const renderStats = (stats = {}) => {
+    if (!adminStats) {
+        return;
+    }
+
+    const cards = [
+        { label: 'Usuarios', value: stats.users || 0 },
+        { label: 'Admins', value: stats.admins || 0 },
+        { label: 'Perfiles', value: stats.profiles || 0 },
+        { label: 'Películas', value: stats.movies || 0 },
+        { label: 'Géneros', value: stats.genres || 0 },
+        { label: 'Preferencias', value: stats.preferences || 0 }
+    ];
+
+    adminStats.innerHTML = cards.map((item) => `
+        <article class="admin-stat">
+            <strong>${item.value}</strong>
+            <span>${escapeText(item.label)}</span>
+        </article>
+    `).join('');
+};
+
+const renderRecentLists = () => {
+    recentUsers.innerHTML = (dashboardCache?.recentUsers || []).map((user) => `
+        <div class="admin-list-item">
+            <div>
+                <strong>${escapeText(user.name)}</strong>
+                <p>${escapeText(user.email)}</p>
+            </div>
+            <span class="admin-pill ${user.role}">${escapeText(user.role)}</span>
+        </div>
+    `).join('') || '<p class="admin-empty">Sin usuarios recientes.</p>';
+
+    recentMovies.innerHTML = (dashboardCache?.recentMovies || []).map((movie) => `
+        <div class="admin-list-item">
+            <div>
+                <strong>${escapeText(movie.title)}</strong>
+                <p>TMDB ${escapeText(movie.tmdbId)}</p>
+            </div>
+            <span class="admin-pill ${movie.status}">${escapeText(movie.status)}</span>
+        </div>
+    `).join('') || '<p class="admin-empty">Sin películas recientes.</p>';
+};
+
+const renderMoviesTable = () => {
+    if (!moviesTable) {
+        return;
+    }
+
+    moviesTable.innerHTML = moviesCache.map((movie) => `
+        <tr>
+            <td>
+                <strong>${escapeText(movie.title)}</strong>
+                <div class="admin-small">${escapeText(movie.genres?.map((genre) => genre.name).join(' • ') || 'Sin géneros')}</div>
+            </td>
+            <td>${escapeText(movie.tmdbId)}</td>
+            <td><span class="admin-pill ${movie.status}">${escapeText(movie.status)}</span></td>
+            <td>
+                <div class="admin-row-actions">
+                    <button class="admin-secondary" type="button" data-edit-movie="${movie.id}">Editar</button>
+                    <button class="admin-secondary" type="button" data-delete-movie="${movie.id}">Eliminar</button>
+                </div>
+            </td>
+        </tr>
+    `).join('') || '<tr><td colspan="4">No hay películas cargadas.</td></tr>';
+};
+
+const renderUsersTable = () => {
+    if (!usersTable) {
+        return;
+    }
+
+    usersTable.innerHTML = usersCache.map((user) => `
+        <tr>
+            <td>${escapeText(user.name)}</td>
+            <td>${escapeText(user.email)}</td>
+            <td>
+                <select data-user-role="${user.id}">
+                    <option value="user" ${user.role === 'user' ? 'selected' : ''}>user</option>
+                    <option value="admin" ${user.role === 'admin' ? 'selected' : ''}>admin</option>
+                </select>
+            </td>
+            <td>
+                <div class="admin-row-actions">
+                    <button class="admin-secondary" type="button" data-save-user="${user.id}">Guardar</button>
+                    <button class="admin-secondary" type="button" data-delete-user="${user.id}">Eliminar</button>
+                </div>
+            </td>
+        </tr>
+    `).join('') || '<tr><td colspan="4">No hay usuarios disponibles.</td></tr>';
+};
+
+const renderGenresTable = () => {
+    if (!genresTable) {
+        return;
+    }
+
+    genresTable.innerHTML = genresCache.map((genre) => `
+        <tr>
+            <td><strong>${escapeText(genre.name)}</strong></td>
+            <td>${escapeText(genre.slug)}</td>
+            <td><span class="admin-pill ${genre.active ? 'published' : 'inactive'}">${genre.active ? 'active' : 'inactive'}</span></td>
+            <td>
+                <div class="admin-row-actions">
+                    <button class="admin-secondary" type="button" data-edit-genre="${genre.id}">Editar</button>
+                    <button class="admin-secondary" type="button" data-delete-genre="${genre.id}">Eliminar</button>
+                </div>
+            </td>
+        </tr>
+    `).join('') || '<tr><td colspan="4">No hay géneros creados.</td></tr>';
+};
+
+const fetchJson = async (url, options = {}) => {
+    const response = await adminAuthFetch(url, options);
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) {
+        const error = new Error(data.message || 'La operación no pudo completarse');
+        error.status = response.status;
+        throw error;
+    }
+    return data;
+};
+
+const loadDashboard = async () => {
+    const data = await fetchJson(`${ADMIN_API}/dashboard`);
+    dashboardCache = data;
+    settingsCache = data.settings || settingsCache;
+    renderStats(data.stats);
+    renderRecentLists();
+    if (settingFeaturedLimit) settingFeaturedLimit.value = settingsCache.catalog?.featuredLimit || 10;
+    if (settingTrendingLimit) settingTrendingLimit.value = settingsCache.catalog?.trendingLimit || 8;
+    if (settingUserUploads) settingUserUploads.checked = Boolean(settingsCache.catalog?.allowUserUploads);
+    if (settingTheme) settingTheme.value = settingsCache.ui?.theme || 'morado-negro';
+    if (settingAccent) settingAccent.value = settingsCache.ui?.accent || '#8a4dff';
+};
+
+const loadMovies = async () => {
+    const data = await fetchJson(`${ADMIN_API}/movies`);
+    moviesCache = data.movies || [];
+    renderMoviesTable();
+};
+
+const loadUsers = async () => {
+    const data = await fetchJson(`${ADMIN_API}/users`);
+    usersCache = data.users || [];
+    renderUsersTable();
+};
+
+const loadGenres = async () => {
+    const data = await fetchJson(`${ADMIN_API}/genres`);
+    genresCache = data.genres || [];
+    renderGenresTable();
+};
+
+const loadSettings = async () => {
+    const data = await fetchJson(`${ADMIN_API}/settings`);
+    settingsCache = data.settings || settingsCache;
+};
+
+const refreshAll = async () => {
+    showLoader();
+    try {
+        await Promise.all([loadDashboard(), loadMovies(), loadUsers(), loadGenres(), loadSettings()]);
+        notify({ type: 'success', title: 'Panel actualizado', message: 'Toda la información fue recargada.' });
+    } catch (error) {
+        console.warn(error);
+        notify({ type: 'error', title: 'No se pudo actualizar', message: error.message || 'Revisa la conexión.' });
+    } finally {
+        hideLoader();
+    }
+};
+
+const resetMovieForm = () => {
+    movieId.value = '';
+    movieTmdbId.value = '';
+    movieTitle.value = '';
+    movieOriginalTitle.value = '';
+    movieOverview.value = '';
+    movieDescription.value = '';
+    moviePosterUrl.value = '';
+    movieBannerUrl.value = '';
+    moviePosterSrcset.value = '';
+    movieBannerSrcset.value = '';
+    movieReleaseYear.value = '';
+    movieReleaseDate.value = '';
+    movieRuntime.value = '';
+    movieCountry.value = '';
+    movieLanguage.value = '';
+    movieGenres.value = '';
+    movieRating.value = '';
+    movieCast.value = '';
+    movieDirector.value = '';
+    movieTrailer.value = '';
+    moviePopularity.value = '';
+    movieContentType.value = 'independent';
+    movieCreatorName.value = '';
+    movieRightsHolder.value = '';
+    movieLicenseInfo.value = '';
+    movieSourceUrl.value = '';
+    serverRows.innerHTML = '';
+    const row = document.createElement('div');
+    row.className = 'admin-server-row';
+    row.innerHTML = `<label><span>Nombre</span><input type="text" class="server-name" placeholder="Servidor 1" value="Servidor 1"></label><label><span>Tipo</span><select class="server-type"><option value="iframe">iframe</option><option value="embed">embed</option><option value="m3u8">m3u8</option><option value="mp4">mp4</option></select></label><label><span>Enlace/Código</span><input type="text" class="server-url" placeholder="https://... o código iframe"></label><label><span>Estado</span><select class="server-status"><option value="active">Activo</option><option value="inactive">Inactivo</option></select></label><label><span>Orden</span><input type="number" class="server-order" value="0" min="0"></label><button class="admin-secondary" type="button" data-remove-server>Eliminar</button>`;
+    serverRows.appendChild(row);
+    movieStatus.value = 'published';
+    movieSubmit.textContent = 'Guardar película';
+};
+
+const resetGenreForm = () => {
+    genreId.value = '';
+    genreName.value = '';
+    genreTmdbId.value = '';
+    genreColor.value = '#8a4dff';
+    genreActive.value = 'true';
+    genreDescription.value = '';
+    genreSubmit.textContent = 'Guardar género';
+};
+
+const fillMovieForm = (movie) => {
+    movieId.value = movie.id;
+    movieTmdbId.value = movie.tmdbId || '';
+    movieTitle.value = movie.title || '';
+    movieOriginalTitle.value = movie.original_title || '';
+    movieOverview.value = movie.description || '';
+    movieDescription.value = movie.description || movie.overview || '';
+    moviePosterUrl.value = movie.poster_url || '';
+    movieBannerUrl.value = movie.banner_url || '';
+    moviePosterSrcset.value = movie.poster_srcset || '';
+    movieBannerSrcset.value = movie.banner_srcset || '';
+    movieReleaseYear.value = movie.release_year || '';
+    movieReleaseDate.value = movie.release_date || '';
+    movieRuntime.value = movie.runtime || '';
+    movieCountry.value = movie.country || '';
+    movieLanguage.value = movie.language || '';
+    movieGenres.value = Array.isArray(movie.genres) ? movie.genres.map((genre) => genre.name).join(', ') : '';
+    movieRating.value = movie.rating || '';
+    movieCast.value = Array.isArray(movie.cast) ? movie.cast.join(', ') : '';
+    movieDirector.value = movie.director || '';
+    movieTrailer.value = movie.trailer || '';
+    moviePopularity.value = movie.popularity || '';
+    movieContentType.value = movie.content_type || 'independent';
+    movieCreatorName.value = movie.creator_name || '';
+    movieRightsHolder.value = movie.rights_holder || '';
+    movieLicenseInfo.value = movie.license_info || '';
+    movieSourceUrl.value = movie.source_url || '';
+    
+    serverRows.innerHTML = '';
+    const servers = Array.isArray(movie.servers) ? movie.servers : [];
+    if (servers.length === 0) {
+        // Add one empty server row if none exist
+        const row = document.createElement('div');
+        row.className = 'admin-server-row';
+        row.innerHTML = `<label><span>Nombre</span><input type="text" class="server-name" placeholder="Servidor 1" value="Servidor 1"></label><label><span>Tipo</span><select class="server-type"><option value="iframe">iframe</option><option value="embed">embed</option><option value="m3u8">m3u8</option><option value="mp4">mp4</option></select></label><label><span>Enlace/Código</span><input type="text" class="server-url" placeholder="https://... o código iframe"></label><label><span>Estado</span><select class="server-status"><option value="active">Activo</option><option value="inactive">Inactivo</option></select></label><label><span>Orden</span><input type="number" class="server-order" value="0" min="0"></label><button class="admin-secondary" type="button" data-remove-server>Eliminar</button>`;
+        serverRows.appendChild(row);
+    } else {
+        servers.forEach((server, index) => {
+            const row = document.createElement('div');
+            row.className = 'admin-server-row';
+            row.innerHTML = `<label><span>Nombre</span><input type="text" class="server-name" value="${escapeText(server.name || '')}"></label><label><span>Tipo</span><select class="server-type"><option value="iframe" ${server.type === 'iframe' ? 'selected' : ''}>iframe</option><option value="embed" ${server.type === 'embed' ? 'selected' : ''}>embed</option><option value="m3u8" ${server.type === 'm3u8' ? 'selected' : ''}>m3u8</option><option value="mp4" ${server.type === 'mp4' ? 'selected' : ''}>mp4</option></select></label><label><span>Enlace/Código</span><input type="text" class="server-url" value="${escapeText(server.url || '')}"></label><label><span>Estado</span><select class="server-status"><option value="active" ${server.status === 'active' ? 'selected' : ''}>Activo</option><option value="inactive" ${server.status === 'inactive' ? 'selected' : ''}>Inactivo</option></select></label><label><span>Orden</span><input type="number" class="server-order" value="${server.order || 0}" min="0"></label><button class="admin-secondary" type="button" data-remove-server>Eliminar</button>`;
+            serverRows.appendChild(row);
+        });
+    }
+    
+    movieStatus.value = movie.status || 'published';
+    movieSubmit.textContent = movieId.value ? 'Actualizar película' : 'Guardar película';
+};
+
+const fillGenreForm = (genre) => {
+    genreId.value = genre.id;
+    genreName.value = genre.name || '';
+    genreTmdbId.value = genre.tmdbId || '';
+    genreColor.value = genre.color || '#8a4dff';
+    genreActive.value = String(Boolean(genre.active));
+    genreDescription.value = genre.description || '';
+    genreSubmit.textContent = 'Actualizar género';
+};
+
+const parseGenres = (value) =>
+    String(value || '')
+        .split(',')
+        .map((item) => item.trim())
+        .filter(Boolean)
+        .map((name, index) => ({
+            id: index + 1,
+            name
+        }));
+
+const handleMovieSubmit = async (event) => {
+    event.preventDefault();
+
+    // Collect server data from the form
+    const serverRowsElements = serverRows.querySelectorAll('.admin-server-row');
+    const servers = [];
+    
+    serverRowsElements.forEach((row, index) => {
+        const nameInput = row.querySelector('.server-name');
+        const typeSelect = row.querySelector('.server-type');
+        const urlInput = row.querySelector('.server-url');
+        const statusSelect = row.querySelector('.server-status');
+        const orderInput = row.querySelector('.server-order');
+        
+        if (nameInput && typeSelect && urlInput && statusSelect && orderInput) {
+            const name = nameInput.value.trim();
+            const type = typeSelect.value;
+            const url = urlInput.value.trim();
+            const status = statusSelect.value;
+            const order = parseInt(orderInput.value) || 0;
+            
+            // Only add server if it has a name and URL
+            if (name && url) {
+                servers.push({
+                    name: name,
+                    type: type,
+                    url: url,
+                    status: status,
+                    order: order
+                });
+            }
+        }
+    });
+
+    const payload = {
+        tmdbId: movieTmdbId.value ? Number(movieTmdbId.value) : null,
+        title: movieTitle.value.trim(),
+        original_title: movieOriginalTitle.value.trim(),
+        description: movieOverview.value.trim(),
+        overview: movieDescription.value.trim(),
+        poster_url: moviePosterUrl.value.trim(),
+        banner_url: movieBannerUrl.value.trim(),
+        poster_srcset: moviePosterSrcset.value.trim(),
+        banner_srcset: movieBannerSrcset.value.trim(),
+        release_year: movieReleaseYear.value ? Number(movieReleaseYear.value) : 0,
+        runtime: movieRuntime.value ? Number(movieRuntime.value) : 0,
+        country: movieCountry.value.trim(),
+        language: movieLanguage.value.trim(),
+        genres: movieGenres.value.trim().split(',').map(g => g.trim()).filter(g => g.length > 0),
+        rating: movieRating.value.trim(),
+        cast: movieCast.value.trim().split(',').map(c => c.trim()).filter(c => c.length > 0),
+        director: movieDirector.value.trim(),
+        trailer: movieTrailer.value.trim(),
+        servers: servers,
+        status: movieStatus.value,
+        content_type: movieContentType.value || 'independent',
+        creator_name: movieCreatorName.value.trim(),
+        rights_holder: movieRightsHolder.value.trim(),
+        license_info: movieLicenseInfo.value.trim(),
+        source_url: movieSourceUrl.value.trim(),
+        popularity: moviePopularity.value ? parseFloat(moviePopularity.value) : 0
+    };
+
+    if (!payload.title && !payload.tmdbId) {
+        notify({ type: 'error', title: 'Campos obligatorios', message: 'TMDB ID y título son requeridos.' });
+        return;
+    }
+
+    if (servers.length === 0) {
+        notify({ type: 'error', title: 'Sin servidores', message: 'Agrega al menos un servidor de reproducción.' });
+        return;
+    }
+
+    try {
+        const isEditing = Boolean(movieId.value);
+        await fetchJson(`${ADMIN_API}/movies${isEditing ? `/${movieId.value}` : ''}`, {
+            method: isEditing ? 'PUT' : 'POST',
+            body: JSON.stringify(payload)
+        });
+        notify({ type: 'success', title: isEditing ? 'Película actualizada' : 'Película creada', message: payload.title });
+        resetMovieForm();
+        await loadMovies();
+        await loadDashboard();
+    } catch (error) {
+        notify({ type: 'error', title: 'No se pudo guardar', message: error.message || 'Intenta de nuevo.' });
+    }
+};
+
+const handleGenreSubmit = async (event) => {
+    event.preventDefault();
+
+    const payload = {
+        tmdbId: genreTmdbId.value ? Number(genreTmdbId.value) : null,
+        name: genreName.value.trim(),
+        color: genreColor.value,
+        description: genreDescription.value.trim(),
+        active: genreActive.value === 'true'
+    };
+
+    if (!payload.name) {
+        notify({ type: 'error', title: 'Nombre requerido', message: 'Escribe un nombre para el género.' });
+        return;
+    }
+
+    try {
+        const isEditing = Boolean(genreId.value);
+        await fetchJson(`${ADMIN_API}/genres${isEditing ? `/${genreId.value}` : ''}`, {
+            method: isEditing ? 'PUT' : 'POST',
+            body: JSON.stringify(payload)
+        });
+        notify({ type: 'success', title: isEditing ? 'Género actualizado' : 'Género creado', message: payload.name });
+        resetGenreForm();
+        await loadGenres();
+        await loadDashboard();
+    } catch (error) {
+        notify({ type: 'error', title: 'No se pudo guardar', message: error.message || 'Intenta de nuevo.' });
+    }
+};
+
+const handleSettingsSubmit = async (event) => {
+    event.preventDefault();
+
+    const payload = {
+        catalog: {
+            featuredLimit: Number(settingFeaturedLimit.value || 10),
+            trendingLimit: Number(settingTrendingLimit.value || 8),
+            allowUserUploads: Boolean(settingUserUploads.checked)
+        },
+        ui: {
+            theme: settingTheme.value.trim(),
+            accent: settingAccent.value
+        }
+    };
+
+    try {
+        await fetchJson(`${ADMIN_API}/settings`, {
+            method: 'PUT',
+            body: JSON.stringify(payload)
+        });
+        notify({ type: 'success', title: 'Configuración guardada', message: 'Los ajustes quedaron actualizados.' });
+    } catch (error) {
+        notify({ type: 'error', title: 'No se pudo guardar', message: error.message || 'Intenta de nuevo.' });
+    }
+};
+
+const handleAutoFillFromTmdb = async () => {
+    const tmdbId = movieTmdbId.value.trim();
+    if (!tmdbId) {
+        notify({ type: 'info', title: 'ID Requerido', message: 'Por favor, introduce un ID de TMDb para buscar.' });
+        return;
+    }
+
+    showLoader?.();
+    notify({ type: 'info', title: 'Buscando película...', message: `Consultando TMDb para ID ${tmdbId}` });
+
+    try {
+        const response = await adminAuthFetch(`/api/movies/tmdb/${encodeURIComponent(tmdbId)}`);
+        const data = await response.json().catch(() => ({}));
+
+        if (!response.ok) {
+            throw new Error(data.message || `No se encontró una película con el ID ${tmdbId}`);
+        }
+
+        const movie = data.movie;
+
+        if (!movie) {
+            throw new Error(`No se encontró una película con el ID ${tmdbId}`);
+        }
+
+        if (movieTitle) movieTitle.value = movie.title || '';
+        if (movieOriginalTitle) movieOriginalTitle.value = movie.original_title || '';
+        if (movieOverview) movieOverview.value = movie.overview || '';
+        if (movieDescription) movieDescription.value = movie.description || movie.overview || '';
+        if (movieReleaseYear) movieReleaseYear.value = movie.release_date ? movie.release_date.substring(0, 4) : '';
+        if (movieReleaseDate) movieReleaseDate.value = movie.release_date || '';
+        if (movieRuntime) movieRuntime.value = movie.runtime || '';
+        if (movieCountry) movieCountry.value = movie.country || '';
+        if (movieLanguage) movieLanguage.value = movie.language || '';
+        if (movieGenres && Array.isArray(movie.genres)) {
+            movieGenres.value = movie.genres.map(g => g.name).join(', ');
+        }
+        if (movieRating) movieRating.value = movie.rating || '';
+        if (movieCast) movieCast.value = Array.isArray(movie.cast) ? movie.cast.join(', ') : '';
+        if (movieDirector) movieDirector.value = movie.director || '';
+        if (movieTrailer) movieTrailer.value = movie.trailer || '';
+        if (moviePopularity) moviePopularity.value = movie.popularity || 0;
+        if (moviePosterUrl) moviePosterUrl.value = movie.poster_url || '';
+        if (movieBannerUrl) movieBannerUrl.value = movie.banner_url || '';
+
+        notify({
+            type: 'success',
+            title: 'Película encontrada',
+            message: movie.title || 'La información se completó automáticamente.'
+        });
+    } catch (error) {
+        console.warn('TMDb autofill failed', error);
+        notify({
+            type: 'error',
+            title: 'Error al autocompletar',
+            message: error.message || 'No se pudo obtener la información desde TMDb.'
+        });
+    } finally {
+        hideLoader?.();
+    }
+};
+
+const handleTableActions = async (event) => {
+    const editMovie = event.target.closest('[data-edit-movie]');
+    const deleteMovie = event.target.closest('[data-delete-movie]');
+    const saveUser = event.target.closest('[data-save-user]');
+    const deleteUser = event.target.closest('[data-delete-user]');
+    const editGenre = event.target.closest('[data-edit-genre]');
+    const deleteGenre = event.target.closest('[data-delete-genre]');
+
+    try {
+        if (editMovie) {
+            const movie = moviesCache.find((item) => String(item.id) === editMovie.dataset.editMovie);
+            if (movie) fillMovieForm(movie);
+        }
+
+        if (deleteMovie) {
+            await fetchJson(`${ADMIN_API}/movies/${deleteMovie.dataset.deleteMovie}`, { method: 'DELETE' });
+            notify({ type: 'success', title: 'Película eliminada', message: 'Se quitó del catálogo.' });
+            await loadMovies();
+            await loadDashboard();
+        }
+
+        if (saveUser) {
+            const userId = saveUser.dataset.saveUser;
+            const roleSelect = document.querySelector(`[data-user-role="${userId}"]`);
+            const role = roleSelect?.value || 'user';
+            await fetchJson(`${ADMIN_API}/users/${userId}`, {
+                method: 'PUT',
+                body: JSON.stringify({ role })
+            });
+            notify({ type: 'success', title: 'Usuario actualizado', message: 'El rol se guardó correctamente.' });
+            await loadUsers();
+            await loadDashboard();
+        }
+
+        if (deleteUser) {
+            if (!window.confirm('¿Eliminar este usuario?')) {
+                return;
+            }
+            await fetchJson(`${ADMIN_API}/users/${deleteUser.dataset.deleteUser}`, { method: 'DELETE' });
+            notify({ type: 'success', title: 'Usuario eliminado', message: 'Se retiró del sistema.' });
+            await loadUsers();
+            await loadDashboard();
+        }
+
+        if (editGenre) {
+            const genre = genresCache.find((item) => String(item.id) === editGenre.dataset.editGenre);
+            if (genre) fillGenreForm(genre);
+        }
+
+        if (deleteGenre) {
+            await fetchJson(`${ADMIN_API}/genres/${deleteGenre.dataset.deleteGenre}`, { method: 'DELETE' });
+            notify({ type: 'success', title: 'Género eliminado', message: 'Se retiró del catálogo.' });
+            await loadGenres();
+            await loadDashboard();
+        }
+    } catch (error) {
+        notify({ type: 'error', title: 'Operación fallida', message: error.message || 'Revisa tu conexión.' });
+    }
+};
+
+const bootstrap = async () => {
+    if (!requireAdmin()) {
+        return;
+    }
+
+    setActiveSection('dashboard');
+
+    document.querySelectorAll('[data-admin-tab]').forEach((button) => {
+        button.addEventListener('click', () => setActiveSection(button.dataset.adminTab));
+    });
+
+    adminRefresh?.addEventListener('click', refreshAll);
+    adminLogout?.addEventListener('click', () => {
+        window.BugaAuth?.clearAuthSession?.();
+        window.BugaAuth?.clearActiveProfile?.();
+        window.location.href = '/pages/login.html';
+    });
+
+    movieForm?.addEventListener('submit', handleMovieSubmit);
+    genreForm?.addEventListener('submit', handleGenreSubmit);
+    settingsForm?.addEventListener('submit', handleSettingsSubmit);
+    clearMovieFormButton?.addEventListener('click', resetMovieForm);
+    clearGenreFormButton?.addEventListener('click', resetGenreForm);
+
+    fetchTmdbDataButton?.addEventListener('click', handleAutoFillFromTmdb);
+    movieTmdbId?.addEventListener('keydown', (event) => {
+        if (event.key === 'Enter') {
+            event.preventDefault();
+            handleAutoFillFromTmdb();
+        }
+    });
+
+    addServerButton?.addEventListener('click', () => {
+        const row = document.createElement('div');
+        row.className = 'admin-server-row';
+        row.innerHTML = `
+            <label><span>Nombre</span><input type="text" class="server-name" placeholder="Servidor 1" value="Servidor 1"></label>
+            <label><span>Tipo</span><select class="server-type" name="server-type">
+                <option value="iframe">iframe</option>
+                <option value="embed">embed</option>
+                <option value="m3u8">m3u8</option>
+                <option value="mp4">mp4</option>
+            </select></label>
+            <label><span>Enlace/Código</span><input type="text" class="server-url" placeholder="https://..."></label>
+            <label><span>Estado</span><select class="server-status">
+                <option value="active">Activo</option>
+                <option value="inactive">Inactivo</option>
+            </select></label>
+            <label><span>Orden</span><input type="number" class="server-order" value="0" min="0"></label>
+            <button class="admin-secondary" type="button" data-remove-server>Eliminar</button>
+        `;
+        serverRows.appendChild(row);
+        
+        // Add remove button functionality
+        const removeBtn = row.querySelector('.admin-secondary');
+        removeBtn.addEventListener('click', () => {
+            row.remove();
+            // Ensure at least one server row remains
+            if (serverRows.querySelectorAll('.admin-server-row').length === 0) {
+                addServerButton.click();
+            }
+        });
+    });
+
+    serverRows?.addEventListener('click', (event) => {
+        const removeBtn = event.target.closest('[data-remove-server]');
+        if (removeBtn) {
+            removeBtn.closest('.admin-server-row')?.remove();
+        }
+    });
+
+    moviesTable?.addEventListener('click', handleTableActions);
+    usersTable?.addEventListener('click', handleTableActions);
+    genresTable?.addEventListener('click', handleTableActions);
+
+    resetMovieForm();
+    resetGenreForm();
+    await refreshAll();
+};
+
+document.addEventListener('DOMContentLoaded', bootstrap);
+})();
