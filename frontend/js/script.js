@@ -1932,6 +1932,25 @@ const bootstrap = async () => {
     wireTrailerPreviewToGrid(seriesGrid);
     wireTrailerPreviewToGrid(continueWatchingGrid);
 
+    // Load more button handler
+    const loadMoreBtn = document.getElementById('loadMoreMovies');
+    if (loadMoreBtn) {
+        loadMoreBtn.addEventListener('click', async () => {
+            if (!featuredMoviesLoading && featuredMoviesHasMore) {
+                loadMoreBtn.disabled = true;
+                loadMoreBtn.textContent = 'Cargando...';
+                featuredMoviesPage++;
+                await loadFeaturedMovies({ useLoader: false, append: true });
+                if (!featuredMoviesHasMore) {
+                    loadMoreBtn.style.display = 'none';
+                } else {
+                    loadMoreBtn.disabled = false;
+                    loadMoreBtn.textContent = 'Cargar más películas';
+                }
+            }
+        });
+    }
+
     renderContinueWatching();
     showPageLoader();
     failSafeId = window.setTimeout(() => {
@@ -1947,6 +1966,7 @@ const bootstrap = async () => {
             refreshFeaturedGrid(searchInput?.value || '');
             renderTrendingMovies();
             renderSeries(seriesMoviesCache);
+            renderSeries(seriesMoviesCache);
         }
     });
 
@@ -1956,6 +1976,11 @@ const bootstrap = async () => {
             loadTrendingMovies(),
             loadHeroSlides()
         ]);
+        // Show load more button if there are more movies
+        const loadMoreBtn = document.getElementById('loadMoreMovies');
+        if (loadMoreBtn && featuredMoviesHasMore) {
+            loadMoreBtn.style.display = 'inline-flex';
+        }
     } finally {
         window.clearTimeout(failSafeId);
         hidePageLoader();
