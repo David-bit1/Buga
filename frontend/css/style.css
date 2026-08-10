@@ -1953,3 +1953,34 @@ body.menu-open .site-header {
         scroll-behavior: auto !important;
     }
 }
+
+.load-more-btn {
+    min-width: 200px;
+    min-height: 48px;
+    padding: 0.875rem 1.5rem;
+    border-radius: 999px;
+    font-weight: 700;
+    background: linear-gradient(135deg, #9c61ff, #4012dc);
+    color: #fff;
+    box-shadow: 0 12px 28px rgba(138, 77, 255, 0.28);
+    transition: transform 0.25s ease, box-shadow 0.25s ease, opacity 0.25s ease;
+    border: none;
+    cursor: pointer;
+}
+
+.load-more-btn:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 18px 32px rgba(138, 77, 255, 0.34);
+}
+
+.load-more-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none;
+}
+
+.load-more-container {
+    display: flex;
+    justify-content: center;
+    margin-top: 2rem;
+}
