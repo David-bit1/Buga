@@ -555,6 +555,7 @@ const renderLoadingState = () => {
         .join('');
 };
 
+const INITIAL_RENDER_LIMIT = 50;
 const showPageLoader = () => {
     document.body.classList.add('is-loading');
     if (pageLoader) {
@@ -575,7 +576,7 @@ const renderMovies = (movies) => {
     }
 
     closeTrailerPreview();
-    moviesGrid.innerHTML = movies.map(createCard).join('');
+    moviesGrid.innerHTML = movies.slice(0, INITIAL_RENDER_LIMIT).map(createCard).join('');
 };
 
 const renderSeries = (series = []) => {

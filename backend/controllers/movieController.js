@@ -146,7 +146,13 @@ const buildTmdbMoviePayload = async (tmdbId) => {
     description: String(movie.overview || '').trim(),
     overview: String(movie.overview || '').trim(),
     poster_url: movie.poster_path ? `${TMDB_IMAGE_BASE}${movie.poster_path}` : '',
+    poster_srcset: movie.poster_path
+      ? `https://image.tmdb.org/t/p/w185${movie.poster_path} 185w, https://image.tmdb.org/t/p/w342${movie.poster_path} 342w, https://image.tmdb.org/t/p/w500${movie.poster_path} 500w`
+      : '',
     banner_url: movie.backdrop_path ? `https://image.tmdb.org/t/p/w780${movie.backdrop_path}` : '',
+    banner_srcset: movie.backdrop_path
+      ? `https://image.tmdb.org/t/p/w300${movie.backdrop_path} 300w, https://image.tmdb.org/t/p/w780${movie.backdrop_path} 780w, https://image.tmdb.org/t/p/w1280${movie.backdrop_path} 1280w`
+      : '',
     release_year: toInteger(String(movie.release_date || '').slice(0, 4), 0),
     release_date: movie.release_date || '',
     runtime: toInteger(movie.runtime, 0),
