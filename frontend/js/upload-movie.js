@@ -23,6 +23,13 @@ const movieTrailer = document.getElementById('movieTrailer');
 const movieOverview = document.getElementById('movieOverview');
 const movieReleaseDate = document.getElementById('movieReleaseDate');
 const moviePopularity = document.getElementById('moviePopularity');
+const moviePosterSrcset = document.getElementById('moviePosterSrcset');
+const movieBannerSrcset = document.getElementById('movieBannerSrcset');
+const movieContentType = document.getElementById('movieContentType');
+const movieCreatorName = document.getElementById('movieCreatorName');
+const movieRightsHolder = document.getElementById('movieRightsHolder');
+const movieLicenseInfo = document.getElementById('movieLicenseInfo');
+const movieSourceUrl = document.getElementById('movieSourceUrl');
 const serverRows = document.getElementById('serverRows');
 const addServerButton = document.getElementById('addServerButton');
 const movieTable = document.getElementById('moviesTable');
@@ -148,6 +155,13 @@ const fillForm = (movie) => {
     moviePopularity.value = movie?.popularity || '';
     moviePosterUrl.value = movie?.poster_url || '';
     movieBannerUrl.value = movie?.banner_url || '';
+    moviePosterSrcset.value = movie?.poster_srcset || '';
+    movieBannerSrcset.value = movie?.banner_srcset || '';
+    movieContentType.value = movie?.content_type || 'independent';
+    movieCreatorName.value = movie?.creator_name || '';
+    movieRightsHolder.value = movie?.rights_holder || '';
+    movieLicenseInfo.value = movie?.license_info || '';
+    movieSourceUrl.value = movie?.source_url || '';
     movieFeatured.checked = Boolean(movie?.featured);
     resetServerRows(Array.isArray(movie?.servers) ? movie.servers : []);
     formTitle.textContent = movie ? 'Editar película' : 'Nueva película';
@@ -175,6 +189,13 @@ const clearForm = () => {
     moviePopularity.value = '';
     moviePosterUrl.value = '';
     movieBannerUrl.value = '';
+    moviePosterSrcset.value = '';
+    movieBannerSrcset.value = '';
+    movieContentType.value = 'independent';
+    movieCreatorName.value = '';
+    movieRightsHolder.value = '';
+    movieLicenseInfo.value = '';
+    movieSourceUrl.value = '';
     movieFeatured.checked = false;
     resetServerRows([{ name: 'Servidor 1', type: 'iframe', url: '', status: 'active', order: 0 }]);
     formTitle.textContent = 'Nueva película';
@@ -264,6 +285,13 @@ const autoFillFromTmdb = async () => {
         if (moviePopularity) moviePopularity.value = movie.popularity || '';
         if (moviePosterUrl) moviePosterUrl.value = movie.poster_url || '';
         if (movieBannerUrl) movieBannerUrl.value = movie.banner_url || '';
+        if (moviePosterSrcset) moviePosterSrcset.value = movie.poster_srcset || '';
+        if (movieBannerSrcset) movieBannerSrcset.value = movie.banner_srcset || '';
+        if (movieContentType) movieContentType.value = movie.content_type || 'independent';
+        if (movieCreatorName) movieCreatorName.value = movie.creator_name || '';
+        if (movieRightsHolder) movieRightsHolder.value = movie.rights_holder || '';
+        if (movieLicenseInfo) movieLicenseInfo.value = movie.license_info || '';
+        if (movieSourceUrl) movieSourceUrl.value = movie.source_url || '';
         if (movieGenres && Array.isArray(movie.genres)) movieGenres.value = movie.genres.map(g => g.name || g).join(', ');
 
         notify({
@@ -306,6 +334,8 @@ const handleSubmit = async (event) => {
         overview: movieOverview.value.trim(),
         poster_url: moviePosterUrl.value.trim(),
         banner_url: movieBannerUrl.value.trim(),
+        poster_srcset: moviePosterSrcset.value.trim(),
+        banner_srcset: movieBannerSrcset.value.trim(),
         release_year: movieYear.value ? Number(movieYear.value) : 0,
         runtime: movieDuration.value ? Number(movieDuration.value) : 0,
         country: movieCountry.value.trim(),
@@ -318,6 +348,11 @@ const handleSubmit = async (event) => {
         servers: getServerRows(),
         featured: movieFeatured.checked,
         status: movieStatus.value,
+        content_type: movieContentType.value || 'independent',
+        creator_name: movieCreatorName.value.trim(),
+        rights_holder: movieRightsHolder.value.trim(),
+        license_info: movieLicenseInfo.value.trim(),
+        source_url: movieSourceUrl.value.trim(),
         popularity: moviePopularity.value ? parseFloat(moviePopularity.value) : 0
     };
 

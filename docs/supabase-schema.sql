@@ -122,6 +122,8 @@ create table if not exists public.movies (
    overview text not null default '',
    poster_url text not null default '',
    banner_url text not null default '',
+   poster_srcset text not null default '',
+   banner_srcset text not null default '',
    release_year integer not null default 0,
    runtime integer not null default 0,
    country text not null default '',
@@ -133,8 +135,13 @@ create table if not exists public.movies (
    trailer text not null default '',
    servers jsonb not null default '[]'::jsonb,
    featured boolean not null default false,
-   status text not null default 'published' check (status in ('draft', 'published')),
+   status text not null default 'published' check (status in ('draft', 'published', 'hidden')),
    popularity numeric not null default 0,
+   content_type text not null default 'independent' check (content_type in ('independent', 'public_domain')),
+   creator_name text not null default '',
+   rights_holder text not null default '',
+   license_info text not null default '',
+   source_url text not null default '',
    created_by uuid references public.users(id) on delete set null,
    created_at timestamptz not null default now(),
    updated_at timestamptz not null default now()
@@ -180,6 +187,87 @@ alter table public.user_preferences enable row level security;
 alter table public.genres enable row level security;
 alter table public.movies enable row level security;
 alter table public.admin_settings enable row level security;
+alter table public.series enable row level security;
+alter table public.seasons enable row level security;
+alter table public.episodes enable row level security;
 
 -- El backend usa la service_role key, por lo que estas tablas pueden permanecer protegidas por RLS
 -- hasta que quieras exponer acceso directo desde el cliente.
+
+-- ============================================
+-- SERIES TABLES
+-- ============================================
+
+create table if not exists public.series (
+   id uuid primary key default gen_random_uuid(),
+   tmdb_id integer unique,
+   title text not null,
+   original_title text not null default '',
+   description text not null default '',
+   overview text not null default '',
+   poster_url text not null default '',
+   banner_url text not null default '',
+   poster_srcset text not null default '',
+   banner_srcset text not null default '',
+   release_year integer not null default 0,
+   first_air_date text not null default '',
+   genres jsonb not null default '[]'::jsonb,
+   rating text not null default '',
+   "cast" jsonb not null default '[]'::jsonb,
+   creator text not null default '',
+   trailer text not null default '',
+   featured boolean not null default false,
+   status text not null default 'published' check (status in ('draft', 'published', 'hidden')),
+   popularity numeric not null default 0,
+   content_type text not null default 'independent' check (content_type in ('independent', 'public_domain')),
+   creator_name text not null default '',
+   rights_holder text not null default '',
+   license_info text not null default '',
+   source_url text not null default '',
+   created_by uuid references public.users(id) on delete set null,
+   created_at timestamptz not null default now(),
+   updated_at timestamptz not null default now()
+ );
+
+create table if not exists public.seasons (
+   id uuid primary key default gen_random_uuid(),
+   series_id uuid not null references public.series(id) on delete cascade,
+   season_number integer not null,
+   title text not null default '',
+   description text not null default '',
+   overview text not null default '',
+   poster_url text not null default '',
+   banner_url text not null default '',
+   release_date text not null default '',
+   tmdb_id integer,
+   status text not null default 'published' check (status in ('draft', 'published', 'hidden')),
+   created_by uuid references public.users(id) on delete set null,
+   created_at timestamptz not null default now(),
+   updated_at timestamptz not null default now(),
+   unique (series_id, season_number)
+ );
+
+create table if not exists public.episodes (
+   id uuid primary key default gen_random_uuid(),
+   season_id uuid not null references public.seasons(id) on delete cascade,
+   episode_number integer not null,
+   title text not null,
+   description text not null default '',
+   overview text not null default '',
+   thumbnail_url text not null default '',
+   runtime integer not null default 0,
+   release_date text not null default '',
+   tmdb_id integer,
+   servers jsonb not null default '[]'::jsonb,
+   status text not null default 'published' check (status in ('draft', 'published', 'hidden')),
+   created_by uuid references public.users(id) on delete set null,
+   created_at timestamptz not null default now(),
+   updated_at timestamptz not null default now(),
+   unique (season_id, episode_number)
+ );
+
+create index if not exists idx_seasons_series_id on public.seasons(series_id);
+create index if not exists idx_episodes_season_id on public.episodes(season_id);
+create index if not exists idx_movies_status on public.movies(status);
+create index if not exists idx_series_status on public.series(status);
+create index if not exists idx_episodes_status on public.episodes(status);

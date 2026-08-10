@@ -10,6 +10,7 @@ if (!TMDB_API_KEY || TMDB_API_KEY === 'b24af203b14e23f8c91844baae37cfab') {
 
 const TMDB_LANGUAGE = 'es-ES';
 const TMDB_IMAGE_BASE = 'https://image.tmdb.org/t/p/w500';
+const TMDB_IMAGE_BASE_W780 = 'https://image.tmdb.org/t/p/w780';
 
 const normalizeGenres = (value) => {
   if (Array.isArray(value)) {
@@ -45,6 +46,20 @@ const serializeMovie = (movie) => {
   const releaseYear = movie.release_year || (movie.release_date ? String(movie.release_date).slice(0, 4) : 0);
   const parsedYear = toInteger(String(releaseYear), 0);
 
+  // Generate srcset for poster if it's a TMDB w500 URL
+  let poster_srcset = movie.poster_srcset || '';
+  if (!poster_srcset && movie.poster_url && movie.poster_url.includes('/p/w500/')) {
+    const posterPath = movie.poster_url.split('/p/w500/')[1];
+    poster_srcset = `https://image.tmdb.org/t/p/w185/${posterPath} 185w, https://image.tmdb.org/t/p/w342/${posterPath} 342w, ${movie.poster_url} 500w`;
+  }
+
+  // Generate srcset for banner if it's a TMDB w780 URL
+  let banner_srcset = movie.banner_srcset || '';
+  if (!banner_srcset && movie.banner_url && movie.banner_url.includes('/p/w780/')) {
+    const bannerPath = movie.banner_url.split('/p/w780/')[1];
+    banner_srcset = `https://image.tmdb.org/t/p/w300/${bannerPath} 300w, ${movie.banner_url} 780w, https://image.tmdb.org/t/p/w1280/${bannerPath} 1280w`;
+  }
+
   const result = {
     id: movie.id,
     tmdb_id: movie.tmdb_id || null,
@@ -54,6 +69,8 @@ const serializeMovie = (movie) => {
     overview: movie.overview || '',
     poster_url: movie.poster_url || '',
     banner_url: movie.banner_url || '',
+    poster_srcset,
+    banner_srcset,
     release_year: parsedYear,
     release_date: movie.release_date || (parsedYear > 0 ? `${parsedYear}-01-01` : ''),
     runtime: movie.runtime || 0,
@@ -68,6 +85,11 @@ const serializeMovie = (movie) => {
     featured: Boolean(movie.featured),
     status: movie.status || 'published',
     popularity: movie.popularity || 0,
+    content_type: movie.content_type || 'independent',
+    creator_name: movie.creator_name || '',
+    rights_holder: movie.rights_holder || '',
+    license_info: movie.license_info || '',
+    source_url: movie.source_url || '',
     created_by: movie.created_by,
     created_at: movie.created_at,
     updated_at: movie.updated_at

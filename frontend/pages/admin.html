@@ -92,7 +92,7 @@
                             <label><span>Banner URL</span><input id="movieBannerUrl" type="url" placeholder="https://image.tmdb.org/t/p/w500/..."></label>
                         </div>
                         <div class="admin-form-grid">
-                            <label><span>Año</span><input id="movieReleaseYear" type="number" min="1900" max="2025" placeholder="1972"></label>
+                            <label><span>Año</span><input id="movieReleaseYear" type="number" min="1900" max="2026" placeholder="1972"></label>
                             <label><span>Duración (min)</span><input id="movieRuntime" type="number" min="1" placeholder="175"></label>
                         </div>
                         <div class="admin-form-grid">
@@ -117,8 +117,25 @@
                                 <select id="movieStatus">
                                     <option value="published">Publicado</option>
                                     <option value="draft">Borrador</option>
+                                    <option value="hidden">Oculto</option>
                                 </select>
                             </label>
+                        </div>
+                        <div class="admin-form-grid">
+                            <label><span>Tipo de Contenido</span>
+                                <select id="movieContentType">
+                                    <option value="independent">Independiente</option>
+                                    <option value="public_domain">Dominio Público</option>
+                                </select>
+                            </label>
+                        </div>
+                        <div class="admin-form-grid">
+                            <label><span>Creador</span><input id="movieCreatorName" type="text" placeholder="Nombre del creador"></label>
+                            <label><span>Titular de Derechos</span><input id="movieRightsHolder" type="text" placeholder="Titular de derechos"></label>
+                        </div>
+                        <div class="admin-form-grid">
+                            <label><span>Licencia</span><input id="movieLicenseInfo" type="text" placeholder="Información de licencia"></label>
+                            <label><span>URL Fuente</span><input id="movieSourceUrl" type="url" placeholder="https://..."></label>
                         </div>
                         
                         <div class="admin-card-header" style="margin-top: 1.5rem;">

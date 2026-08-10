@@ -1,15 +1,6 @@
-const {
-  selectMany,
-  selectOne,
-  countRows,
-  insertOne,
-  updateRows,
-  deleteRows,
-  upsertOne
-} = require('../services/supabaseRepository');
+const { insertOne, selectMany, selectOne, updateRows, deleteRows, upsertOne } = require('../services/supabaseRepository');
 const { parseServers } = require('../services/serverNormalizer');
-
-const { buildTmdbMoviePayload, toInteger, normalizeGenres } = require('../controllers/movieController');
+const { buildTmdbMoviePayload, toInteger, normalizeGenres, normalizeCast } = require('../controllers/movieController');
 
 const slugify = (value) =>
   String(value || '')
@@ -37,12 +28,19 @@ const sanitizeMovie = (movie) => ({
   description: movie.description,
   poster_url: movie.poster_url,
   banner_url: movie.banner_url,
+  poster_srcset: movie.poster_srcset,
+  banner_srcset: movie.banner_srcset,
   release_year: movie.release_year,
   runtime: movie.runtime,
   genres: movie.genres || [],
   servers: movie.servers || [],
   featured: Boolean(movie.featured),
   status: movie.status,
+  content_type: movie.content_type,
+  creator_name: movie.creator_name,
+  rights_holder: movie.rights_holder,
+  license_info: movie.license_info,
+  source_url: movie.source_url,
   createdBy: movie.created_by,
   createdAt: movie.created_at,
   updatedAt: movie.updated_at
@@ -170,13 +168,15 @@ const createMovie = async (req, res, next) => {
       overview: String(req.body.overview || req.body.description || tmdbPayload?.overview || '').trim(),
       poster_url: String(req.body.poster_url || tmdbPayload?.poster_url || '').trim(),
       banner_url: String(req.body.banner_url || tmdbPayload?.banner_url || '').trim(),
+      poster_srcset: String(req.body.poster_srcset || tmdbPayload?.poster_srcset || '').trim(),
+      banner_srcset: String(req.body.banner_srcset || tmdbPayload?.banner_srcset || '').trim(),
       release_year: toInteger(req.body.release_year || tmdbPayload?.release_year, null),
       runtime: toInteger(req.body.runtime || tmdbPayload?.runtime, 0),
       country: String(req.body.country || tmdbPayload?.country || '').trim(),
       language: String(req.body.language || tmdbPayload?.language || '').trim(),
       genres: normalizeGenres(req.body.genres || tmdbPayload?.genres || []),
       rating: String(req.body.rating || tmdbPayload?.rating || '').trim(),
-      cast: normalizeGenres(req.body.cast || tmdbPayload?.cast || []),
+      cast: normalizeCast(req.body.cast || tmdbPayload?.cast || []),
       director: String(req.body.director || tmdbPayload?.director || '').trim(),
       trailer: String(req.body.trailer || tmdbPayload?.trailer || '').trim(),
       servers: parseServers(servers || []),
@@ -184,6 +184,11 @@ const createMovie = async (req, res, next) => {
       status: String(req.body.status || 'published'),
       created_by: req.user.id,
       popularity: tmdbPayload?.popularity || 0,
+      content_type: String(req.body.content_type || 'independent').trim(),
+      creator_name: String(req.body.creator_name || '').trim(),
+      rights_holder: String(req.body.rights_holder || '').trim(),
+      license_info: String(req.body.license_info || '').trim(),
+      source_url: String(req.body.source_url || '').trim(),
     };
 
     console.log('AUDIT admin createMovie INSERT payload:', JSON.stringify(insertPayload, null, 2));
@@ -223,8 +228,10 @@ const updateMovie = async (req, res, next) => {
     const updatePayload = {};
     const fields = [
       'tmdbId', 'title', 'original_title', 'description', 'overview', 'poster_url', 'banner_url',
+      'poster_srcset', 'banner_srcset',
       'release_year', 'runtime', 'country', 'language', 'rating', 'director', 'trailer',
-      'servers', 'featured', 'status', 'popularity'
+      'servers', 'featured', 'status', 'popularity',
+      'content_type', 'creator_name', 'rights_holder', 'license_info', 'source_url'
     ];
 
     for (const field of fields) {
@@ -239,6 +246,10 @@ const updateMovie = async (req, res, next) => {
           value = toInteger(value, null);
         } else if (field === 'featured') {
           value = Boolean(value);
+        } else if (field === 'content_type') {
+          value = String(value || 'independent').trim();
+        } else if (typeof value === 'string') {
+          value = value.trim();
         }
 
         updatePayload[target] = value;
@@ -250,7 +261,7 @@ const updateMovie = async (req, res, next) => {
     }
 
     if (req.body.cast !== undefined) {
-      updatePayload.cast = normalizeGenres(req.body.cast);
+      updatePayload.cast = normalizeCast(req.body.cast);
     }
 
 
