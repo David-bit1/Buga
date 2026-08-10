@@ -275,14 +275,14 @@ const autoFillFromTmdb = async () => {
     movieSubmit.disabled = true;
     movieSubmit.textContent = 'Buscando película...';
 
-    try {
-        notify({ type: 'info', title: 'Buscando película...', message: `Consultando TMDb para ID ${tmdbId}` });
+    notify({ type: 'info', title: 'Buscando película...', message: `Consultando TMDb para ID ${tmdbId}` });
 
+    try {
         // Usamos fetchJson para incluir las cabeceras de autenticación
         const data = await fetchJson(`/api/movies/tmdb/${encodeURIComponent(tmdbId)}`);
 
         // La API devuelve { movie: ... }
-        const movie = data.movie;
+        const movie = data.movie || data; // Handle both direct object and nested object
 
         if (!movie || !(movie.tmdb_id || movie.id)) {
             notify({ type: 'error', title: 'Película no encontrada', message: `No se encontró película con ID ${tmdbId} en TMDb.` });
@@ -309,7 +309,7 @@ const autoFillFromTmdb = async () => {
         if (movieGenres && Array.isArray(movie.genres)) movieGenres.value = movie.genres.map(g => g.name || g).join(', ');
 
         notify({
-            type: 'success',
+            type: 'info',
             title: 'Película encontrada',
             message: movie.title || 'La información se completó automáticamente.'
         });

@@ -280,7 +280,13 @@ const shortenText = (text, limit = 110) => {
 const createMovieCardMedia = (movie, tagLabel = '') => `
     <div class="movie-card-media">
         ${tagLabel ? `<div class="movie-card-tag">${tagLabel}</div>` : ''}
-        <img class="movie-poster" src="${movie.poster || HOME_SHARED.FALLBACK_POSTER}" alt="Poster de ${movie.title}" loading="lazy" decoding="async">
+        <img class="movie-poster"
+             src="${movie.poster || HOME_SHARED.FALLBACK_POSTER}"
+             ${movie.poster_srcset ? `srcset="${movie.poster_srcset}"` : ''}
+             sizes="(max-width: 600px) 33vw, 185px"
+             alt="Poster de ${movie.title}"
+             loading="lazy"
+             decoding="async">
         <div class="movie-trailer-preview" aria-hidden="true"></div>
     </div>
 `;

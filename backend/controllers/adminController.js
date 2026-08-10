@@ -142,51 +142,49 @@ const listMovies = async (_req, res, next) => {
 
 const createMovie = async (req, res, next) => {
   try {
-    const {
-      tmdbId,
-      title,
-      description,
-      poster_url,
-      banner_url,
-      release_year,
-      runtime,
-      genres = [],
-      videoSource,
-      featured = false,
-      status = 'published'
-    } = req.body;
+    const { tmdbId, title } = req.body;
 
-    if (!tmdbId || !title) {
-      return res.status(400).json({ message: 'tmdbId y título son obligatorios' });
+    if (!title && !tmdbId) {
+      return res.status(400).json({ message: 'Se requiere un título o un TMDb ID.' });
     }
 
     let tmdbPayload = null;
     try {
-      tmdbPayload = await buildTmdbMoviePayload(Number(tmdbId));
+      if (tmdbId) {
+        tmdbPayload = await buildTmdbMoviePayload(Number(tmdbId));
+      }
     } catch (error) {
       console.warn('Admin createMovie - TMDB sync failed:', error.message);
     }
     console.log('AUDIT admin createMovie TMDb payload:', JSON.stringify(tmdbPayload, null, 2));
 
-    const finalGenres = genres && genres.length > 0 ? genres : tmdbPayload?.genres || [];
-    const normalizedGenres = normalizeGenres(finalGenres);
+    const finalTitle = String(req.body.title || tmdbPayload?.title || '').trim();
+    if (!finalTitle) {
+      return res.status(400).json({ message: 'No se pudo determinar un título para la película.' });
+    }
 
     const insertPayload = {
-      tmdb_id: Number(tmdbId),
-      title: String(title || tmdbPayload?.title || '').trim(),
-      description: String(description || tmdbPayload?.overview || '').trim(),
-      overview: String(req.body.overview || description || tmdbPayload?.overview || '').trim(),
-      poster_url: String(poster_url || tmdbPayload?.poster_url || '').trim(),
-      banner_url: String(banner_url || tmdbPayload?.banner_url || '').trim(),
-      release_year: toInteger(release_year || tmdbPayload?.release_year || 0, 0),
-      runtime: toInteger(runtime || tmdbPayload?.runtime || 0, 0),
-      genres: normalizedGenres,
+      tmdb_id: toInteger(tmdbId, null),
+      title: finalTitle,
+      original_title: String(req.body.original_title || tmdbPayload?.original_title || '').trim(),
+      description: String(req.body.description || tmdbPayload?.description || '').trim(),
+      overview: String(req.body.overview || req.body.description || tmdbPayload?.overview || '').trim(),
+      poster_url: String(req.body.poster_url || tmdbPayload?.poster_url || '').trim(),
+      banner_url: String(req.body.banner_url || tmdbPayload?.banner_url || '').trim(),
+      release_year: toInteger(req.body.release_year || tmdbPayload?.release_year, 0),
+      runtime: toInteger(req.body.runtime || tmdbPayload?.runtime, 0),
+      country: String(req.body.country || tmdbPayload?.country || '').trim(),
+      language: String(req.body.language || tmdbPayload?.language || '').trim(),
+      genres: normalizeGenres(req.body.genres || tmdbPayload?.genres || []),
+      rating: String(req.body.rating || tmdbPayload?.rating || '').trim(),
+      cast: normalizeGenres(req.body.cast || tmdbPayload?.cast || []),
+      director: String(req.body.director || tmdbPayload?.director || '').trim(),
+      trailer: String(req.body.trailer || tmdbPayload?.trailer || '').trim(),
       servers: parseServers(req.body.servers && req.body.servers.length > 0 ? req.body.servers : (tmdbPayload?.servers || [])),
-      featured: Boolean(featured),
-      status: String(status || 'published'),
+      featured: Boolean(req.body.featured),
+      status: String(req.body.status || 'published'),
       created_by: req.user.id,
       popularity: tmdbPayload?.popularity || 0,
-      trailer: req.body.trailer || tmdbPayload?.trailer || ''
     };
 
     console.log('AUDIT admin createMovie INSERT payload:', JSON.stringify(insertPayload, null, 2));
@@ -224,26 +222,34 @@ const updateMovie = async (req, res, next) => {
     }
 
     const payload = {};
-    const fields = ['tmdbId', 'title', 'description', 'overview', 'poster_url', 'banner_url', 'release_year', 'runtime', 'servers', 'videoSource', 'featured', 'status', 'processingStatus', 'sourceFile', 'hlsDirectory', 'hlsManifest', 'trailer'];
+    const fields = [
+      'tmdbId', 'title', 'original_title', 'description', 'overview', 'poster_url', 'banner_url',
+      'release_year', 'runtime', 'country', 'language', 'rating', 'director', 'trailer',
+      'servers', 'featured', 'status', 'popularity'
+    ];
+
     fields.forEach((field) => {
       if (req.body[field] !== undefined) {
-        const map = {
-          tmdbId: 'tmdb_id',
-          videoSource: 'video_source',
-          processingStatus: 'processing_status',
-          sourceFile: 'source_file',
-          hlsDirectory: 'hls_directory',
-          hlsManifest: 'hls_manifest',
-          description: 'overview'
-        };
+        const map = { tmdbId: 'tmdb_id' };
         const target = map[field] || field;
-        payload[target] = field === 'runtime' || field === 'tmdbId' ? Number(req.body[field]) : req.body[field];
+        let value = req.body[field];
+
+        if (['runtime', 'release_year', 'tmdbId', 'popularity'].includes(field)) {
+          value = Number(value);
+        }
+
+        payload[target] = value;
       }
     });
 
-    if (Array.isArray(req.body.genres)) {
-      payload.genres = req.body.genres;
+    if (req.body.genres !== undefined) {
+      payload.genres = normalizeGenres(req.body.genres);
     }
+
+    if (req.body.cast !== undefined) {
+      payload.cast = normalizeGenres(req.body.cast); // Reusing normalizeGenres as it does the same split/trim logic
+    }
+
 
     if (req.body.servers !== undefined) {
       payload.servers = parseServers(req.body.servers);

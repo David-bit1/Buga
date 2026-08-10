@@ -121,23 +121,19 @@ const buildTmdbMoviePayload = async (tmdbId) => {
     ? movie.genres.map((genre) => genre.name).filter(Boolean)
     : [];
 
-  // Get trailer from videos (prefer official YouTube trailer)
-  const trailerVideos = (Array.isArray(videos.results) ? videos.results : [])
-    .filter(video => video.site === 'YouTube' && (video.type === 'Trailer' || video.type === 'Teaser'));
-
-  const trailer = trailerVideos.find(video => video.official)?.key
-    || trailerVideos[0]?.key
-    || '';
+  // Get trailer from videos (first YouTube trailer)
+  const trailer = (Array.isArray(videos.results) ? videos.results : [])
+    .find(video => 
+      video.site === 'YouTube' && 
+      (video.type === 'Trailer' || video.type === 'Teaser')
+    )?.key || '';
 
   // Get cast (top 10)
   const cast = Array.isArray(credits.cast) ? credits.cast.slice(0, 10).map(c => c.name) : [];
 
-  // Get director (prefer department=Directing + job=Director)
+  // Get director
   const director = (Array.isArray(credits.crew) ? credits.crew : [])
-    .find(person => person.department === 'Directing' && person.job === 'Director')?.name
-    || (Array.isArray(credits.crew) ? credits.crew : [])
-        .find(person => person.job === 'Director')?.name
-    || '';
+    .find(person => person.job === 'Director')?.name || '';
 
   const payload = {
     tmdb_id: Number(movie.id),
@@ -156,12 +152,12 @@ const buildTmdbMoviePayload = async (tmdbId) => {
     release_year: toInteger(String(movie.release_date || '').slice(0, 4), 0),
     release_date: movie.release_date || '',
     runtime: toInteger(movie.runtime, 0),
-    country: Array.isArray(movie.production_countries) && movie.production_countries.length > 0
-      ? movie.production_countries[0].name
+    country: movie.origin_country && Array.isArray(movie.origin_country) && movie.origin_country.length > 0 
+      ? movie.origin_country[0] 
       : '',
     language: movie.original_language || '',
     genres,
-    rating: Number.isFinite(movie.vote_average) ? String(movie.vote_average.toFixed(1)) : '',
+    rating: movie.vote_average > 0 ? String(movie.vote_average.toFixed(1)) : '',
     cast,
     director,
     trailer: trailer ? `https://www.youtube.com/watch?v=${trailer}` : '',
@@ -223,48 +219,19 @@ const getMovieByTmdbId = async (req, res, next) => {
       return res.status(400).json({ message: 'tmdbId inválido' });
     }
 
-    const localMovie = await selectOne('movies', { filters: [{ type: 'eq', column: 'tmdb_id', value: tmdbId }] });
-    console.log('AUDIT getMovieByTmdbId Supabase result:', JSON.stringify(localMovie, null, 2));
+    const movie = await selectOne('movies', { filters: [{ type: 'eq', column: 'tmdb_id', value: tmdbId }] });
+    console.log('AUDIT getMovieByTmdbId Supabase result:', JSON.stringify(movie, null, 2));
+    if (movie) {
+      return res.json(serializeMovie(movie));
+    }
 
     const tmdbPayload = await buildTmdbMoviePayload(tmdbId);
-    console.log('AUDIT getMovieByTmdbId TMDb payload:', JSON.stringify(tmdbPayload, null, 2));
+    console.log('AUDIT getMovieByTmdbId TMDb fallback payload:', JSON.stringify(tmdbPayload, null, 2));
     if (!tmdbPayload) {
       return res.status(404).json({ message: 'Película no encontrada' });
     }
 
-    const tmdbMovie = serializeMovie({ ...tmdbPayload, id: localMovie?.id || null });
-
-    if (localMovie) {
-      const base = serializeMovie(localMovie);
-
-      const mergeFields = [
-        'title', 'original_title', 'description', 'overview',
-        'poster_url', 'banner_url', 'release_year', 'release_date',
-        'runtime', 'country', 'language', 'genres', 'rating',
-        'cast', 'director', 'trailer', 'popularity'
-      ];
-
-      mergeFields.forEach((field) => {
-        const localValue = base[field];
-        const tmdbValue = tmdbMovie[field];
-
-        const isEmpty = localValue === '' || localValue === null || localValue === undefined ||
-          (Array.isArray(localValue) && localValue.length === 0);
-
-        const hasValue = tmdbValue !== '' && tmdbValue !== null && tmdbValue !== undefined &&
-          !(Array.isArray(tmdbValue) && tmdbValue.length === 0);
-
-        if (isEmpty && hasValue) {
-          base[field] = tmdbValue;
-        }
-      });
-
-      base.tmdb_id = localMovie.tmdb_id || tmdbPayload.tmdb_id;
-
-      return res.json({ movie: base });
-    }
-
-    return res.json({ movie: { ...tmdbMovie, tmdb: true } });
+    return res.json({ ...serializeMovie({ ...tmdbPayload, id: null }), tmdb: true });
   } catch (error) {
     return next(error);
   }
