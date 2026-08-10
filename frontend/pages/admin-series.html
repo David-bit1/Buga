@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#08040f">
+    <title>Buga | Administración de Series</title>
+    <link rel="icon" type="image/svg+xml" href="/assets/icons/favicon.svg">
+    <link rel="stylesheet" href="/css/admin.css">
+</head>
+<body class="admin-page is-loading">
+    <div class="page-loader" id="pageLoader" aria-live="polite" aria-label="Cargando panel administrativo">
+        <div class="page-loader-card">
+            <div class="page-loader-spinner" aria-hidden="true"></div>
+            <p>Cargando panel</p>
+        </div>
+    </div>
+
+    <div class="admin-shell">
+        <aside class="admin-sidebar" id="adminSidebar">
+            <div class="admin-brand">
+                <img src="/assets/images/logo-buga.png" alt="Logo Buga" class="admin-logo">
+                <div>
+                    <p>Panel de administración</p>
+                    <h1>Buga Admin</h1>
+                </div>
+            </div>
+
+            <nav class="admin-nav" aria-label="Navegación del panel">
+                <button class="admin-nav-link" type="button" data-admin-tab="dashboard">Dashboard</button>
+                <button class="admin-nav-link" type="button" data-admin-tab="movies">Películas</button>
+                <button class="admin-nav-link is-active" type="button" data-admin-tab="series">Series</button>
+                <button class="admin-nav-link" type="button" data-admin-tab="users">Usuarios</button>
+                <button class="admin-nav-link" type="button" data-admin-tab="genres">Géneros</button>
+                <button class="admin-nav-link" type="button" data-admin-tab="settings">Configuración</button>
+            </nav>
+
+            <div class="admin-sidebar-footer">
+                <a class="admin-back-link" href="/index.html">Volver a Buga</a>
+                <button class="admin-logout" type="button" id="adminLogout">Cerrar sesión</button>
+            </div>
+        </aside>
+
+        <main class="admin-main">
+            <header class="admin-topbar">
+                <div>
+                    <p class="admin-kicker">Series</p>
+                    <h2>Administrar Series, Temporadas y Episodios</h2>
+                </div>
+                <div class="admin-topbar-actions">
+                    <button class="admin-secondary" type="button" id="addSeriesBtn">Agregar Serie</button>
+                    <button class="admin-refresh" type="button" id="adminRefresh">Actualizar</button>
+                </div>
+            </header>
+
+            <section class="admin-section is-active" data-admin-section="series">
+                <article class="admin-card">
+                    <div class="admin-card-header">
+                        <div>
+                            <p class="admin-kicker">Series</p>
+                            <h3>Agregar / editar serie</h3>
+                        </div>
+                        <button class="admin-secondary" type="button" id="clearSeriesForm">Limpiar</button>
+                    </div>
+
+                    <form class="admin-form" id="seriesForm">
+                        <input type="hidden" id="seriesId">
+                        <div class="admin-form-grid">
+                            <label><span>TMDB ID</span><input id="seriesTmdbId" type="number" placeholder="238"></label>
+                            <label><span>Título</span><input id="seriesTitle" type="text" placeholder="Breaking Bad" required></label>
+                        </div>
+                        <div class="admin-form-grid">
+                            <label><span>Título Original</span><input id="seriesOriginalTitle" type="text" placeholder="Breaking Bad"></label>
+                            <label><span>Descripción</span><input id="seriesDescription" type="text" placeholder="Descripción breve"></label>
+                        </div>
+                        <label><span>Overview (Sinopsis)</span><textarea id="seriesOverview" rows="4" placeholder="Descripción completa de la serie"></textarea></label>
+                        <div class="admin-form-grid">
+                            <label><span>Poster URL</span><input id="seriesPosterUrl" type="url" placeholder="https://image.tmdb.org/t/p/w500/..."></label>
+                            <label><span>Banner URL</span><input id="seriesBannerUrl" type="url" placeholder="https://image.tmdb.org/t/p/w780/..."></label>
+                        </div>
+                        <div class="admin-form-grid">
+                            <label><span>Poster Srcset</span><input id="seriesPosterSrcset" type="text" placeholder="https://...185w, https://...342w, https://...500w"></label>
+                            <label><span>Banner Srcset</span><input id="seriesBannerSrcset" type="text" placeholder="https://...300w, https://...780w, https://...1280w"></label>
+                        </div>
+                        <div class="admin-form-grid">
+                            <label><span>Año</span><input id="seriesReleaseYear" type="number" min="1900" max="2026" placeholder="2008"></label>
+                            <label><span>Fecha de Estreno</span><input id="seriesFirstAirDate" type="date"></label>
+                        </div>
+                        <div class="admin-form-grid">
+                            <label><span>Géneros</span><input id="seriesGenres" type="text" placeholder="Drama, Crimen, Thriller"></label>
+                            <label><span>Clasificación</span><input id="seriesRating" type="text" placeholder="TV-MA, TV-14, etc"></label>
+                        </div>
+                        <div class="admin-form-grid">
+                            <label><span>Reparto (máx 10)</span><input id="seriesCast" type="text" placeholder="Bryan Cranston, Aaron Paul, Anna Gunn"></label>
+                            <label><span>Creador</span><input id="seriesCreator" type="text" placeholder="Vince Gilligan"></label>
+                        </div>
+                        <div class="admin-form-grid">
+                            <label><span>Tráiler (YouTube URL)</span><input id="seriesTrailer" type="url" placeholder="https://www.youtube.com/watch?v=..."></label>
+                            <label><span>Popularidad</span><input id="seriesPopularity" type="number" min="0" step="0.01" placeholder="50.5"></label>
+                        </div>
+                        <div class="admin-form-grid">
+                            <label><span>Estado</span>
+                                <select id="seriesStatus">
+                                    <option value="published">Publicado</option>
+                                    <option value="draft">Borrador</option>
+                                    <option value="hidden">Oculto</option>
+                                </select>
+                            </label>
+                            <label><span>Tipo de Contenido</span>
+                                <select id="seriesContentType">
+                                    <option value="independent">Independiente</option>
+                                    <option value="public_domain">Dominio Público</option>
+                                </select>
+                            </label>
+                        </div>
+                        <div class="admin-form-grid">
+                            <label><span>Creador</span><input id="seriesCreatorName" type="text" placeholder="Nombre del creador"></label>
+                            <label><span>Titular de Derechos</span><input id="seriesRightsHolder" type="text" placeholder="Titular de derechos"></label>
+                        </div>
+                        <div class="admin-form-grid">
+                            <label><span>Licencia</span><input id="seriesLicenseInfo" type="text" placeholder="Información de licencia"></label>
+                            <label><span>URL Fuente</span><input id="seriesSourceUrl" type="url" placeholder="https://..."></label>
+                        </div>
+                        
+                        <div class="admin-actions">
+                            <button class="admin-primary" type="submit" id="seriesSubmit">Guardar serie</button>
+                        </div>
+                    </form>
+                </article>
+
+                <article class="admin-card">
+                    <div class="admin-card-header">
+                        <div>
+                            <p class="admin-kicker">Catálogo</p>
+                            <h3>Series guardadas</h3>
+                        </div>
+                    </div>
+                    <div class="admin-table-wrap">
+                        <table class="admin-table">
+                            <thead>
+                                <tr>
+                                    <th>Título</th>
+                                    <th>TMDB</th>
+                                    <th>Año</th>
+                                    <th>Estado</th>
+                                    <th>Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody id="seriesTable"></tbody>
+                        </table>
+                    </div>
+                </article>
+            </section>
+
+            <section class="admin-section" data-admin-section="seasons">
+                <article class="admin-card">
+                    <div class="admin-card-header">
+                        <div>
+                            <p class="admin-kicker">Temporadas</p>
+                            <h3>Administrar Temporadas</h3>
+                        </div>
+                    </div>
+                    <div class="admin-form-grid">
+                        <label><span>Serie</span>
+                            <select id="seasonSeriesSelect">
+                                <option value="">Seleccionar serie...</option>
+                            </select>
+                        </label>
+                    </div>
+                    
+                    <form class="admin-form" id="seasonForm">
+                        <input type="hidden" id="seasonId">
+                        <input type="hidden" id="seasonSeriesId">
+                        <div class="admin-form-grid">
+                            <label><span>Número de Temporada</span><input id="seasonNumber" type="number" min="1" placeholder="1" required></label>
+                            <label><span>Título</span><input id="seasonTitle" type="text" placeholder="Temporada 1"></label>
+                        </div>
+                        <label><span>Descripción</span><textarea id="seasonDescription" rows="3" placeholder="Descripción de la temporada"></textarea></label>
+                        <label><span>Overview</span><textarea id="seasonOverview" rows="3" placeholder="Overview de la temporada"></textarea></label>
+                        <div class="admin-form-grid">
+                            <label><span>Poster URL</span><input id="seasonPosterUrl" type="url" placeholder="https://.../poster.jpg"></label>
+                            <label><span>Banner URL</span><input id="seasonBannerUrl" type="url" placeholder="https://.../banner.jpg"></label>
+                        </div>
+                        <div class="admin-form-grid">
+                            <label><span>Fecha de Estreno</span><input id="seasonReleaseDate" type="date"></label>
+                            <label><span>TMDB ID</span><input id="seasonTmdbId" type="number" placeholder="12345"></label>
+                        </div>
+                        <div class="admin-form-grid">
+                            <label><span>Estado</span>
+                                <select id="seasonStatus">
+                                    <option value="published">Publicado</option>
+                                    <option value="draft">Borrador</option>
+                                    <option value="hidden">Oculto</option>
+                                </select>
+                            </label>
+                        </div>
+                        <div class="admin-actions">
+                            <button class="admin-primary" type="submit" id="seasonSubmit">Guardar temporada</button>
+                            <button class="admin-secondary" type="button" id="clearSeasonForm">Limpiar</button>
+                        </div>
+                    </form>
+
+                    <div class="admin-table-wrap">
+                        <table class="admin-table">
+                            <thead>
+                                <tr>
+                                    <th>Serie</th>
+                                    <th>Nº</th>
+                                    <th>Título</th>
+                                    <th>Estado</th>
+                                    <th>Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody id="seasonsTable"></tbody>
+                        </table>
+                    </div>
+                </article>
+            </section>
+
+            <section class="admin-section" data-admin-section="episodes">
+                <article class="admin-card">
+                    <div class="admin-card-header">
+                        <div>
+                            <p class="admin-kicker">Episodios</p>
+                            <h3>Administrar Episodios</h3>
+                        </div>
+                    </div>
+                    <div class="admin-form-grid">
+                        <label><span>Serie</span>
+                            <select id="episodeSeriesSelect">
+                                <option value="">Seleccionar serie...</option>
+                            </select>
+                        </label>
+                        <label><span>Temporada</span>
+                            <select id="episodeSeasonSelect" disabled>
+                                <option value="">Primero selecciona una serie</option>
+                            </select>
+                        </label>
+                    </div>
+                    
+                    <form class="admin-form" id="episodeForm">
+                        <input type="hidden" id="episodeId">
+                        <input type="hidden" id="episodeSeasonId">
+                        <div class="admin-form-grid">
+                            <label><span>Número de Episodio</span><input id="episodeNumber" type="number" min="1" placeholder="1" required></label>
+                            <label><span>Título</span><input id="episodeTitle" type="text" placeholder="Pilot" required></label>
+                        </div>
+                        <label><span>Descripción</span><textarea id="episodeDescription" rows="3" placeholder="Descripción del episodio"></textarea></label>
+                        <label><span>Overview</span><textarea id="episodeOverview" rows="3" placeholder="Overview del episodio"></textarea></label>
+                        <div class="admin-form-grid">
+                            <label><span>Thumbnail URL</span><input id="episodeThumbnailUrl" type="url" placeholder="https://.../thumb.jpg"></label>
+                            <label><span>Duración (min)</span><input id="episodeRuntime" type="number" min="1" placeholder="45"></label>
+                        </div>
+                        <div class="admin-form-grid">
+                            <label><span>Fecha de Estreno</span><input id="episodeReleaseDate" type="date"></label>
+                            <label><span>TMDB ID</span><input id="episodeTmdbId" type="number" placeholder="12345"></label>
+                        </div>
+                        <div class="admin-form-grid">
+                            <label><span>Estado</span>
+                                <select id="episodeStatus">
+                                    <option value="published">Publicado</option>
+                                    <option value="draft">Borrador</option>
+                                    <option value="hidden">Oculto</option>
+                                </select>
+                            </label>
+                        </div>
+                        
+                        <div class="admin-card-header" style="margin-top: 1.5rem;">
+                            <div>
+                                <p class="admin-kicker">Servidores</p>
+                                <h3>Enlaces de reproducción</h3>
+                            </div>
+                            <button class="admin-secondary" type="button" id="addEpisodeServerButton">Agregar servidor</button>
+                        </div>
+                        <div id="episodeServerRows"></div>
+                        
+                        <div class="admin-actions">
+                            <button class="admin-primary" type="submit" id="episodeSubmit">Guardar episodio</button>
+                            <button class="admin-secondary" type="button" id="clearEpisodeForm">Limpiar</button>
+                        </div>
+                    </form>
+
+                    <div class="admin-table-wrap">
+                        <table class="admin-table">
+                            <thead>
+                                <tr>
+                                    <th>Serie</th>
+                                    <th>Temporada</th>
+                                    <th>Nº</th>
+                                    <th>Título</th>
+                                    <th>Estado</th>
+                                    <th>Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody id="episodesTable"></tbody>
+                        </table>
+                    </div>
+                </article>
+            </section>
+        </main>
+    </div>
+
+    <script src="/js/shared.js"></script>
+    <script src="/js/auth.js"></script>
+    <script src="/js/admin-series.js"></script>
+</body>
+</html>

@@ -6,6 +6,8 @@ const authRoutes = require('./routes/authRoutes');
 const profileRoutes = require('./routes/profileRoutes');
 const movieRoutes = require('./routes/movieRoutes');
 const adminRoutes = require('./routes/adminRoutes');
+const seriesRoutes = require('./routes/seriesRoutes');
+const adminSeriesRoutes = require('./routes/adminSeriesRoutes');
 const recommendationRoutes = require('./routes/recommendationRoutes');
 const { protect, requireAdmin: admin } = require('./middleware/authMiddleware');
 
@@ -41,6 +43,8 @@ app.use('/api/auth', authRoutes);
 app.use('/api/profiles', protect, profileRoutes);
 app.use('/api/movies', movieRoutes);
 app.use('/api/admin', protect, admin, adminRoutes);
+app.use('/api/admin', protect, admin, adminSeriesRoutes);
+app.use('/api', seriesRoutes);
 app.use('/api/recommendations', protect, recommendationRoutes);
 
 // --- Static Files ---
