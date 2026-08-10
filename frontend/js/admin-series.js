@@ -1,8 +1,11 @@
-(function () {
-const ADMIN_API = '/api/admin';
-
-const seriesForm = document.getElementById('seriesForm');
-const seriesId = document.getElementById('seriesId');
-const seriesTmdbId = document.getElementById('seriesTmdbId');
-const seriesTitle = document.getElementById('seriesTitle');
-const seriesOriginalTitle = document.getElement<|tool_call_begin|>api<|tool_call_begin|><|tool_call_begin|>orm<|tool_call_begin|>ant<|tool_call_begin|>a
+const seasonStatus = document.getElementById('seasonStatus');
+const seasonsTable = document.getElementById('seasonsTable');
+const episodeSeriesSelect = document.getElementById('episodeSeriesSelect');
+const episodeSeasonSelect = document.getElementById('episodeSeasonSelect');
+const episodeForm = document.getElementById('episodeForm');
+const episodeId = document.getElementById('episodeId');
+const episodeSeasonId = document.getElementById('episodeSeasonId');
+const episodeNumber = document.getElementById('episodeNumber');
+const episodeTitle = document.getElementById('episodeTitle');
+const episodeDescription = document.getElementById('episodeDescription');
+const episodeOverview = document.getElement<|tool_call_begin|>api<|tool_call_begin|><|tool_call_begin|>orm<|tool_call_begin|>ant<|tool_call_begin|>a
