@@ -185,7 +185,6 @@ const listMovies = async (_req, res, next) => {
       filters: [{ type: 'eq', column: 'status', value: 'published' }],
       order: { column: 'created_at', ascending: false }
     });
-    console.log('AUDIT listMovies RAW:', JSON.stringify(movies, null, 2));
     const serialized = movies.map((movie) => {
       // Add srcset here for movies from DB
       if (movie.poster_url && movie.poster_url.includes('/p/w500/')) {
@@ -194,10 +193,8 @@ const listMovies = async (_req, res, next) => {
       }
 
       const result = serializeMovie(movie);
-      console.log('AUDIT serializeMovie RAW:', JSON.stringify(movie, null, 2), 'SERIALIZED:', JSON.stringify(result, null, 2));
       return result;
     });
-    console.log('AUDIT listMovies RESPONSE:', JSON.stringify(serialized, null, 2));
     return res.json({ movies: serialized });
   } catch (error) {
     return next(error);

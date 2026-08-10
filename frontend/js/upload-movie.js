@@ -82,10 +82,10 @@ const fetchJson = async (url, options = {}) => {
     }
     return data;
 };
-const createServerRow = (name = '', type = 'iframe', url = '', status = 'active', order = 0) => {
-    const row = document.createElement('div');
-    row.className = 'admin-server-row';
-    row.innerHTML = `
+
+const createServerRowHTML = (server = {}) => {
+    const { name = '', type = 'iframe', url = '', status = 'active', order = 0 } = server;
+    return `
         <label><span>Nombre</span><input type="text" class="server-name" placeholder="Servidor 1" value="${name}"></label>
         <label><span>Tipo</span><select class="server-type">
             <option value="iframe" ${type === 'iframe' ? 'selected' : ''}>iframe</option>
@@ -93,7 +93,7 @@ const createServerRow = (name = '', type = 'iframe', url = '', status = 'active'
             <option value="m3u8" ${type === 'm3u8' ? 'selected' : ''}>m3u8</option>
             <option value="mp4" ${type === 'mp4' ? 'selected' : ''}>mp4</option>
         </select></label>
-        <label><span>Enlace/Código</span><input type="text" class="server-url" placeholder="https://..." value="${url}"></label>
+        <label><span>Enlace/Código</span><input type="text" class="server-url" placeholder="https://... o código iframe" value="${url}"></label>
         <label><span>Estado</span><select class="server-status">
             <option value="active" ${status === 'active' ? 'selected' : ''}>Activo</option>
             <option value="inactive" ${status === 'inactive' ? 'selected' : ''}>Inactivo</option>
@@ -101,11 +101,17 @@ const createServerRow = (name = '', type = 'iframe', url = '', status = 'active'
         <label><span>Orden</span><input type="number" class="server-order" value="${order}" min="0"></label>
         <button class="admin-secondary" type="button">Eliminar</button>
     `;
+};
+
+const addServerRow = (server = {}) => {
+    const row = document.createElement('div');
+    row.className = 'admin-server-row';
+    row.innerHTML = createServerRowHTML(server);
 
     row.querySelector('button').addEventListener('click', () => {
         row.remove();
         if (!serverRows?.querySelector('.admin-server-row')) {
-            createServerRow('Servidor 1', 'iframe', '', 'active', 0);
+            addServerRow({ name: 'Servidor 1' });
         }
     });
 
@@ -119,38 +125,7 @@ const resetServerRows = (servers = []) => {
 
     serverRows.innerHTML = '';
     const fallbackSources = servers.length ? servers : [{ name: 'Servidor 1', type: 'iframe', url: '', status: 'active', order: 0 }];
-    fallbackSources.forEach((source) => {
-        const row = document.createElement('div');
-        row.className = 'admin-server-row';
-        row.innerHTML = `
-            <label><span>Nombre</span><input type="text" class="server-name" placeholder="Servidor 1" value="${source.name || ''}"></label>
-            <label><span>Tipo</span><select class="server-type">
-                <option value="iframe" ${source.type === 'iframe' ? 'selected' : ''}>iframe</option>
-                <option value="embed" ${source.type === 'embed' ? 'selected' : ''}>embed</option>
-                <option value="m3u8" ${source.type === 'm3u8' ? 'selected' : ''}>m3u8</option>
-                <option value="mp4" ${source.type === 'mp4' ? 'selected' : ''}>mp4</option>
-            </select></label>
-            <label><span>Enlace/Código</span><input type="text" class="server-url" placeholder="https://... o código iframe" value="${source.url || ''}"></label>
-            <label><span>Estado</span><select class="server-status">
-                <option value="active" ${source.status === 'active' ? 'selected' : ''}>Activo</option>
-                <option value="inactive" ${source.status === 'inactive' ? 'selected' : ''}>Inactivo</option>
-            </select></label>
-            <label><span>Orden</span><input type="number" class="server-order" value="${source.order || 0}" min="0"></label>
-            <button class="admin-secondary" type="button">Eliminar</button>
-        `;
-        
-        // Add remove button functionality
-        const removeBtn = row.querySelector('.admin-secondary');
-        removeBtn.addEventListener('click', () => {
-            row.remove();
-            // Ensure at least one server row remains
-            if (serverRows.querySelectorAll('.admin-server-row').length === 0) {
-                resetServerRows([{ name: 'Servidor 1', type: 'iframe', url: '', status: 'active', order: 0 }]);
-            }
-        });
-        
-        serverRows.appendChild(row);
-    });
+    fallbackSources.forEach(addServerRow);
 };
 
 const getServerRows = () => {
@@ -281,7 +256,7 @@ const autoFillFromTmdb = async () => {
         const data = await fetchJson(`/api/movies/tmdb/${encodeURIComponent(tmdbId)}`);
 
         // La API devuelve { movie: ... }
-        const movie = data.movie || data;
+        const movie = data.movie || data; // Handles both direct object and nested object
 
         if (!movie || !(movie.tmdb_id || movie.id)) {
             notify({ type: 'error', title: 'Película no encontrada', message: `No se encontró película con ID ${tmdbId} en TMDb.` });
@@ -290,10 +265,10 @@ const autoFillFromTmdb = async () => {
 
         // Sobrescribimos los campos con los datos de TMDb
         if (movieTitle) movieTitle.value = movie.title || '';
-        if (movieOriginalTitle) movieOriginalTitle.value = movie.original_title || movie.title || '';
-        if (movieOverview) movieOverview.value = movie.overview || movie.description || '';
+        if (movieOriginalTitle) movieOriginalTitle.value = movie.original_title || '';
+        if (movieOverview) movieOverview.value = movie.overview || '';
         if (movieDescription) movieDescription.value = movie.description || movie.overview || '';
-        if (movieYear) movieYear.value = movie.release_year || (movie.release_date ? movie.release_date.slice(0, 4) : '');
+        if (movieYear) movieYear.value = movie.release_year || '';
         if (movieDuration) movieDuration.value = movie.runtime || '';
         if (movieReleaseDate) movieReleaseDate.value = movie.release_date || '';
         if (movieCountry) movieCountry.value = movie.country || '';
@@ -305,7 +280,7 @@ const autoFillFromTmdb = async () => {
         if (moviePopularity) moviePopularity.value = movie.popularity || '';
         if (moviePosterUrl) moviePosterUrl.value = movie.poster_url || '';
         if (movieBannerUrl) movieBannerUrl.value = movie.banner_url || '';
-        if (movieGenres && Array.isArray(movie.genres)) movieGenres.value = movie.genres.join(', ');
+        if (movieGenres && Array.isArray(movie.genres)) movieGenres.value = movie.genres.map(g => g.name || g).join(', ');
 
         notify({
             type: 'info',
@@ -324,39 +299,8 @@ const autoFillFromTmdb = async () => {
 const handleSubmit = async (event) => {
     event.preventDefault();
 
-    // Collect server data from the form
-    const serverRowsElements = serverRows.querySelectorAll('.admin-server-row');
-    const servers = [];
-    
-    serverRowsElements.forEach((row, index) => {
-        const nameInput = row.querySelector('.server-name');
-        const typeSelect = row.querySelector('.server-type');
-        const urlInput = row.querySelector('.server-url');
-        const statusSelect = row.querySelector('.server-status');
-        const orderInput = row.querySelector('.server-order');
-        
-        if (nameInput && typeSelect && urlInput && statusSelect && orderInput) {
-            const name = nameInput.value.trim();
-            const type = typeSelect.value;
-            const url = urlInput.value.trim();
-            const status = statusSelect.value;
-            const order = parseInt(orderInput.value) || 0;
-            
-            // Only add server if it has a name and URL
-            if (name && url) {
-                servers.push({
-                    name: name,
-                    type: type,
-                    url: url,
-                    status: status,
-                    order: order
-                });
-            }
-        }
-    });
-
     const payload = {
-        tmdbId: movieTmdbId.value ? Number(movieTmdbId.value) : null,
+        tmdbId: movieTmdbId.value.trim() ? Number(movieTmdbId.value) : null,
         title: movieTitle.value.trim(),
         original_title: movieOriginalTitle.value.trim(),
         description: movieDescription.value.trim(),
@@ -372,7 +316,7 @@ const handleSubmit = async (event) => {
         cast: movieCast.value.trim().split(',').map(c => c.trim()).filter(c => c.length > 0),
         director: movieDirector.value.trim(),
         trailer: movieTrailer.value.trim(),
-        servers: servers,
+        servers: getServerRows(),
         featured: movieFeatured.checked,
         status: movieStatus.value,
         popularity: moviePopularity.value ? parseFloat(moviePopularity.value) : 0
@@ -383,7 +327,7 @@ const handleSubmit = async (event) => {
         return;
     }
 
-    if (servers.length === 0) {
+    if (payload.servers.length === 0) {
         notify({ type: 'error', title: 'Sin servidores', message: 'Agrega al menos un servidor de reproducción.' });
         return;
     }
@@ -392,8 +336,9 @@ const handleSubmit = async (event) => {
     movieSubmit.textContent = movieIdInput.value ? 'Actualizando...' : 'Guardando...';
 
     try {
-        const endpoint = movieIdInput.value ? `${MOVIES_API}/${movieIdInput.value}` : MOVIES_API;
-        const method = movieIdInput.value ? 'PUT' : 'POST';
+        const isEditing = Boolean(movieIdInput.value);
+        const endpoint = isEditing ? `/api/admin/movies/${movieIdInput.value}` : '/api/admin/movies';
+        const method = isEditing ? 'PUT' : 'POST';
         await fetchJson(endpoint, {
             method,
             body: JSON.stringify(payload)
@@ -463,38 +408,7 @@ const bootstrap = async () => {
         }
     });
 
-    addServerButton?.addEventListener('click', () => {
-        const row = document.createElement('div');
-        row.className = 'admin-server-row';
-        row.innerHTML = `
-            <label><span>Nombre</span><input type="text" class="server-name" placeholder="Servidor 1" value="Servidor 1"></label>
-            <label><span>Tipo</span><select class="server-type">
-                <option value="iframe">iframe</option>
-                <option value="embed">embed</option>
-                <option value="m3u8">m3u8</option>
-                <option value="mp4">mp4</option>
-            </select></label>
-            <label><span>Enlace/Código</span><input type="text" class="server-url" placeholder="https://... o código iframe"></label>
-            <label><span>Estado</span><select class="server-status">
-                <option value="active">Activo</option>
-                <option value="inactive">Inactivo</option>
-            </select></label>
-            <label><span>Orden</span><input type="number" class="server-order" value="0" min="0"></label>
-            <button class="admin-secondary" type="button">Eliminar</button>
-        `;
-        
-        // Add remove button functionality
-        const removeBtn = row.querySelector('.admin-secondary');
-        removeBtn.addEventListener('click', () => {
-            row.remove();
-            // Ensure at least one server row remains
-            if (serverRows.querySelectorAll('.admin-server-row').length === 0) {
-                addServerButton.click();
-            }
-        });
-        
-        serverRows.appendChild(row);
-    });
+    addServerButton?.addEventListener('click', () => addServerRow({ name: `Servidor ${serverRows.children.length + 1}` }));
     uploadForm?.addEventListener('submit', handleSubmit);
     movieTable?.addEventListener('click', handleTableAction);
     clearFormButton?.addEventListener('click', clearForm);

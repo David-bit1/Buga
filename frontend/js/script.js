@@ -388,6 +388,12 @@ const getTrailerVideoKey = async (mediaId, mediaType = 'movie') => {
 
     const videoKey = await trailerPromise;
     trailerCache.set(cacheKey, videoKey);
+
+    if (trailerCache.size > MAX_TRAILER_CACHE_SIZE) {
+        const oldestKey = trailerCache.keys().next().value;
+        trailerCache.delete(oldestKey);
+    }
+
     return videoKey;
 };
 
