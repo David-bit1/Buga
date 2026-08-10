@@ -352,6 +352,7 @@ const canEmbedYoutubePreview = () =>
     window.location.origin !== 'null';
 
 const trailerCache = new Map();
+const MAX_TRAILER_CACHE_SIZE = 50;
 
 const getTrailerVideoKey = async (mediaId, mediaType = 'movie') => {
     const cacheKey = `${mediaType}:${mediaId}`;

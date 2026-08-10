@@ -142,7 +142,7 @@ const listMovies = async (_req, res, next) => {
 
 const createMovie = async (req, res, next) => {
   try {
-    const { tmdbId, title } = req.body;
+    const { tmdbId, title, servers } = req.body;
 
     if (!title && !tmdbId) {
       return res.status(400).json({ message: 'Se requiere un título o un TMDb ID.' });
@@ -156,7 +156,6 @@ const createMovie = async (req, res, next) => {
     } catch (error) {
       console.warn('Admin createMovie - TMDB sync failed:', error.message);
     }
-    console.log('AUDIT admin createMovie TMDb payload:', JSON.stringify(tmdbPayload, null, 2));
 
     const finalTitle = String(req.body.title || tmdbPayload?.title || '').trim();
     if (!finalTitle) {
@@ -164,14 +163,14 @@ const createMovie = async (req, res, next) => {
     }
 
     const insertPayload = {
-      tmdb_id: toInteger(tmdbId, null),
+      tmdb_id: toInteger(req.body.tmdbId || tmdbId, null),
       title: finalTitle,
       original_title: String(req.body.original_title || tmdbPayload?.original_title || '').trim(),
       description: String(req.body.description || tmdbPayload?.description || '').trim(),
       overview: String(req.body.overview || req.body.description || tmdbPayload?.overview || '').trim(),
       poster_url: String(req.body.poster_url || tmdbPayload?.poster_url || '').trim(),
       banner_url: String(req.body.banner_url || tmdbPayload?.banner_url || '').trim(),
-      release_year: toInteger(req.body.release_year || tmdbPayload?.release_year, 0),
+      release_year: toInteger(req.body.release_year || tmdbPayload?.release_year, null),
       runtime: toInteger(req.body.runtime || tmdbPayload?.runtime, 0),
       country: String(req.body.country || tmdbPayload?.country || '').trim(),
       language: String(req.body.language || tmdbPayload?.language || '').trim(),
@@ -180,7 +179,7 @@ const createMovie = async (req, res, next) => {
       cast: normalizeGenres(req.body.cast || tmdbPayload?.cast || []),
       director: String(req.body.director || tmdbPayload?.director || '').trim(),
       trailer: String(req.body.trailer || tmdbPayload?.trailer || '').trim(),
-      servers: parseServers(req.body.servers && req.body.servers.length > 0 ? req.body.servers : (tmdbPayload?.servers || [])),
+      servers: parseServers(servers || []),
       featured: Boolean(req.body.featured),
       status: String(req.body.status || 'published'),
       created_by: req.user.id,
@@ -221,45 +220,49 @@ const updateMovie = async (req, res, next) => {
       return res.status(404).json({ message: 'Película no encontrada' });
     }
 
-    const payload = {};
+    const updatePayload = {};
     const fields = [
       'tmdbId', 'title', 'original_title', 'description', 'overview', 'poster_url', 'banner_url',
       'release_year', 'runtime', 'country', 'language', 'rating', 'director', 'trailer',
       'servers', 'featured', 'status', 'popularity'
     ];
 
-    fields.forEach((field) => {
+    for (const field of fields) {
       if (req.body[field] !== undefined) {
         const map = { tmdbId: 'tmdb_id' };
         const target = map[field] || field;
         let value = req.body[field];
 
-        if (['runtime', 'release_year', 'tmdbId', 'popularity'].includes(field)) {
-          value = Number(value);
+        if (['runtime', 'release_year', 'popularity'].includes(field)) {
+          value = toInteger(value, movie[target]);
+        } else if (field === 'tmdbId') {
+          value = toInteger(value, null);
+        } else if (field === 'featured') {
+          value = Boolean(value);
         }
 
-        payload[target] = value;
+        updatePayload[target] = value;
       }
-    });
+    }
 
     if (req.body.genres !== undefined) {
-      payload.genres = normalizeGenres(req.body.genres);
+      updatePayload.genres = normalizeGenres(req.body.genres);
     }
 
     if (req.body.cast !== undefined) {
-      payload.cast = normalizeGenres(req.body.cast); // Reusing normalizeGenres as it does the same split/trim logic
+      updatePayload.cast = normalizeGenres(req.body.cast);
     }
 
 
     if (req.body.servers !== undefined) {
-      payload.servers = parseServers(req.body.servers);
+      updatePayload.servers = parseServers(req.body.servers);
     }
 
-    if (Object.keys(payload).length === 0) {
+    if (Object.keys(updatePayload).length === 0) {
       return res.status(400).json({ message: 'No se enviaron datos para actualizar' });
     }
 
-    const [updatedMovie] = await updateRows('movies', [{ type: 'eq', column: 'id', value: movieId }], payload);
+    const [updatedMovie] = await updateRows('movies', [{ type: 'eq', column: 'id', value: movieId }], updatePayload);
     console.log('Admin updateMovie - updated:', JSON.stringify(updatedMovie, null, 2));
     return res.json({
       message: 'Película actualizada correctamente',

@@ -181,9 +181,18 @@ const getPopular = async (req, res, next) => {
 
 const listMovies = async (_req, res, next) => {
   try {
-    const movies = await selectMany('movies', { order: { column: 'created_at', ascending: false } });
+    const movies = await selectMany('movies', {
+      filters: [{ type: 'eq', column: 'status', value: 'published' }],
+      order: { column: 'created_at', ascending: false }
+    });
     console.log('AUDIT listMovies RAW:', JSON.stringify(movies, null, 2));
     const serialized = movies.map((movie) => {
+      // Add srcset here for movies from DB
+      if (movie.poster_url && movie.poster_url.includes('/p/w500/')) {
+        const posterPath = movie.poster_url.split('/p/w500/')[1];
+        movie.poster_srcset = `https://image.tmdb.org/t/p/w185/${posterPath} 185w, https://image.tmdb.org/t/p/w342/${posterPath} 342w, ${movie.poster_url} 500w`;
+      }
+
       const result = serializeMovie(movie);
       console.log('AUDIT serializeMovie RAW:', JSON.stringify(movie, null, 2), 'SERIALIZED:', JSON.stringify(result, null, 2));
       return result;

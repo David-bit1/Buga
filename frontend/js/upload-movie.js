@@ -271,9 +271,8 @@ const autoFillFromTmdb = async () => {
         return;
     }
 
-    const originalButtonText = movieSubmit.textContent;
     movieSubmit.disabled = true;
-    movieSubmit.textContent = 'Buscando película...';
+    movieSubmit.textContent = 'Buscando...';
 
     notify({ type: 'info', title: 'Buscando película...', message: `Consultando TMDb para ID ${tmdbId}` });
 
@@ -282,7 +281,7 @@ const autoFillFromTmdb = async () => {
         const data = await fetchJson(`/api/movies/tmdb/${encodeURIComponent(tmdbId)}`);
 
         // La API devuelve { movie: ... }
-        const movie = data.movie || data; // Handle both direct object and nested object
+        const movie = data.movie || data;
 
         if (!movie || !(movie.tmdb_id || movie.id)) {
             notify({ type: 'error', title: 'Película no encontrada', message: `No se encontró película con ID ${tmdbId} en TMDb.` });
@@ -291,10 +290,10 @@ const autoFillFromTmdb = async () => {
 
         // Sobrescribimos los campos con los datos de TMDb
         if (movieTitle) movieTitle.value = movie.title || '';
-        if (movieOriginalTitle) movieOriginalTitle.value = movie.original_title || '';
-        if (movieOverview) movieOverview.value = movie.overview || '';
+        if (movieOriginalTitle) movieOriginalTitle.value = movie.original_title || movie.title || '';
+        if (movieOverview) movieOverview.value = movie.overview || movie.description || '';
         if (movieDescription) movieDescription.value = movie.description || movie.overview || '';
-        if (movieYear) movieYear.value = movie.release_year || '';
+        if (movieYear) movieYear.value = movie.release_year || (movie.release_date ? movie.release_date.slice(0, 4) : '');
         if (movieDuration) movieDuration.value = movie.runtime || '';
         if (movieReleaseDate) movieReleaseDate.value = movie.release_date || '';
         if (movieCountry) movieCountry.value = movie.country || '';
@@ -306,7 +305,7 @@ const autoFillFromTmdb = async () => {
         if (moviePopularity) moviePopularity.value = movie.popularity || '';
         if (moviePosterUrl) moviePosterUrl.value = movie.poster_url || '';
         if (movieBannerUrl) movieBannerUrl.value = movie.banner_url || '';
-        if (movieGenres && Array.isArray(movie.genres)) movieGenres.value = movie.genres.map(g => g.name || g).join(', ');
+        if (movieGenres && Array.isArray(movie.genres)) movieGenres.value = movie.genres.join(', ');
 
         notify({
             type: 'info',
@@ -318,7 +317,7 @@ const autoFillFromTmdb = async () => {
         notify({ type: 'error', title: 'Error al autocompletar', message: error.message || 'No se pudo obtener la información.' });
     } finally {
         movieSubmit.disabled = false;
-        movieSubmit.textContent = originalButtonText;
+        movieSubmit.textContent = movieIdInput.value ? 'Actualizar película' : 'Guardar película';
     }
 };
 
