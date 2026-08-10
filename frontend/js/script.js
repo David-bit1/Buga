@@ -1390,32 +1390,63 @@ const wireSearch = () => {
     });
 };
 
-const loadFeaturedMovies = async (options = {}) => {
-    const { useLoader = true } = options;
+// Pagination state
+let featuredMoviesPage = 1;
+let featuredMoviesLimit = 20;
+let featuredMoviesLoading = false;
+let featuredMoviesHasMore = true;
 
-    if (useLoader) {
+const loadFeaturedMovies = async (options = {}) => {
+    const { useLoader = true, append = false } = options;
+
+    if (useLoader && !append) {
         showPageLoader();
     }
-    renderLoadingState();
+    if (!append) {
+        renderLoadingState();
+    }
+
+    if (featuredMoviesLoading) return;
+    featuredMoviesLoading = true;
 
     try {
-        const response = await HOME_SHARED.requestWithTimeout(fetch('/api/movies'), HOME_REQUEST_TIMEOUT_MS, 'catalog movies');
+        const response = await HOME_SHARED.requestWithTimeout(
+            fetch(`/api/movies?page=${featuredMoviesPage}&limit=${featuredMoviesLimit}`), 
+            HOME_REQUEST_TIMEOUT_MS, 
+            'catalog movies'
+        );
         if (!response.ok) {
             throw new Error(`API responded with ${response.status}`);
         }
         const data = await response.json();
         const movies = (Array.isArray(data.movies) ? data.movies : []).map(mapMovie);
 
-        if (movies.length === 0) {
+        if (movies.length === 0 && !append) {
             moviesGrid.innerHTML = '<p class="movie-error">No se pudieron cargar las películas.</p>';
+            featuredMoviesHasMore = false;
             return;
         }
 
-        featuredMoviesCache = movies;
-        renderMovies(movies);
-        prefetchTrailerKeys(movies);
+        if (!append) {
+            featuredMoviesCache = movies;
+            moviesGrid.innerHTML = movies.map(createCard).join('');
+        } else {
+            featuredMoviesCache = [...featuredMoviesCache, ...movies];
+            moviesGrid.innerHTML += movies.map(createCard).join('');
+        }
+
+        // Check if there are more pages
+        featuredMoviesHasMore = movies.length >= featuredMoviesLimit;
+        
+        // Prefetch trailers for visible movies only
+        if (!append) {
+            prefetchTrailerKeys(movies, true);
+        } else {
+            prefetchTrailerKeys(movies, true);
+        }
+        
         if (searchInput?.value?.trim()) {
-            handleSearchInput(); // Corrected from handleSearchInput
+            handleSearchInput();
         }
     } catch (error) {
         console.warn('Featured movies failed', error);
@@ -1424,10 +1455,11 @@ const loadFeaturedMovies = async (options = {}) => {
             title: 'Catálogo no disponible',
             message: 'No pudimos cargar las películas destacadas.'
         });
-        if (moviesGrid) {
+        if (moviesGrid && !append) {
             moviesGrid.innerHTML = '<p class="movie-error">No se pudieron cargar las películas.</p>';
         }
     } finally {
+        featuredMoviesLoading = false;
         if (useLoader) {
             hidePageLoader();
         }

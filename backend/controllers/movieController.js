@@ -203,9 +203,15 @@ const getPopular = async (req, res, next) => {
 
 const listMovies = async (_req, res, next) => {
   try {
+    const page = Math.max(1, parseInt(_req.query.page) || 1);
+    const limit = Math.min(50, Math.max(1, parseInt(_req.query.limit) || 20));
+    const offset = (page - 1) * limit;
+
     const movies = await selectMany('movies', {
       filters: [{ type: 'eq', column: 'status', value: 'published' }],
-      order: { column: 'created_at', ascending: false }
+      order: { column: 'created_at', ascending: false },
+      limit,
+      offset
     });
     const serialized = movies.map((movie) => {
       // Add srcset here for movies from DB
@@ -217,7 +223,7 @@ const listMovies = async (_req, res, next) => {
       const result = serializeMovie(movie);
       return result;
     });
-    return res.json({ movies: serialized });
+    return res.json({ movies: serialized, page, limit });
   } catch (error) {
     return next(error);
   }

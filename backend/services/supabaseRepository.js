@@ -32,7 +32,8 @@ const selectMany = async (table, {
   select = '*',
   filters = [],
   order = null,
-  limit = null
+  limit = null,
+  offset = null
 } = {}) => {
   let query = applyFilters(supabase.from(table).select(select), filters);
 
@@ -42,6 +43,10 @@ const selectMany = async (table, {
 
   if (limit) {
     query = query.limit(limit);
+  }
+
+  if (offset) {
+    query = query.range(offset, offset + limit - 1);
   }
 
   const { data, error } = await query;
