@@ -120,6 +120,7 @@ create table if not exists public.movies (
    original_title text not null default '',
    description text not null default '',
    overview text not null default '',
+   release_date text not null default '',
    poster_url text not null default '',
    banner_url text not null default '',
    poster_srcset text not null default '',
@@ -145,7 +146,10 @@ create table if not exists public.movies (
    created_by uuid references public.users(id) on delete set null,
    created_at timestamptz not null default now(),
    updated_at timestamptz not null default now()
- );
+  );
+
+-- Safe migration for existing databases:
+-- alter table public.movies add column if not exists release_date text not null default '';
 
 create table if not exists public.admin_settings (
   id uuid primary key default gen_random_uuid(),

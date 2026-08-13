@@ -177,6 +177,7 @@ const buildTmdbMoviePayload = async (tmdbId) => {
 
   // Usar append_to_response para obtener créditos y videos en una sola llamada a la API
   const movie = await tmdbFetch(`/movie/${tmdbId}?append_to_response=credits,videos`);
+  console.log('[BUGA TMDB RAW]', JSON.stringify(movie, null, 2));
 
   const credits = movie.credits || {};
   const videos = movie.videos || {};
@@ -230,7 +231,7 @@ const buildTmdbMoviePayload = async (tmdbId) => {
     popularity: Number(movie.popularity || 0)
   };
 
-  console.log('AUDIT buildTmdbMoviePayload result:', JSON.stringify(payload, null, 2));
+  console.log('[BUGA TMDB NORMALIZED]', JSON.stringify(payload, null, 2));
   return payload;
 };
 
@@ -267,6 +268,7 @@ const listMovies = async (_req, res, next) => {
       const result = serializeMovie(movie);
       return result;
     });
+    console.log('[BUGA GET RESPONSE]', JSON.stringify({ movies: serialized, page, limit }, null, 2));
     return res.json({ movies: serialized, page, limit });
   } catch (error) {
     return next(error);
@@ -283,7 +285,7 @@ const getMovie = async (req, res, next) => {
 
     console.log('AUDIT getMovie RAW:', JSON.stringify(movie, null, 2));
     const serialized = serializeMovie(movie);
-    console.log('AUDIT getMovie SERIALIZED:', JSON.stringify(serialized, null, 2));
+    console.log('[BUGA GET RESPONSE]', JSON.stringify({ movie: serialized }, null, 2));
     return res.json({ movie: serialized });
   } catch (error) {
     return next(error);
@@ -298,9 +300,9 @@ const getMovieByTmdbId = async (req, res, next) => {
     }
 
     const movie = await selectOne('movies', { filters: [{ type: 'eq', column: 'tmdb_id', value: tmdbId }] });
-    console.log('AUDIT getMovieByTmdbId Supabase result:', JSON.stringify(movie, null, 2));
+    console.log('[BUGA SUPABASE SELECT ROW]', JSON.stringify(movie, null, 2));
     const tmdbPayload = await buildTmdbMoviePayload(tmdbId);
-    console.log('AUDIT getMovieByTmdbId TMDb fallback payload:', JSON.stringify(tmdbPayload, null, 2));
+    console.log('[BUGA TMDB FALLBACK PAYLOAD]', JSON.stringify(tmdbPayload, null, 2));
     if (!tmdbPayload) {
       if (!movie) {
         return res.status(404).json({ message: 'Película no encontrada' });
@@ -338,6 +340,10 @@ const getMovieByTmdbId = async (req, res, next) => {
         }
       : serializedTmdbMovie;
 
+    console.log('[BUGA GET RESPONSE]', JSON.stringify({
+      movie: mergedMovie,
+      tmdb: !movie
+    }, null, 2));
     return res.json({
       movie: mergedMovie,
       tmdb: !movie

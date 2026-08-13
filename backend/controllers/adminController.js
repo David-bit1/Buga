@@ -146,8 +146,9 @@ const getDashboard = async (_req, res, next) => {
 const listMovies = async (_req, res, next) => {
   try {
     const movies = await selectMany('movies', { order: { column: 'created_at', ascending: false } });
-    console.log('Admin listMovies from Supabase:', JSON.stringify(movies, null, 2));
-    return res.json({ movies: movies.map(sanitizeMovie) });
+    const response = { movies: movies.map(sanitizeMovie) };
+    console.log('[BUGA GET RESPONSE]', JSON.stringify(response, null, 2));
+    return res.json(response);
   } catch (error) {
     return next(error);
   }
@@ -156,7 +157,7 @@ const listMovies = async (_req, res, next) => {
 const createMovie = async (req, res, next) => {
   try {
     const { tmdbId, title, servers } = req.body;
-    console.log('AUDIT ADMIN REQUEST BODY', JSON.stringify(req.body, null, 2));
+    console.log('[BUGA BACKEND RECEIVED PAYLOAD]', JSON.stringify(req.body, null, 2));
 
     if (!title && !tmdbId) {
       return res.status(400).json({ message: 'Se requiere un título o un TMDb ID.' });
@@ -182,6 +183,7 @@ const createMovie = async (req, res, next) => {
       original_title: String(req.body.original_title || tmdbPayload?.original_title || '').trim(),
       description: String(req.body.description || tmdbPayload?.description || '').trim(),
       overview: String(req.body.overview || req.body.description || tmdbPayload?.overview || '').trim(),
+      release_date: String(req.body.release_date || tmdbPayload?.release_date || '').trim(),
       poster_url: String(req.body.poster_url || tmdbPayload?.poster_url || '').trim(),
       banner_url: String(req.body.banner_url || tmdbPayload?.banner_url || '').trim(),
       poster_srcset: String(req.body.poster_srcset || tmdbPayload?.poster_srcset || '').trim(),
@@ -207,12 +209,12 @@ const createMovie = async (req, res, next) => {
       source_url: String(req.body.source_url || '').trim(),
     };
 
-    console.log('AUDIT FINAL INSERT PAYLOAD', JSON.stringify(insertPayload, null, 2));
+    console.log('[BUGA SUPABASE INSERT PAYLOAD]', JSON.stringify(insertPayload, null, 2));
 
     const movie = await insertOne('movies', insertPayload);
-    console.log('AUDIT SUPABASE RESULT', JSON.stringify(movie, null, 2));
+    console.log('[BUGA SUPABASE INSERT RESULT]', JSON.stringify(movie, null, 2));
     const savedMovie = await selectOne('movies', { filters: [{ type: 'eq', column: 'id', value: movie.id }] });
-    console.log('MOVIE AFTER SAVE', JSON.stringify(savedMovie, null, 2));
+    console.log('[BUGA SUPABASE UPDATED ROW]', JSON.stringify(savedMovie, null, 2));
 
     return res.status(201).json({
       message: 'Película creada correctamente',
@@ -235,7 +237,7 @@ const createMovie = async (req, res, next) => {
 const updateMovie = async (req, res, next) => {
   try {
     const { movieId } = req.params;
-    console.log('AUDIT ADMIN REQUEST BODY', JSON.stringify(req.body, null, 2));
+    console.log('[BUGA BACKEND RECEIVED PAYLOAD]', JSON.stringify(req.body, null, 2));
     const movie = await selectOne('movies', {
       filters: [{ type: 'eq', column: 'id', value: movieId }]
     });
@@ -246,7 +248,7 @@ const updateMovie = async (req, res, next) => {
 
     const updatePayload = {};
     const fields = [
-      'tmdbId', 'title', 'original_title', 'description', 'overview', 'poster_url', 'banner_url',
+      'tmdbId', 'title', 'original_title', 'description', 'overview', 'release_date', 'poster_url', 'banner_url',
       'poster_srcset', 'banner_srcset',
       'release_year', 'runtime', 'country', 'language', 'rating', 'director', 'trailer',
       'servers', 'featured', 'status', 'popularity',
@@ -292,11 +294,11 @@ const updateMovie = async (req, res, next) => {
       return res.status(400).json({ message: 'No se enviaron datos para actualizar' });
     }
 
-    console.log('AUDIT FINAL UPDATE PAYLOAD', JSON.stringify(updatePayload, null, 2));
+    console.log('[BUGA SUPABASE UPDATE PAYLOAD]', JSON.stringify(updatePayload, null, 2));
     const [updatedMovie] = await updateRows('movies', [{ type: 'eq', column: 'id', value: movieId }], updatePayload);
-    console.log('AUDIT SUPABASE RESULT', JSON.stringify(updatedMovie, null, 2));
+    console.log('[BUGA SUPABASE UPDATE RESULT]', JSON.stringify(updatedMovie, null, 2));
     const savedMovie = await selectOne('movies', { filters: [{ type: 'eq', column: 'id', value: movieId }] });
-    console.log('MOVIE AFTER SAVE', JSON.stringify(savedMovie, null, 2));
+    console.log('[BUGA SUPABASE UPDATED ROW]', JSON.stringify(savedMovie, null, 2));
     return res.json({
       message: 'Película actualizada correctamente',
       movie: sanitizeMovie(savedMovie || updatedMovie)

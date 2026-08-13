@@ -1,4 +1,5 @@
 (function () {
+console.log('[BUGA UPLOAD BUILD]', '2026-08-13', 'frontend/js/upload-movie.js');
 const UPLOAD_SHARED = window.BugaShared;
 const ADMIN_API = window.BugaShared?.resolveApiUrl?.('/api/admin/movies') || '/api/admin/movies';
 const uploadForm = document.getElementById('movieUploadForm');
@@ -182,6 +183,25 @@ const fillForm = (movie) => {
     resetServerRows(Array.isArray(movie?.servers) ? movie.servers : []);
     formTitle.textContent = movie ? 'Editar película' : 'Nueva película';
     movieSubmit.textContent = movie ? 'Actualizar película' : 'Guardar película';
+    console.log('[BUGA FORM VALUES AFTER RELOAD]', JSON.stringify({
+        title: movieTitle.value,
+        original_title: movieOriginalTitle.value,
+        description: movieDescription.value,
+        overview: movieOverview.value,
+        release_date: movieReleaseDate.value,
+        release_year: movieYear.value,
+        runtime: movieDuration.value,
+        country: movieCountry.value,
+        language: movieLanguage.value,
+        genres: movieGenres.value,
+        rating: movieRating.value,
+        cast: movieCast.value,
+        director: movieDirector.value,
+        trailer: movieTrailer.value,
+        popularity: moviePopularity.value,
+        poster_url: moviePosterUrl.value,
+        banner_url: movieBannerUrl.value
+    }, null, 2));
 };
 
 const clearForm = () => {
@@ -278,6 +298,7 @@ const autoFillFromTmdb = async () => {
 
         // La API devuelve { movie: ... }
         const movie = data.movie || data; // Handles both direct object and nested object
+        console.log('[BUGA FORM DATA]', JSON.stringify(movie, null, 2));
 
         if (!movie || !(movie.tmdb_id || movie.id)) {
             notify({ type: 'error', title: 'Película no encontrada', message: `No se encontró película con ID ${tmdbId} en TMDb.` });
@@ -371,6 +392,8 @@ const handleSubmit = async (event) => {
         source_url: movieSourceUrl.value.trim(),
         popularity: moviePopularity.value ? parseFloat(moviePopularity.value) : 0
     };
+
+    console.log('[BUGA SAVE PAYLOAD]', JSON.stringify(payload, null, 2));
 
     if (!payload.title) {
         notify({ type: 'error', title: 'Título obligatorio', message: 'Ingresa un título o usa el ID de TMDb.' });

@@ -1,4 +1,5 @@
 (function () {
+console.log('[BUGA ADMIN BUILD]', '2026-08-13', 'frontend/js/admin.js');
 const ADMIN_API = window.BugaShared?.resolveApiUrl?.('/api/admin') || '/api/admin';
 
 const adminSidebar = document.getElementById('adminSidebar');
@@ -425,6 +426,25 @@ const fillMovieForm = (movie) => {
     
     movieStatus.value = movie.status || 'published';
     movieSubmit.textContent = movieId.value ? 'Actualizar película' : 'Guardar película';
+    console.log('[BUGA FORM VALUES AFTER RELOAD]', JSON.stringify({
+        title: movieTitle.value,
+        original_title: movieOriginalTitle.value,
+        description: movieDescription.value,
+        overview: movieOverview.value,
+        release_date: movieReleaseDate.value,
+        release_year: movieReleaseYear.value,
+        runtime: movieRuntime.value,
+        country: movieCountry.value,
+        language: movieLanguage.value,
+        genres: movieGenres.value,
+        rating: movieRating.value,
+        cast: movieCast.value,
+        director: movieDirector.value,
+        trailer: movieTrailer.value,
+        popularity: moviePopularity.value,
+        poster_url: moviePosterUrl.value,
+        banner_url: movieBannerUrl.value
+    }, null, 2));
 };
 
 const fillGenreForm = (genre) => {
@@ -487,6 +507,7 @@ const handleMovieSubmit = async (event) => {
         original_title: movieOriginalTitle.value.trim(),
         description: movieDescription.value.trim(),
         overview: movieOverview.value.trim(),
+        release_date: movieReleaseDate.value || '',
         poster_url: moviePosterUrl.value.trim(),
         banner_url: movieBannerUrl.value.trim(),
         poster_srcset: moviePosterSrcset.value.trim(),
@@ -510,7 +531,7 @@ const handleMovieSubmit = async (event) => {
         popularity: moviePopularity.value ? parseFloat(moviePopularity.value) : 0
     };
 
-    console.log('[ADMIN PAYLOAD BEFORE SAVE]', JSON.stringify(payload, null, 2));
+    console.log('[BUGA SAVE PAYLOAD]', JSON.stringify(payload, null, 2));
 
     if (!payload.title && !payload.tmdbId) {
         notify({ type: 'error', title: 'Campos obligatorios', message: 'TMDB ID y título son requeridos.' });
@@ -613,7 +634,7 @@ const handleAutoFillFromTmdb = async () => {
         }
 
         const movie = data.movie || data;
-        console.log('[TMDB RESPONSE]', JSON.stringify(movie, null, 2));
+        console.log('[BUGA FORM DATA]', JSON.stringify(movie, null, 2));
 
         if (!movie) {
             throw new Error(`No se encontró una película con el ID ${tmdbId}`);
@@ -640,7 +661,7 @@ const handleAutoFillFromTmdb = async () => {
         if (moviePopularity) moviePopularity.value = movie.popularity || 0;
         if (moviePosterUrl) moviePosterUrl.value = movie.poster_url || '';
         if (movieBannerUrl) movieBannerUrl.value = movie.banner_url || '';
-        console.log('[FORM AFTER FILL]', JSON.stringify({
+        console.log('[BUGA FORM VALUES AFTER AUTOFILL]', JSON.stringify({
             title: movieTitle?.value || '',
             director: movieDirector?.value || '',
             cast: movieCast?.value || '',
@@ -648,7 +669,16 @@ const handleAutoFillFromTmdb = async () => {
             country: movieCountry?.value || '',
             language: movieLanguage?.value || '',
             rating: movieRating?.value || '',
-            trailer: movieTrailer?.value || ''
+            trailer: movieTrailer?.value || '',
+            release_date: movieReleaseDate?.value || '',
+            release_year: movieReleaseYear?.value || '',
+            runtime: movieRuntime?.value || '',
+            original_title: movieOriginalTitle?.value || '',
+            description: movieDescription?.value || '',
+            overview: movieOverview?.value || '',
+            poster_url: moviePosterUrl?.value || '',
+            banner_url: movieBannerUrl?.value || '',
+            popularity: moviePopularity?.value || ''
         }, null, 2));
 
         notify({

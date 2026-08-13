@@ -1,4 +1,5 @@
 (function () {
+console.log('[BUGA AUTH BUILD]', '2026-08-13', 'frontend/js/auth.js');
 const AUTH_SHARED = window.BugaShared;
 
 window.BugaEndpoints = {
@@ -448,6 +449,10 @@ const fetchCurrentUser = async () => {
     console.log("Token enviado:", getAuthToken());
 
     try {
+        console.log('[BUGA AUTH ME START]', {
+            pathname: window.location.pathname,
+            hasToken: Boolean(getAuthToken())
+        });
         const response = await window.BugaUtils.requestWithTimeout(authFetch(`${window.BugaEndpoints.authBase}/me`), AUTH_SHARED.REQUEST_TIMEOUT_MS, 'auth/me');
         
         console.log("Status:", response.status);
@@ -459,11 +464,19 @@ const fetchCurrentUser = async () => {
         }
 
         saveSession({ ...session, user: data.user });
+        console.log('[BUGA AUTH ME OK]', {
+            user: data.user,
+            status: response.status
+        });
         console.log('Loading:', false);
         console.log('User:', data.user);
     } catch (error) {
         // clearAuthSession(); // Comentado temporalmente para depuración
         console.error("Error en fetchCurrentUser:", error);
+        console.log('[BUGA AUTH ME ERROR]', {
+            message: error.message,
+            timeoutMs: AUTH_SHARED.REQUEST_TIMEOUT_MS
+        });
         console.log('Loading:', false);
         console.log('User:', null);
     } finally {
