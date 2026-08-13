@@ -37,9 +37,9 @@ const sanitizeMovie = (movie) => ({
   runtime: movie.runtime,
   country: movie.country,
   language: movie.language,
-  genres: movie.genres || [],
+  genres: normalizeGenres(movie.genres || []),
   rating: movie.rating,
-  cast: movie.cast || [],
+  cast: normalizeCast(movie.cast || []),
   director: movie.director,
   trailer: movie.trailer,
   popularity: movie.popularity,
@@ -151,6 +151,7 @@ const listMovies = async (_req, res, next) => {
 const createMovie = async (req, res, next) => {
   try {
     const { tmdbId, title, servers } = req.body;
+    console.log('AUDIT ADMIN REQUEST BODY', JSON.stringify(req.body, null, 2));
 
     if (!title && !tmdbId) {
       return res.status(400).json({ message: 'Se requiere un título o un TMDb ID.' });
@@ -201,10 +202,10 @@ const createMovie = async (req, res, next) => {
       source_url: String(req.body.source_url || '').trim(),
     };
 
-    console.log('AUDIT admin createMovie INSERT payload:', JSON.stringify(insertPayload, null, 2));
+    console.log('AUDIT FINAL INSERT PAYLOAD', JSON.stringify(insertPayload, null, 2));
 
     const movie = await insertOne('movies', insertPayload);
-    console.log('AUDIT admin createMovie INSERT result:', JSON.stringify(movie, null, 2));
+    console.log('AUDIT SUPABASE RESULT', JSON.stringify(movie, null, 2));
 
     return res.status(201).json({
       message: 'Película creada correctamente',
@@ -227,6 +228,7 @@ const createMovie = async (req, res, next) => {
 const updateMovie = async (req, res, next) => {
   try {
     const { movieId } = req.params;
+    console.log('AUDIT ADMIN REQUEST BODY', JSON.stringify(req.body, null, 2));
     const movie = await selectOne('movies', {
       filters: [{ type: 'eq', column: 'id', value: movieId }]
     });
@@ -283,8 +285,9 @@ const updateMovie = async (req, res, next) => {
       return res.status(400).json({ message: 'No se enviaron datos para actualizar' });
     }
 
+    console.log('AUDIT FINAL UPDATE PAYLOAD', JSON.stringify(updatePayload, null, 2));
     const [updatedMovie] = await updateRows('movies', [{ type: 'eq', column: 'id', value: movieId }], updatePayload);
-    console.log('Admin updateMovie - updated:', JSON.stringify(updatedMovie, null, 2));
+    console.log('AUDIT SUPABASE RESULT', JSON.stringify(updatedMovie, null, 2));
     return res.json({
       message: 'Película actualizada correctamente',
       movie: sanitizeMovie(updatedMovie)

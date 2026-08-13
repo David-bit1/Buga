@@ -73,6 +73,22 @@ let settingsCache = { catalog: {}, ui: {} };
 
 const adminAuthFetch = (url, options = {}) => window.BugaAuth?.authFetch?.(url, options) || fetch(url, options);
 const notify = (options) => window.BugaToast?.show?.(options);
+const normalizeListItems = (value) =>
+    Array.isArray(value)
+        ? value
+            .map((item) => {
+                if (typeof item === 'string' || typeof item === 'number') {
+                    return String(item).trim();
+                }
+
+                if (item && typeof item === 'object') {
+                    return String(item.name || item.title || item.label || item.value || '').trim();
+                }
+
+                return '';
+            })
+            .filter(Boolean)
+        : [];
 const authMultipartFetch = (url, formData) => {
     const token = window.BugaAuth?.getAuthToken?.();
     const headers = {};
@@ -375,11 +391,11 @@ const fillMovieForm = (movie) => {
     movieCountry.value = movie.country || '';
     movieLanguage.value = movie.language || '';
     movieGenres.value = Array.isArray(movie.genres)
-        ? movie.genres.map((genre) => (typeof genre === 'string' ? genre : genre?.name || '')).filter(Boolean).join(', ')
+        ? normalizeListItems(movie.genres).join(', ')
         : '';
     movieRating.value = movie.rating || '';
     movieCast.value = Array.isArray(movie.cast)
-        ? movie.cast.map((item) => (typeof item === 'string' ? item : item?.name || '')).filter(Boolean).join(', ')
+        ? normalizeListItems(movie.cast).join(', ')
         : '';
     movieDirector.value = movie.director || '';
     movieTrailer.value = movie.trailer || '';
@@ -494,6 +510,8 @@ const handleMovieSubmit = async (event) => {
         popularity: moviePopularity.value ? parseFloat(moviePopularity.value) : 0
     };
 
+    console.log('[ADMIN PAYLOAD BEFORE SAVE]', JSON.stringify(payload, null, 2));
+
     if (!payload.title && !payload.tmdbId) {
         notify({ type: 'error', title: 'Campos obligatorios', message: 'TMDB ID y título son requeridos.' });
         return;
@@ -595,6 +613,7 @@ const handleAutoFillFromTmdb = async () => {
         }
 
         const movie = data.movie || data;
+        console.log('[TMDB RESPONSE]', JSON.stringify(movie, null, 2));
 
         if (!movie) {
             throw new Error(`No se encontró una película con el ID ${tmdbId}`);
@@ -610,22 +629,27 @@ const handleAutoFillFromTmdb = async () => {
         if (movieCountry) movieCountry.value = movie.country || '';
         if (movieLanguage) movieLanguage.value = movie.language || '';
         if (movieGenres && Array.isArray(movie.genres)) {
-            movieGenres.value = movie.genres
-                .map((genre) => (typeof genre === 'string' ? genre : genre?.name || ''))
-                .filter(Boolean)
-                .join(', ');
+            movieGenres.value = normalizeListItems(movie.genres).join(', ');
         }
         if (movieRating) movieRating.value = movie.rating || '';
         if (movieCast) {
-            movieCast.value = Array.isArray(movie.cast)
-                ? movie.cast.map((castMember) => (typeof castMember === 'string' ? castMember : castMember?.name || '')).filter(Boolean).join(', ')
-                : '';
+            movieCast.value = Array.isArray(movie.cast) ? normalizeListItems(movie.cast).join(', ') : '';
         }
         if (movieDirector) movieDirector.value = movie.director || '';
         if (movieTrailer) movieTrailer.value = movie.trailer || '';
         if (moviePopularity) moviePopularity.value = movie.popularity || 0;
         if (moviePosterUrl) moviePosterUrl.value = movie.poster_url || '';
         if (movieBannerUrl) movieBannerUrl.value = movie.banner_url || '';
+        console.log('[FORM AFTER FILL]', JSON.stringify({
+            title: movieTitle?.value || '',
+            director: movieDirector?.value || '',
+            cast: movieCast?.value || '',
+            genres: movieGenres?.value || '',
+            country: movieCountry?.value || '',
+            language: movieLanguage?.value || '',
+            rating: movieRating?.value || '',
+            trailer: movieTrailer?.value || ''
+        }, null, 2));
 
         notify({
             type: 'success',

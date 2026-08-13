@@ -42,6 +42,22 @@ const pageLoader = document.getElementById('pageLoader');
 let moviesCache = [];
 
 const notify = (options) => window.BugaToast?.show?.(options);
+const normalizeListItems = (value) =>
+    Array.isArray(value)
+        ? value
+            .map((item) => {
+                if (typeof item === 'string' || typeof item === 'number') {
+                    return String(item).trim();
+                }
+
+                if (item && typeof item === 'object') {
+                    return String(item.name || item.title || item.label || item.value || '').trim();
+                }
+
+                return '';
+            })
+            .filter(Boolean)
+        : [];
 
 const requireAdmin = () => {
     const session = window.BugaAuth?.getAuthSession?.();
@@ -141,13 +157,13 @@ const fillForm = (movie) => {
     movieTitle.value = movie?.title || '';
     movieDescription.value = movie?.description || movie?.overview || '';
     movieOriginalTitle.value = movie?.original_title || '';
-    movieGenres.value = Array.isArray(movie?.genres) ? movie.genres.map((item) => typeof item === 'string' ? item : item.name || '').filter(Boolean).join(', ') : '';
+    movieGenres.value = Array.isArray(movie?.genres) ? normalizeListItems(movie.genres).join(', ') : '';
     movieYear.value = movie?.release_year || movie?.year || '';
     movieDuration.value = movie?.runtime || movie?.duration || '';
     movieCountry.value = movie?.country || '';
     movieLanguage.value = movie?.language || '';
     movieRating.value = movie?.rating || '';
-    movieCast.value = Array.isArray(movie?.cast) ? movie.cast.map((item) => typeof item === 'string' ? item : item.name || '').filter(Boolean).join(', ') : '';
+    movieCast.value = Array.isArray(movie?.cast) ? normalizeListItems(movie.cast).join(', ') : '';
     movieDirector.value = movie?.director || '';
     movieTrailer.value = movie?.trailer || '';
     movieOverview.value = movie?.overview || '';
@@ -279,7 +295,7 @@ const autoFillFromTmdb = async () => {
         if (movieCountry) movieCountry.value = movie.country || '';
         if (movieLanguage) movieLanguage.value = movie.language || '';
         if (movieRating) movieRating.value = movie.rating || '';
-        if (movieCast) movieCast.value = Array.isArray(movie.cast) ? movie.cast.join(', ') : '';
+        if (movieCast) movieCast.value = Array.isArray(movie.cast) ? normalizeListItems(movie.cast).join(', ') : '';
         if (movieDirector) movieDirector.value = movie.director || '';
         if (movieTrailer) movieTrailer.value = movie.trailer || '';
         if (moviePopularity) moviePopularity.value = movie.popularity || '';
@@ -292,7 +308,7 @@ const autoFillFromTmdb = async () => {
         if (movieRightsHolder) movieRightsHolder.value = movie.rights_holder || '';
         if (movieLicenseInfo) movieLicenseInfo.value = movie.license_info || '';
         if (movieSourceUrl) movieSourceUrl.value = movie.source_url || '';
-        if (movieGenres && Array.isArray(movie.genres)) movieGenres.value = movie.genres.map(g => g.name || g).join(', ');
+        if (movieGenres && Array.isArray(movie.genres)) movieGenres.value = normalizeListItems(movie.genres).join(', ');
 
         notify({
             type: 'info',

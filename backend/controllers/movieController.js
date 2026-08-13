@@ -14,7 +14,19 @@ const TMDB_IMAGE_BASE_W780 = 'https://image.tmdb.org/t/p/w780';
 
 const normalizeGenres = (value) => {
   if (Array.isArray(value)) {
-    return value.map((item) => String(item).trim()).filter(Boolean);
+    return value
+      .map((item) => {
+        if (typeof item === 'string' || typeof item === 'number') {
+          return String(item).trim();
+        }
+
+        if (item && typeof item === 'object') {
+          return String(item.name || item.title || item.label || item.value || '').trim();
+        }
+
+        return '';
+      })
+      .filter(Boolean);
   }
 
   return String(value || '')
@@ -25,7 +37,19 @@ const normalizeGenres = (value) => {
 
 const normalizeCast = (value) => {
   if (Array.isArray(value)) {
-    return value.map((item) => String(item).trim()).filter(Boolean);
+    return value
+      .map((item) => {
+        if (typeof item === 'string' || typeof item === 'number') {
+          return String(item).trim();
+        }
+
+        if (item && typeof item === 'object') {
+          return String(item.name || item.title || item.label || item.value || '').trim();
+        }
+
+        return '';
+      })
+      .filter(Boolean);
   }
 
   return String(value || '')
