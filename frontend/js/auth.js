@@ -3,9 +3,9 @@ const AUTH_SHARED = window.BugaShared;
 
 window.BugaEndpoints = {
     origin: AUTH_SHARED.API_ORIGIN,
-    authBase: AUTH_SHARED.API_BASES.auth,
-    recommendationsBase: AUTH_SHARED.API_BASES.recommendations,
-    profilesBase: AUTH_SHARED.API_BASES.profiles
+    authBase: AUTH_SHARED.resolveApiUrl(AUTH_SHARED.API_BASES.auth),
+    recommendationsBase: AUTH_SHARED.resolveApiUrl(AUTH_SHARED.API_BASES.recommendations),
+    profilesBase: AUTH_SHARED.resolveApiUrl(AUTH_SHARED.API_BASES.profiles)
 };
 
 window.BugaConfig = {
@@ -236,7 +236,7 @@ const recordPreferenceEvent = async (payload = {}) => {
     preferenceEventCooldowns.set(cooldownKey, Date.now());
 
     try {
-        const response = await authFetch(`${AUTH_SHARED.API_BASES.recommendations}/events`, {
+        const response = await authFetch(`${window.BugaEndpoints.recommendationsBase}/events`, {
             method: 'POST',
             body: JSON.stringify({
                 profileId: profile.id,
@@ -448,7 +448,7 @@ const fetchCurrentUser = async () => {
     console.log("Token enviado:", getAuthToken());
 
     try {
-        const response = await window.BugaUtils.requestWithTimeout(authFetch(`${AUTH_SHARED.API_BASES.auth}/me`), AUTH_SHARED.REQUEST_TIMEOUT_MS, 'auth/me');
+        const response = await window.BugaUtils.requestWithTimeout(authFetch(`${window.BugaEndpoints.authBase}/me`), AUTH_SHARED.REQUEST_TIMEOUT_MS, 'auth/me');
         
         console.log("Status:", response.status);
         console.log("Response:", await response.clone().text());
@@ -481,7 +481,7 @@ const handleAuthForm = async (form) => {
     setLoading(form, true);
 
     try {
-        const response = await window.BugaUtils.requestWithTimeout(fetch(`${AUTH_SHARED.API_BASES.auth}${endpoint}`, {
+        const response = await window.BugaUtils.requestWithTimeout(fetch(`${window.BugaEndpoints.authBase}${endpoint}`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'

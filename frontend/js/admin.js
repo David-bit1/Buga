@@ -1,5 +1,5 @@
 (function () {
-const ADMIN_API = '/api/admin';
+const ADMIN_API = window.BugaShared?.resolveApiUrl?.('/api/admin') || '/api/admin';
 
 const adminSidebar = document.getElementById('adminSidebar');
 const adminLogout = document.getElementById('adminLogout');
@@ -24,6 +24,8 @@ const movieOverview = document.getElementById('movieOverview'); // Keep
 const movieDescription = document.getElementById('movieDescription');
 const moviePosterUrl = document.getElementById('moviePosterUrl'); // Keep
 const movieBannerUrl = document.getElementById('movieBannerUrl'); // Keep
+const moviePosterSrcset = document.getElementById('moviePosterSrcset');
+const movieBannerSrcset = document.getElementById('movieBannerSrcset');
 const movieReleaseYear = document.getElementById('movieReleaseYear');
 const movieReleaseDate = document.getElementById('movieReleaseDate');
 const movieRuntime = document.getElementById('movieRuntime');
@@ -581,7 +583,7 @@ const handleAutoFillFromTmdb = async () => {
     notify({ type: 'info', title: 'Buscando película...', message: `Consultando TMDb para ID ${tmdbId}` });
 
     try {
-        const response = await adminAuthFetch(`/api/movies/tmdb/${encodeURIComponent(tmdbId)}`);
+        const response = await adminAuthFetch(window.BugaShared?.resolveApiUrl?.(`/api/movies/tmdb/${encodeURIComponent(tmdbId)}`) || `/api/movies/tmdb/${encodeURIComponent(tmdbId)}`);
         const data = await response.json().catch(() => ({}));
 
         if (!response.ok) {

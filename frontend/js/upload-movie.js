@@ -1,6 +1,6 @@
 (function () {
 const UPLOAD_SHARED = window.BugaShared;
-const ADMIN_API = '/api/admin/movies';
+const ADMIN_API = window.BugaShared?.resolveApiUrl?.('/api/admin/movies') || '/api/admin/movies';
 const uploadForm = document.getElementById('movieUploadForm');
 const movieIdInput = document.getElementById('movieId');
 const movieTmdbId = document.getElementById('movieTmdbId');
@@ -258,7 +258,7 @@ const autoFillFromTmdb = async () => {
 
     try {
         // Usamos fetchJson para incluir las cabeceras de autenticación
-        const data = await fetchJson(`/api/admin/movies/tmdb/${encodeURIComponent(tmdbId)}`);
+        const data = await fetchJson(window.BugaShared?.resolveApiUrl?.(`/api/admin/movies/tmdb/${encodeURIComponent(tmdbId)}`) || `/api/admin/movies/tmdb/${encodeURIComponent(tmdbId)}`);
 
         // La API devuelve { movie: ... }
         const movie = data.movie || data; // Handles both direct object and nested object

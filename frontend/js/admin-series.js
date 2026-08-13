@@ -1,5 +1,5 @@
 (function () {
-const ADMIN_API = '/api/admin';
+const ADMIN_API = window.BugaShared?.resolveApiUrl?.('/api/admin') || '/api/admin';
 const $ = (id) => document.getElementById(id);
 
 const seriesForm = $('seriesForm');
@@ -66,3 +66,5 @@ const clearSeasonFormButton = $('clearSeasonForm');
 const episodeSubmit = $('episodeSubmit');
 const clearEpisodeFormButton = $('clearEpisodeForm');
 const pageLoader = $('pageLoader');
+
+})();
