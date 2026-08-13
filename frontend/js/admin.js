@@ -789,6 +789,11 @@ const bootstrap = async () => {
             handleAutoFillFromTmdb();
         }
     });
+    movieTmdbId?.addEventListener('change', () => {
+        if (movieTmdbId.value.trim()) {
+            handleAutoFillFromTmdb();
+        }
+    });
 
     addServerButton?.addEventListener('click', () => {
         const row = document.createElement('div');

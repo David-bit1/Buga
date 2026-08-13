@@ -36,6 +36,7 @@ const seriesCreatorName = $('seriesCreatorName');
 const seriesRightsHolder = $('seriesRightsHolder');
 const seriesLicenseInfo = $('seriesLicenseInfo');
 const seriesSourceUrl = $('seriesSourceUrl');
+const fetchSeriesTmdbDataButton = $('fetchSeriesTmdbData');
 const seriesTable = $('seriesTable');
 const clearSeriesFormButton = $('clearSeriesForm');
 const seriesSubmit = $('seriesSubmit');
@@ -389,6 +390,60 @@ const clearSeriesForm = () => {
     seriesLicenseInfo.value = '';
     seriesSourceUrl.value = '';
     seriesSubmit.textContent = 'Guardar serie';
+};
+
+const handleAutoFillSeriesFromTmdb = async () => {
+    const tmdbId = seriesTmdbId.value.trim();
+    if (!tmdbId) {
+        return;
+    }
+
+    const previousLabel = fetchSeriesTmdbDataButton?.textContent || 'Autorrellenar TMDb';
+    if (fetchSeriesTmdbDataButton) {
+        fetchSeriesTmdbDataButton.disabled = true;
+        fetchSeriesTmdbDataButton.textContent = 'Buscando...';
+    }
+
+    try {
+        const data = await fetchJson(`${SERIES_API}/tmdb/${encodeURIComponent(tmdbId)}`);
+        const series = data.series || data;
+
+        if (!series || !(series.tmdb_id || series.id)) {
+            throw new Error(`No se encontró una serie con el ID ${tmdbId}`);
+        }
+
+        seriesTmdbId.value = series.tmdb_id || tmdbId;
+        seriesTitle.value = series.title || '';
+        seriesOriginalTitle.value = series.original_title || '';
+        seriesDescription.value = series.description || series.overview || '';
+        seriesOverview.value = series.overview || '';
+        seriesPosterUrl.value = series.poster_url || '';
+        seriesBannerUrl.value = series.banner_url || '';
+        seriesPosterSrcset.value = series.poster_srcset || '';
+        seriesBannerSrcset.value = series.banner_srcset || '';
+        seriesReleaseYear.value = series.release_year || '';
+        seriesFirstAirDate.value = series.first_air_date || '';
+        seriesGenres.value = Array.isArray(series.genres) ? normalizeListItems(series.genres).join(', ') : '';
+        seriesRating.value = series.rating || '';
+        seriesCast.value = Array.isArray(series.cast) ? normalizeListItems(series.cast).join(', ') : '';
+        seriesCreator.value = series.creator || '';
+        seriesTrailer.value = series.trailer || '';
+        seriesPopularity.value = series.popularity || '';
+        seriesStatus.value = series.status || 'published';
+
+        notify({
+            type: 'success',
+            title: 'Serie encontrada',
+            message: series.title || 'La información se completó automáticamente.'
+        });
+    } catch (error) {
+        notify({ type: 'error', title: 'Error al autocompletar', message: error.message || 'No se pudo obtener la información.' });
+    } finally {
+        if (fetchSeriesTmdbDataButton) {
+            fetchSeriesTmdbDataButton.disabled = false;
+            fetchSeriesTmdbDataButton.textContent = previousLabel;
+        }
+    }
 };
 
 const clearSeasonForm = () => {
@@ -949,6 +1004,18 @@ const bootstrap = async () => {
     episodeForm?.addEventListener('submit', handleEpisodeSubmit);
     clearEpisodeFormButton?.addEventListener('click', clearEpisodeForm);
     episodesTable?.addEventListener('click', handleEpisodeTableAction);
+    fetchSeriesTmdbDataButton?.addEventListener('click', handleAutoFillSeriesFromTmdb);
+    seriesTmdbId?.addEventListener('keydown', (event) => {
+        if (event.key === 'Enter') {
+            event.preventDefault();
+            handleAutoFillSeriesFromTmdb();
+        }
+    });
+    seriesTmdbId?.addEventListener('change', () => {
+        if (seriesTmdbId.value.trim()) {
+            handleAutoFillSeriesFromTmdb();
+        }
+    });
 
     showLoader();
     try {

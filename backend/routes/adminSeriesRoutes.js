@@ -2,6 +2,7 @@ const express = require('express');
 const { protect, requireAdmin } = require('../middleware/authMiddleware');
 const {
   adminListSeries,
+  getSeriesByTmdbId,
   getSeries,
   createSeries,
   updateSeries,
@@ -24,6 +25,7 @@ router.use(protect, requireAdmin);
 
 // Series
 router.get('/series', adminListSeries);
+router.get('/series/tmdb/:tmdbId', getSeriesByTmdbId);
 router.post('/series', createSeries);
 router.get('/series/:seriesId', getSeries);
 router.put('/series/:seriesId', updateSeries);
