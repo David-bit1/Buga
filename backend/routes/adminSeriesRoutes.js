@@ -25,8 +25,8 @@ router.use(protect, requireAdmin);
 
 // Series
 router.get('/series', adminListSeries);
-router.get('/series/tmdb/:tmdbId', getSeriesByTmdbId);
 router.post('/series', createSeries);
+router.get('/series/tmdb/:tmdbId', getSeriesByTmdbId);
 router.get('/series/:seriesId', getSeries);
 router.put('/series/:seriesId', updateSeries);
 router.delete('/series/:seriesId', deleteSeries);
