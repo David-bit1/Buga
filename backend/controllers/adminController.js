@@ -2,6 +2,11 @@ const { insertOne, selectMany, selectOne, updateRows, deleteRows, upsertOne } = 
 const { parseServers } = require('../services/serverNormalizer');
 const { buildTmdbMoviePayload, toInteger, normalizeGenres, normalizeCast } = require('../controllers/movieController');
 
+const toNullableTmdbId = (value) => {
+  const parsed = Number(value);
+  return Number.isInteger(parsed) && parsed > 0 ? parsed : null;
+};
+
 const slugify = (value) =>
   String(value || '')
     .normalize('NFD')
@@ -172,7 +177,7 @@ const createMovie = async (req, res, next) => {
     }
 
     const insertPayload = {
-      tmdb_id: toInteger(req.body.tmdbId || tmdbId, null),
+      tmdb_id: toNullableTmdbId(req.body.tmdbId ?? tmdbId),
       title: finalTitle,
       original_title: String(req.body.original_title || tmdbPayload?.original_title || '').trim(),
       description: String(req.body.description || tmdbPayload?.description || '').trim(),
@@ -206,10 +211,12 @@ const createMovie = async (req, res, next) => {
 
     const movie = await insertOne('movies', insertPayload);
     console.log('AUDIT SUPABASE RESULT', JSON.stringify(movie, null, 2));
+    const savedMovie = await selectOne('movies', { filters: [{ type: 'eq', column: 'id', value: movie.id }] });
+    console.log('MOVIE AFTER SAVE', JSON.stringify(savedMovie, null, 2));
 
     return res.status(201).json({
       message: 'Película creada correctamente',
-      movie: sanitizeMovie(movie)
+      movie: sanitizeMovie(savedMovie || movie)
     });
   } catch (error) {
     if (String(error.code || '').includes('23505') || String(error.message || '').includes('duplicate')) {
@@ -255,7 +262,7 @@ const updateMovie = async (req, res, next) => {
         if (['runtime', 'release_year', 'popularity'].includes(field)) {
           value = toInteger(value, movie[target]);
         } else if (field === 'tmdbId') {
-          value = toInteger(value, null);
+          value = toNullableTmdbId(value);
         } else if (field === 'featured') {
           value = Boolean(value);
         } else if (field === 'content_type') {
@@ -288,9 +295,11 @@ const updateMovie = async (req, res, next) => {
     console.log('AUDIT FINAL UPDATE PAYLOAD', JSON.stringify(updatePayload, null, 2));
     const [updatedMovie] = await updateRows('movies', [{ type: 'eq', column: 'id', value: movieId }], updatePayload);
     console.log('AUDIT SUPABASE RESULT', JSON.stringify(updatedMovie, null, 2));
+    const savedMovie = await selectOne('movies', { filters: [{ type: 'eq', column: 'id', value: movieId }] });
+    console.log('MOVIE AFTER SAVE', JSON.stringify(savedMovie, null, 2));
     return res.json({
       message: 'Película actualizada correctamente',
-      movie: sanitizeMovie(updatedMovie)
+      movie: sanitizeMovie(savedMovie || updatedMovie)
     });
   } catch (error) {
     return next(error);
