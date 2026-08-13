@@ -374,9 +374,13 @@ const fillMovieForm = (movie) => {
     movieRuntime.value = movie.runtime || '';
     movieCountry.value = movie.country || '';
     movieLanguage.value = movie.language || '';
-    movieGenres.value = Array.isArray(movie.genres) ? movie.genres.map((genre) => genre.name).join(', ') : '';
+    movieGenres.value = Array.isArray(movie.genres)
+        ? movie.genres.map((genre) => (typeof genre === 'string' ? genre : genre?.name || '')).filter(Boolean).join(', ')
+        : '';
     movieRating.value = movie.rating || '';
-    movieCast.value = Array.isArray(movie.cast) ? movie.cast.join(', ') : '';
+    movieCast.value = Array.isArray(movie.cast)
+        ? movie.cast.map((item) => (typeof item === 'string' ? item : item?.name || '')).filter(Boolean).join(', ')
+        : '';
     movieDirector.value = movie.director || '';
     movieTrailer.value = movie.trailer || '';
     moviePopularity.value = movie.popularity || '';
