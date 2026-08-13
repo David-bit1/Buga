@@ -363,8 +363,8 @@ const fillMovieForm = (movie) => {
     movieTmdbId.value = movie.tmdbId || '';
     movieTitle.value = movie.title || '';
     movieOriginalTitle.value = movie.original_title || '';
-    movieOverview.value = movie.description || '';
     movieDescription.value = movie.description || movie.overview || '';
+    movieOverview.value = movie.overview || movie.description || '';
     moviePosterUrl.value = movie.poster_url || '';
     movieBannerUrl.value = movie.banner_url || '';
     moviePosterSrcset.value = movie.poster_srcset || '';
@@ -469,8 +469,8 @@ const handleMovieSubmit = async (event) => {
         tmdbId: movieTmdbId.value ? Number(movieTmdbId.value) : null,
         title: movieTitle.value.trim(),
         original_title: movieOriginalTitle.value.trim(),
-        description: movieOverview.value.trim(),
-        overview: movieDescription.value.trim(),
+        description: movieDescription.value.trim(),
+        overview: movieOverview.value.trim(),
         poster_url: moviePosterUrl.value.trim(),
         banner_url: movieBannerUrl.value.trim(),
         poster_srcset: moviePosterSrcset.value.trim(),
