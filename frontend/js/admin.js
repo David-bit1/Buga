@@ -590,7 +590,7 @@ const handleAutoFillFromTmdb = async () => {
             throw new Error(data.message || `No se encontró una película con el ID ${tmdbId}`);
         }
 
-        const movie = data.movie;
+        const movie = data.movie || data;
 
         if (!movie) {
             throw new Error(`No se encontró una película con el ID ${tmdbId}`);
@@ -606,10 +606,17 @@ const handleAutoFillFromTmdb = async () => {
         if (movieCountry) movieCountry.value = movie.country || '';
         if (movieLanguage) movieLanguage.value = movie.language || '';
         if (movieGenres && Array.isArray(movie.genres)) {
-            movieGenres.value = movie.genres.map(g => g.name).join(', ');
+            movieGenres.value = movie.genres
+                .map((genre) => (typeof genre === 'string' ? genre : genre?.name || ''))
+                .filter(Boolean)
+                .join(', ');
         }
         if (movieRating) movieRating.value = movie.rating || '';
-        if (movieCast) movieCast.value = Array.isArray(movie.cast) ? movie.cast.join(', ') : '';
+        if (movieCast) {
+            movieCast.value = Array.isArray(movie.cast)
+                ? movie.cast.map((castMember) => (typeof castMember === 'string' ? castMember : castMember?.name || '')).filter(Boolean).join(', ')
+                : '';
+        }
         if (movieDirector) movieDirector.value = movie.director || '';
         if (movieTrailer) movieTrailer.value = movie.trailer || '';
         if (moviePopularity) moviePopularity.value = movie.popularity || 0;

@@ -34,6 +34,24 @@ const normalizeCast = (value) => {
     .filter(Boolean);
 };
 
+const hasMeaningfulValue = (value) => {
+  if (Array.isArray(value)) {
+    return value.length > 0;
+  }
+
+  if (typeof value === 'string') {
+    return value.trim().length > 0;
+  }
+
+  if (typeof value === 'number') {
+    return Number.isFinite(value) && value !== 0;
+  }
+
+  return value !== undefined && value !== null;
+};
+
+const preferFallbackValue = (primary, fallback) => (hasMeaningfulValue(primary) ? primary : fallback);
+
 const toInteger = (value, fallback = 0) => {
   const parsed = Number(value);
   return Number.isInteger(parsed) ? parsed : fallback;
@@ -174,10 +192,12 @@ const buildTmdbMoviePayload = async (tmdbId) => {
     release_year: toInteger(String(movie.release_date || '').slice(0, 4), 0),
     release_date: movie.release_date || '',
     runtime: toInteger(movie.runtime, 0),
-    country: movie.origin_country && Array.isArray(movie.origin_country) && movie.origin_country.length > 0 
-      ? movie.origin_country[0] 
-      : '',
-    language: movie.original_language || '',
+    country: Array.isArray(movie.production_countries) && movie.production_countries.length > 0
+      ? String(movie.production_countries[0]?.name || movie.production_countries[0]?.iso_3166_1 || '').trim()
+      : (Array.isArray(movie.origin_country) && movie.origin_country.length > 0
+        ? String(movie.origin_country[0] || '').trim()
+        : ''),
+    language: String(movie.spoken_languages?.[0]?.english_name || movie.spoken_languages?.[0]?.name || movie.original_language || '').trim(),
     genres,
     rating: movie.vote_average > 0 ? String(movie.vote_average.toFixed(1)) : '',
     cast,
@@ -255,17 +275,49 @@ const getMovieByTmdbId = async (req, res, next) => {
 
     const movie = await selectOne('movies', { filters: [{ type: 'eq', column: 'tmdb_id', value: tmdbId }] });
     console.log('AUDIT getMovieByTmdbId Supabase result:', JSON.stringify(movie, null, 2));
-    if (movie) {
-      return res.json(serializeMovie(movie));
-    }
-
     const tmdbPayload = await buildTmdbMoviePayload(tmdbId);
     console.log('AUDIT getMovieByTmdbId TMDb fallback payload:', JSON.stringify(tmdbPayload, null, 2));
     if (!tmdbPayload) {
-      return res.status(404).json({ message: 'Película no encontrada' });
+      if (!movie) {
+        return res.status(404).json({ message: 'Película no encontrada' });
+      }
+
+      return res.json({ movie: serializeMovie(movie), tmdb: false });
     }
 
-    return res.json({ ...serializeMovie({ ...tmdbPayload, id: null }), tmdb: true });
+    const serializedStoredMovie = movie ? serializeMovie(movie) : null;
+    const serializedTmdbMovie = serializeMovie({ ...tmdbPayload, id: movie?.id || null });
+
+    const mergedMovie = serializedStoredMovie
+      ? {
+          ...serializedTmdbMovie,
+          ...serializedStoredMovie,
+          title: preferFallbackValue(serializedStoredMovie.title, serializedTmdbMovie.title),
+          original_title: preferFallbackValue(serializedStoredMovie.original_title, serializedTmdbMovie.original_title),
+          description: preferFallbackValue(serializedStoredMovie.description, serializedTmdbMovie.description),
+          overview: preferFallbackValue(serializedStoredMovie.overview, serializedTmdbMovie.overview),
+          poster_url: preferFallbackValue(serializedStoredMovie.poster_url, serializedTmdbMovie.poster_url),
+          banner_url: preferFallbackValue(serializedStoredMovie.banner_url, serializedTmdbMovie.banner_url),
+          poster_srcset: preferFallbackValue(serializedStoredMovie.poster_srcset, serializedTmdbMovie.poster_srcset),
+          banner_srcset: preferFallbackValue(serializedStoredMovie.banner_srcset, serializedTmdbMovie.banner_srcset),
+          release_year: preferFallbackValue(serializedStoredMovie.release_year, serializedTmdbMovie.release_year),
+          release_date: preferFallbackValue(serializedStoredMovie.release_date, serializedTmdbMovie.release_date),
+          runtime: preferFallbackValue(serializedStoredMovie.runtime, serializedTmdbMovie.runtime),
+          country: preferFallbackValue(serializedStoredMovie.country, serializedTmdbMovie.country),
+          language: preferFallbackValue(serializedStoredMovie.language, serializedTmdbMovie.language),
+          genres: preferFallbackValue(serializedStoredMovie.genres, serializedTmdbMovie.genres),
+          rating: preferFallbackValue(serializedStoredMovie.rating, serializedTmdbMovie.rating),
+          cast: preferFallbackValue(serializedStoredMovie.cast, serializedTmdbMovie.cast),
+          director: preferFallbackValue(serializedStoredMovie.director, serializedTmdbMovie.director),
+          trailer: preferFallbackValue(serializedStoredMovie.trailer, serializedTmdbMovie.trailer),
+          popularity: preferFallbackValue(serializedStoredMovie.popularity, serializedTmdbMovie.popularity)
+        }
+      : serializedTmdbMovie;
+
+    return res.json({
+      movie: mergedMovie,
+      tmdb: !movie
+    });
   } catch (error) {
     return next(error);
   }
