@@ -161,7 +161,6 @@ const seriesTableState = {
     seasons: [],
     episodes: []
 };
-let seriesTmdbAutofillTimer = null;
 
 const createServerRowHTML = (server = {}) => {
     const { name = '', type = 'iframe', url = '', status = 'active', order = 0 } = server;
@@ -1017,18 +1016,6 @@ const bootstrap = async () => {
             handleAutoFillSeriesFromTmdb();
         }
     });
-    seriesTmdbId?.addEventListener('input', () => {
-        window.clearTimeout(seriesTmdbAutofillTimer);
-        const value = seriesTmdbId.value.trim();
-        if (!value) {
-            return;
-        }
-
-        seriesTmdbAutofillTimer = window.setTimeout(() => {
-            handleAutoFillSeriesFromTmdb();
-        }, 650);
-    });
-
     showLoader();
     try {
         await loadSeries();

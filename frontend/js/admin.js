@@ -71,7 +71,6 @@ let moviesCache = [];
 let usersCache = [];
 let genresCache = [];
 let settingsCache = { catalog: {}, ui: {} };
-let movieTmdbAutofillTimer = null;
 
 const adminAuthFetch = (url, options = {}) => window.BugaAuth?.authFetch?.(url, options) || fetch(url, options);
 const notify = (options) => window.BugaToast?.show?.(options);
@@ -795,18 +794,6 @@ const bootstrap = async () => {
             handleAutoFillFromTmdb();
         }
     });
-    movieTmdbId?.addEventListener('input', () => {
-        window.clearTimeout(movieTmdbAutofillTimer);
-        const value = movieTmdbId.value.trim();
-        if (!value) {
-            return;
-        }
-
-        movieTmdbAutofillTimer = window.setTimeout(() => {
-            handleAutoFillFromTmdb();
-        }, 650);
-    });
-
     addServerButton?.addEventListener('click', () => {
         const row = document.createElement('div');
         row.className = 'admin-server-row';
