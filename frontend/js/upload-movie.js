@@ -294,7 +294,12 @@ const autoFillFromTmdb = async () => {
 
     try {
         // Usamos fetchJson para incluir las cabeceras de autenticación
-        const data = await fetchJson(window.BugaShared?.resolveApiUrl?.(`/api/admin/movies/tmdb/${encodeURIComponent(tmdbId)}`) || `/api/admin/movies/tmdb/${encodeURIComponent(tmdbId)}`);
+        const data = await fetchJson(window.BugaShared?.resolveApiUrl?.(`/api/admin/movies/tmdb/${encodeURIComponent(tmdbId)}`) || `/api/admin/movies/tmdb/${encodeURIComponent(tmdbId)}`).catch(async (error) => {
+            console.warn('Backend TMDb lookup failed, trying direct TMDb fallback', error);
+            return window.BugaShared?.buildTmdbMoviePayload
+                ? { movie: await window.BugaShared.buildTmdbMoviePayload(Number(tmdbId)) }
+                : { movie: null };
+        });
 
         // La API devuelve { movie: ... }
         const movie = data.movie || data; // Handles both direct object and nested object

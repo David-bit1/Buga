@@ -626,19 +626,25 @@ const handleAutoFillFromTmdb = async () => {
     notify({ type: 'info', title: 'Buscando película...', message: `Consultando TMDb para ID ${tmdbId}` });
 
     try {
+        let movie = null;
         const response = await adminAuthFetch(window.BugaShared?.resolveApiUrl?.(`/api/movies/tmdb/${encodeURIComponent(tmdbId)}`) || `/api/movies/tmdb/${encodeURIComponent(tmdbId)}`);
         const data = await response.json().catch(() => ({}));
 
-        if (!response.ok) {
+        if (response.ok) {
+            movie = data.movie || data;
+        } else {
+            console.warn('Backend TMDb lookup failed, trying direct TMDb fallback', data.message || response.status);
+        }
+
+        if (!movie && window.BugaShared?.buildTmdbMoviePayload) {
+            movie = await window.BugaShared.buildTmdbMoviePayload(Number(tmdbId));
+        }
+
+        if (!movie) {
             throw new Error(data.message || `No se encontró una película con el ID ${tmdbId}`);
         }
 
-        const movie = data.movie || data;
         console.log('[BUGA FORM DATA]', JSON.stringify(movie, null, 2));
-
-        if (!movie) {
-            throw new Error(`No se encontró una película con el ID ${tmdbId}`);
-        }
 
         if (movieTitle) movieTitle.value = movie.title || '';
         if (movieOriginalTitle) movieOriginalTitle.value = movie.original_title || '';

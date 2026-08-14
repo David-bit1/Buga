@@ -405,7 +405,12 @@ const handleAutoFillSeriesFromTmdb = async () => {
     }
 
     try {
-        const data = await fetchJson(`${SERIES_API}/tmdb/${encodeURIComponent(tmdbId)}`);
+        const data = await fetchJson(`${SERIES_API}/tmdb/${encodeURIComponent(tmdbId)}`).catch(async (error) => {
+            console.warn('Backend series TMDb lookup failed, trying direct TMDb fallback', error);
+            return window.BugaShared?.buildTmdbSeriesPayload
+                ? { series: await window.BugaShared.buildTmdbSeriesPayload(Number(tmdbId)) }
+                : { series: null };
+        });
         const series = data.series || data;
 
         if (!series || !(series.tmdb_id || series.id)) {

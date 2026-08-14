@@ -31,17 +31,19 @@ const recommendationAuthFetch = (url, options = {}) => {
 
 const getRecommendationFavorites = () => {
     try {
-        return JSON.parse(localStorage.getItem(RECOMMENDATION_FAVORITES_KEY) || '[]');
+        const storedFavorites = JSON.parse(localStorage.getItem(RECOMMENDATION_FAVORITES_KEY) || '[]');
+        return RECOMMENDATIONS_SHARED.normalizeIdList?.(storedFavorites) || [];
     } catch {
         return [];
     }
 };
 
 const setRecommendationFavorites = (favorites) => {
-    localStorage.setItem(RECOMMENDATION_FAVORITES_KEY, JSON.stringify(favorites));
+    const normalizedFavorites = RECOMMENDATIONS_SHARED.normalizeIdList?.(favorites) || [];
+    localStorage.setItem(RECOMMENDATION_FAVORITES_KEY, JSON.stringify(normalizedFavorites));
 };
 
-const isRecommendationFavoriteMovie = (movieId) => getRecommendationFavorites().includes(movieId);
+const isRecommendationFavoriteMovie = (movieId) => getRecommendationFavorites().includes(String(movieId));
 
 const isAllowedCatalogMovie = (movieId) => RECOMMENDATION_ALLOWED_IDS.has(Number(movieId));
 
@@ -101,13 +103,14 @@ const updateFavoriteButton = (button, movieId) => {
 
 const toggleFavorite = (movie) => {
     const favorites = getRecommendationFavorites();
-    const index = favorites.indexOf(movie.id);
+    const movieId = String(movie.id);
+    const index = favorites.indexOf(movieId);
     const removing = index >= 0;
 
     if (removing) {
         favorites.splice(index, 1);
     } else {
-        favorites.push(movie.id);
+        favorites.push(movieId);
     }
 
     setRecommendationFavorites(favorites);
@@ -115,7 +118,7 @@ const toggleFavorite = (movie) => {
     syncPreferenceEvent({
         type: 'favorite',
         action: removing ? 'removed' : 'added',
-        movieId: movie.id,
+        movieId,
         movie
     });
 

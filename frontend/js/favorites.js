@@ -12,14 +12,16 @@ const formatYear = (releaseDate) => (releaseDate ? String(releaseDate).slice(0, 
 
 const getFavoritesPageItems = () => {
     try {
-        return JSON.parse(localStorage.getItem(FAVORITES_PAGE_STORAGE_KEY) || '[]');
+        const storedFavorites = JSON.parse(localStorage.getItem(FAVORITES_PAGE_STORAGE_KEY) || '[]');
+        return FAVORITES_SHARED.normalizeIdList?.(storedFavorites) || [];
     } catch {
         return [];
     }
 };
 
 const setFavoritesPageItems = (favorites) => {
-    localStorage.setItem(FAVORITES_PAGE_STORAGE_KEY, JSON.stringify(favorites));
+    const normalizedFavorites = FAVORITES_SHARED.normalizeIdList?.(favorites) || [];
+    localStorage.setItem(FAVORITES_PAGE_STORAGE_KEY, JSON.stringify(normalizedFavorites));
 };
 
 const isFavoritesPageMovie = (movieId) => getFavoritesPageItems().includes(String(movieId));
@@ -150,7 +152,7 @@ const toggleFavorite = (movieId) => {
     if (isRemoving) {
         favorites.splice(index, 1);
     } else {
-        favorites.push(movieId);
+        favorites.push(String(movieId));
     }
 
     setFavoritesPageItems(favorites);
@@ -188,6 +190,7 @@ const loadFavorites = async () => {
         }
 
         renderMovies(movies);
+        setFavoritesPageItems(movies.map((movie) => String(movie.id)));
     } catch (error) {
         console.warn('Favorites load failed', error);
         renderEmptyState();

@@ -106,12 +106,124 @@
     };
     }
 
+    const normalizeIdList = (value) =>
+        [...new Set((Array.isArray(value) ? value : [])
+            .map((item) => String(item).trim())
+            .filter(Boolean))];
+
+    const tmdbFetch = async (path) => {
+        const url = new URL(`${sharedConfig.TMDB_BASE_URL}${path}`);
+        url.searchParams.set('api_key', sharedConfig.API_KEY);
+        url.searchParams.set('language', 'es-ES');
+
+        const response = await requestWithTimeout(fetch(url), sharedConfig.REQUEST_TIMEOUT_MS, 'tmdb');
+        if (!response.ok) {
+            const body = await response.text().catch(() => '');
+            throw new Error(body || `TMDb responded with ${response.status}`);
+        }
+
+        return response.json();
+    };
+
+    const buildTmdbMoviePayload = async (tmdbId) => {
+        if (!tmdbId) {
+            return null;
+        }
+
+        const movie = await tmdbFetch(`/movie/${tmdbId}?append_to_response=credits,videos`);
+        const credits = movie.credits || {};
+        const videos = movie.videos || {};
+        const trailer = (Array.isArray(videos.results) ? videos.results : [])
+            .find((video) => video.site === 'YouTube' && (video.type === 'Trailer' || video.type === 'Teaser'))?.key || '';
+        const cast = Array.isArray(credits.cast) ? credits.cast.slice(0, 10).map((person) => person.name).filter(Boolean) : [];
+        const director = (Array.isArray(credits.crew) ? credits.crew : [])
+            .find((person) => person.job === 'Director')?.name || '';
+
+        return {
+            tmdb_id: Number(movie.id),
+            title: String(movie.title || movie.original_title || '').trim(),
+            original_title: String(movie.original_title || movie.title || '').trim(),
+            description: String(movie.overview || '').trim(),
+            overview: String(movie.overview || '').trim(),
+            poster_url: movie.poster_path ? `${sharedConfig.IMAGE_BASE_URL}${movie.poster_path}` : '',
+            poster_srcset: movie.poster_path
+                ? `https://image.tmdb.org/t/p/w185${movie.poster_path} 185w, https://image.tmdb.org/t/p/w342${movie.poster_path} 342w, https://image.tmdb.org/t/p/w500${movie.poster_path} 500w`
+                : '',
+            banner_url: movie.backdrop_path ? `${sharedConfig.IMAGE_BASE_URL_W780}${movie.backdrop_path}` : '',
+            banner_srcset: movie.backdrop_path
+                ? `https://image.tmdb.org/t/p/w300${movie.backdrop_path} 300w, https://image.tmdb.org/t/p/w780${movie.backdrop_path} 780w, https://image.tmdb.org/t/p/w1280${movie.backdrop_path} 1280w`
+                : '',
+            release_year: Number.parseInt(String(movie.release_date || '').slice(0, 4), 10) || 0,
+            release_date: movie.release_date || '',
+            runtime: Number(movie.runtime || 0),
+            country: Array.isArray(movie.production_countries) && movie.production_countries.length > 0
+                ? String(movie.production_countries[0]?.name || movie.production_countries[0]?.iso_3166_1 || '').trim()
+                : (Array.isArray(movie.origin_country) && movie.origin_country.length > 0 ? String(movie.origin_country[0] || '').trim() : ''),
+            language: String(movie.spoken_languages?.[0]?.english_name || movie.spoken_languages?.[0]?.name || movie.original_language || '').trim(),
+            genres: Array.isArray(movie.genres) ? movie.genres.map((genre) => genre.name).filter(Boolean) : [],
+            rating: movie.vote_average > 0 ? String(Number(movie.vote_average).toFixed(1)) : '',
+            cast,
+            director,
+            trailer: trailer ? `https://www.youtube.com/watch?v=${trailer}` : '',
+            popularity: Number(movie.popularity || 0)
+        };
+    };
+
+    const buildTmdbSeriesPayload = async (tmdbId) => {
+        if (!tmdbId) {
+            return null;
+        }
+
+        const series = await tmdbFetch(`/tv/${tmdbId}?append_to_response=credits,videos,content_ratings`);
+        const credits = series.credits || {};
+        const videos = series.videos || {};
+        const ratings = series.content_ratings || {};
+        const firstAirDate = String(series.first_air_date || '').trim();
+        const trailer = (Array.isArray(videos.results) ? videos.results : [])
+            .find((video) => video.site === 'YouTube' && (video.type === 'Trailer' || video.type === 'Teaser'))?.key || '';
+        const cast = Array.isArray(credits.cast) ? credits.cast.slice(0, 10).map((person) => person.name).filter(Boolean) : [];
+        const creator = Array.isArray(series.created_by) && series.created_by.length > 0
+            ? String(series.created_by[0]?.name || '').trim()
+            : '';
+        const rating = (Array.isArray(ratings.results) ? ratings.results : [])
+            .find((item) => item.iso_3166_1 === 'US')?.rating
+            || (Array.isArray(ratings.results) ? ratings.results[0]?.rating : '')
+            || '';
+
+        return {
+            tmdb_id: Number(series.id),
+            title: String(series.name || series.original_name || '').trim(),
+            original_title: String(series.original_name || series.name || '').trim(),
+            description: String(series.overview || '').trim(),
+            overview: String(series.overview || '').trim(),
+            poster_url: series.poster_path ? `${sharedConfig.IMAGE_BASE_URL}${series.poster_path}` : '',
+            poster_srcset: series.poster_path
+                ? `https://image.tmdb.org/t/p/w185${series.poster_path} 185w, https://image.tmdb.org/t/p/w342${series.poster_path} 342w, https://image.tmdb.org/t/p/w500${series.poster_path} 500w`
+                : '',
+            banner_url: series.backdrop_path ? `${sharedConfig.IMAGE_BASE_URL_W780}${series.backdrop_path}` : '',
+            banner_srcset: series.backdrop_path
+                ? `https://image.tmdb.org/t/p/w300${series.backdrop_path} 300w, https://image.tmdb.org/t/p/w780${series.backdrop_path} 780w, https://image.tmdb.org/t/p/w1280${series.backdrop_path} 1280w`
+                : '',
+            release_year: Number.parseInt(firstAirDate.slice(0, 4), 10) || 0,
+            first_air_date: firstAirDate,
+            genres: Array.isArray(series.genres) ? series.genres.map((genre) => genre.name).filter(Boolean) : [],
+            rating,
+            cast,
+            creator,
+            trailer,
+            popularity: Number(series.popularity || 0)
+        };
+    };
+
     window.BugaShared = {
         ...shared,
         ...sharedConfig,
         requestWithTimeout,
         resolveApiUrl,
         getProfileStorageKey,
-        normalizeMovie: normalizeMovieData
+        normalizeMovie: normalizeMovieData,
+        normalizeIdList,
+        buildTmdbMoviePayload,
+        buildTmdbSeriesPayload
     };
 })();

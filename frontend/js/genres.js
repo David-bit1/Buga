@@ -29,14 +29,16 @@ const normalizeSearchText = (value) =>
 
 const getGenresFavorites = () => {
     try {
-        return JSON.parse(localStorage.getItem(GENRES_FAVORITES_KEY) || '[]');
+        const storedFavorites = JSON.parse(localStorage.getItem(GENRES_FAVORITES_KEY) || '[]');
+        return GENRES_SHARED.normalizeIdList?.(storedFavorites) || [];
     } catch {
         return [];
     }
 };
 
 const setGenresFavorites = (favorites) => {
-    localStorage.setItem(GENRES_FAVORITES_KEY, JSON.stringify(favorites));
+    const normalizedFavorites = GENRES_SHARED.normalizeIdList?.(favorites) || [];
+    localStorage.setItem(GENRES_FAVORITES_KEY, JSON.stringify(normalizedFavorites));
 };
 
 const isGenresFavoriteMovie = (movieId) => getGenresFavorites().includes(String(movieId));
@@ -225,7 +227,7 @@ const toggleFavorite = (movieId) => {
     if (isRemoving) {
         favorites.splice(index, 1);
     } else {
-        favorites.push(movieId);
+        favorites.push(String(movieId));
     }
 
     setGenresFavorites(favorites);

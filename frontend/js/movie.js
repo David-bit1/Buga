@@ -60,11 +60,15 @@ const getAuthSession = () => {
     }
 };
 
-const getScopedStorageKey = (baseKey) => {
-    // Replicate profile-scoped key generation locally
+const getScopedStorageKey = (baseKey) => (
+    window.BugaShared?.getProfileStorageKey
+        ? window.BugaShared.getProfileStorageKey(baseKey)
+        : baseKey
+);
+
+const getLegacyScopedStorageKey = (baseKey) => {
     const session = getAuthSession();
     const userScope = session?.user?.id || 'guest';
-    // movie.js does not have profile context, so we use a global scope for the user
     return `${baseKey}:${userScope}:global`;
 };
 
@@ -131,14 +135,28 @@ const normalizeMovie = (movie) => window.BugaShared.normalizeMovie(movie, mediaT
 
 const getMovieFavorites = () => {
     try {
-        return JSON.parse(localStorage.getItem(MOVIE_FAVORITES_KEY) || '[]');
+        const storedFavorites = JSON.parse(localStorage.getItem(MOVIE_FAVORITES_KEY) || '[]');
+        const normalizedFavorites = window.BugaShared?.normalizeIdList?.(storedFavorites) || [];
+        if (normalizedFavorites.length > 0) {
+            return normalizedFavorites;
+        }
+
+        const legacyFavorites = JSON.parse(localStorage.getItem(getLegacyScopedStorageKey(MOVIE_SHARED.STORAGE_KEYS.FAVORITES)) || '[]');
+        const normalizedLegacyFavorites = window.BugaShared?.normalizeIdList?.(legacyFavorites) || [];
+        if (normalizedLegacyFavorites.length > 0) {
+            localStorage.setItem(MOVIE_FAVORITES_KEY, JSON.stringify(normalizedLegacyFavorites));
+            return normalizedLegacyFavorites;
+        }
+
+        return [];
     } catch {
         return [];
     }
 };
 
 const setMovieFavorites = (favorites) => {
-    localStorage.setItem(MOVIE_FAVORITES_KEY, JSON.stringify(favorites));
+    const normalizedFavorites = window.BugaShared?.normalizeIdList?.(favorites) || [];
+    localStorage.setItem(MOVIE_FAVORITES_KEY, JSON.stringify(normalizedFavorites));
 };
 
 const getWatchHistory = () => {
@@ -771,29 +789,30 @@ const handleFavoriteToggle = () => {
     }
 
     const favorites = getMovieFavorites();
-    const index = favorites.indexOf(currentMovie.id);
+    const movieId = String(currentMovie.id);
+    const index = favorites.indexOf(movieId);
 
     if (index > -1) {
         favorites.splice(index, 1);
     } else {
-        favorites.push(currentMovie.id);
+        favorites.push(movieId);
     }
 
     setMovieFavorites(favorites);
     updateFavoriteState();
 
     notifyToast({
-        type: favorites.includes(currentMovie.id) ? 'success' : 'info',
-        title: favorites.includes(currentMovie.id) ? 'Agregada a favoritos' : 'Eliminada de favoritos',
-        message: favorites.includes(currentMovie.id)
+        type: favorites.includes(movieId) ? 'success' : 'info',
+        title: favorites.includes(movieId) ? 'Agregada a favoritos' : 'Eliminada de favoritos',
+        message: favorites.includes(movieId)
             ? `${currentMovie.title} ya está en tu lista.`
             : `${currentMovie.title} salió de favoritos.`,
-        key: `favorite:${currentMovie.id}:${favorites.includes(currentMovie.id) ? 'add' : 'remove'}`
+        key: `favorite:${movieId}:${favorites.includes(movieId) ? 'add' : 'remove'}`
     });
 
     syncPreferenceEvent({
         type: 'favorite',
-        action: favorites.includes(currentMovie.id) ? 'added' : 'removed',
+        action: favorites.includes(movieId) ? 'added' : 'removed',
         movie: currentMovie
     });
 };

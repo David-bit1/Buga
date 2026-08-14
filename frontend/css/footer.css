@@ -1,15 +1,26 @@
 .site-footer {
+    position: relative;
+    overflow: hidden;
     margin-top: clamp(2.5rem, 5vw, 4rem);
-    padding: clamp(2rem, 4vw, 3rem) 0;
+    padding: clamp(1.25rem, 3vw, 2rem) 0 clamp(1.75rem, 4vw, 3rem);
     border-top: 1px solid rgba(255, 255, 255, 0.08);
-    background: linear-gradient(180deg, rgba(5, 2, 10, 0.02), rgba(5, 2, 10, 0.4));
+    background:
+        radial-gradient(circle at top left, rgba(138, 77, 255, 0.12), transparent 28%),
+        radial-gradient(circle at top right, rgba(60, 18, 199, 0.1), transparent 24%),
+        linear-gradient(180deg, rgba(5, 2, 10, 0.02), rgba(5, 2, 10, 0.46));
 }
 
 .site-footer-inner {
     width: min(1240px, calc(100% - 1.2rem));
     margin: 0 auto;
     display: grid;
-    gap: 1.25rem;
+    gap: 1.15rem;
+    padding: 1.35rem 1.2rem;
+    border: 1px solid rgba(138, 77, 255, 0.12);
+    border-radius: 28px;
+    background: rgba(9, 5, 16, 0.62);
+    backdrop-filter: blur(16px);
+    box-shadow: 0 20px 44px rgba(0, 0, 0, 0.22);
 }
 
 .site-footer-brand {
@@ -24,6 +35,15 @@
 .site-footer-title {
     font-size: clamp(1.1rem, 2.4vw, 1.5rem);
     line-height: 1.1;
+}
+
+.site-footer-title {
+    color: rgba(138, 77, 255, 0.92);
+    text-transform: uppercase;
+    letter-spacing: 0.16em;
+    font-size: 0.76rem;
+    font-weight: 800;
+    margin-bottom: 0.35rem;
 }
 
 .site-footer-brand p {

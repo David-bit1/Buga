@@ -232,14 +232,16 @@ const preloadImage = (source) => {
 
 const getHomeFavorites = () => {
     try {
-        return JSON.parse(localStorage.getItem(HOME_SHARED.getProfileStorageKey('Buga-favorites')) || '[]');
+        const storedFavorites = JSON.parse(localStorage.getItem(HOME_SHARED.getProfileStorageKey('Buga-favorites')) || '[]');
+        return HOME_SHARED.normalizeIdList?.(storedFavorites) || [];
     } catch {
         return [];
     }
 };
 
 const setHomeFavorites = (favorites) => {
-    localStorage.setItem(HOME_SHARED.getProfileStorageKey('Buga-favorites'), JSON.stringify(favorites));
+    const normalizedFavorites = HOME_SHARED.normalizeIdList?.(favorites) || [];
+    localStorage.setItem(HOME_SHARED.getProfileStorageKey('Buga-favorites'), JSON.stringify(normalizedFavorites));
 };
 
 const getWatchHistory = () => {
@@ -254,7 +256,7 @@ const setWatchHistory = (entries) => {
     localStorage.setItem(HOME_SHARED.getProfileStorageKey('Buga-watch-history'), JSON.stringify(entries));
 };
 
-const isHomeFavoriteMovie = (movieId) => getHomeFavorites().includes(movieId);
+const isHomeFavoriteMovie = (movieId) => getHomeFavorites().includes(String(movieId));
 
 const getHomeFavoriteIcon = (favorite) => (favorite ? '♥' : '♡');
 
@@ -1290,13 +1292,14 @@ const updateFavoriteButton = (button, movieId) => {
 
 const toggleFavorite = (movieId) => {
     const favorites = getHomeFavorites();
-    const index = favorites.indexOf(movieId);
+    const normalizedMovieId = String(movieId);
+    const index = favorites.indexOf(normalizedMovieId);
     const isRemoving = index >= 0;
 
     if (isRemoving) {
         favorites.splice(index, 1);
     } else {
-        favorites.push(movieId);
+        favorites.push(normalizedMovieId);
     }
 
     setHomeFavorites(favorites);
