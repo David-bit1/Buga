@@ -3,6 +3,7 @@ const { parseServers } = require('../services/serverNormalizer');
 
 const TMDB_API_KEY = process.env.TMDB_API_KEY || 'b24af203b14e23f8c91844baae37cfab';
 const TMDB_BASE_URL = 'https://api.themoviedb.org/3';
+const TMDB_REQUEST_TIMEOUT_MS = 9000;
 
 if (!TMDB_API_KEY || TMDB_API_KEY === 'b24af203b14e23f8c91844baae37cfab') {
   console.error('CRITICAL: TMDB_API_KEY is not configured or is using the default placeholder. TMDb requests will fail.');
@@ -84,6 +85,20 @@ const toInteger = (value, fallback = 0) => {
 const toBoolean = (value) =>
   value === true || value === 'true' || value === 1 || value === '1' || value === 'on';
 
+const requestWithTimeout = async (url, options = {}, timeoutMs = TMDB_REQUEST_TIMEOUT_MS) => {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+
+  try {
+    return await fetch(url, {
+      ...options,
+      signal: controller.signal
+    });
+  } finally {
+    clearTimeout(timeoutId);
+  }
+};
+
 const serializeMovie = (movie) => {
   const releaseYear = movie.release_year || (movie.release_date ? String(movie.release_date).slice(0, 4) : 0);
   const parsedYear = toInteger(String(releaseYear), 0);
@@ -150,7 +165,7 @@ const tmdbFetch = async (path) => {
   url.searchParams.set('language', TMDB_LANGUAGE);
 
   try {
-    const response = await fetch(url);
+    const response = await requestWithTimeout(url, {}, TMDB_REQUEST_TIMEOUT_MS);
 
     if (!response.ok) {
       const errorBody = await response.text().catch(() => 'Could not read error body');
