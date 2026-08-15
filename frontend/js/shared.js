@@ -133,11 +133,15 @@
         const movie = await tmdbFetch(`/movie/${tmdbId}?append_to_response=credits,videos`);
         const credits = movie.credits || {};
         const videos = movie.videos || {};
+        const productionCompanies = Array.isArray(movie.production_companies)
+            ? movie.production_companies.map((company) => company.name).filter(Boolean)
+            : [];
         const trailer = (Array.isArray(videos.results) ? videos.results : [])
             .find((video) => video.site === 'YouTube' && (video.type === 'Trailer' || video.type === 'Teaser'))?.key || '';
         const cast = Array.isArray(credits.cast) ? credits.cast.slice(0, 10).map((person) => person.name).filter(Boolean) : [];
         const director = (Array.isArray(credits.crew) ? credits.crew : [])
             .find((person) => person.job === 'Director')?.name || '';
+        const sourceUrl = `https://www.themoviedb.org/movie/${movie.id}`;
 
         return {
             tmdb_id: Number(movie.id),
@@ -165,7 +169,11 @@
             cast,
             director,
             trailer: trailer ? `https://www.youtube.com/watch?v=${trailer}` : '',
-            popularity: Number(movie.popularity || 0)
+            popularity: Number(movie.popularity || 0),
+            creator_name: productionCompanies[0] || '',
+            rights_holder: productionCompanies.join(', '),
+            source_url: sourceUrl,
+            production_companies: productionCompanies
         };
     };
 
@@ -178,6 +186,12 @@
         const credits = series.credits || {};
         const videos = series.videos || {};
         const ratings = series.content_ratings || {};
+        const productionCompanies = Array.isArray(series.production_companies)
+            ? series.production_companies.map((company) => company.name).filter(Boolean)
+            : [];
+        const networks = Array.isArray(series.networks)
+            ? series.networks.map((network) => network.name).filter(Boolean)
+            : [];
         const firstAirDate = String(series.first_air_date || '').trim();
         const trailer = (Array.isArray(videos.results) ? videos.results : [])
             .find((video) => video.site === 'YouTube' && (video.type === 'Trailer' || video.type === 'Teaser'))?.key || '';
@@ -211,7 +225,12 @@
             cast,
             creator,
             trailer,
-            popularity: Number(series.popularity || 0)
+            popularity: Number(series.popularity || 0),
+            creator_name: creator,
+            rights_holder: [...productionCompanies, ...networks].join(', '),
+            source_url: `https://www.themoviedb.org/tv/${series.id}`,
+            production_companies: productionCompanies,
+            networks
         };
     };
 

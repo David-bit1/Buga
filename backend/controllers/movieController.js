@@ -196,6 +196,9 @@ const buildTmdbMoviePayload = async (tmdbId) => {
 
   const credits = movie.credits || {};
   const videos = movie.videos || {};
+  const productionCompanies = Array.isArray(movie.production_companies)
+    ? movie.production_companies.map((company) => company.name).filter(Boolean)
+    : [];
 
   const genres = Array.isArray(movie.genres)
     ? movie.genres.map((genre) => genre.name).filter(Boolean)
@@ -243,7 +246,11 @@ const buildTmdbMoviePayload = async (tmdbId) => {
     cast,
     director,
     trailer: trailer ? `https://www.youtube.com/watch?v=${trailer}` : '',
-    popularity: Number(movie.popularity || 0)
+    popularity: Number(movie.popularity || 0),
+    creator_name: productionCompanies[0] || '',
+    rights_holder: productionCompanies.join(', '),
+    source_url: `https://www.themoviedb.org/movie/${movie.id}`,
+    production_companies: productionCompanies
   };
 
   console.log('[BUGA TMDB NORMALIZED]', JSON.stringify(payload, null, 2));
