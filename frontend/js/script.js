@@ -1969,7 +1969,6 @@ const bootstrap = async () => {
             refreshFeaturedGrid(searchInput?.value || '');
             renderTrendingMovies();
             renderSeries(seriesMoviesCache);
-            renderSeries(seriesMoviesCache);
         }
     });
 

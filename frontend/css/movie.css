@@ -799,8 +799,15 @@ body.is-leaving .page-transition {
 }
 
 @media (max-width: 1024px) {
+    .movie-hero {
+        min-height: auto;
+        padding: 1.1rem 0 2rem;
+    }
+
     .movie-layout {
         grid-template-columns: minmax(240px, 320px) minmax(0, 1fr);
+        min-height: auto;
+        align-items: start;
     }
 }
 
@@ -816,16 +823,17 @@ body.is-leaving .page-transition {
     .movie-layout {
         grid-template-columns: 1fr;
         min-height: auto;
-        padding: 1rem 0 1.5rem;
+        padding: 0.8rem 0 1.1rem;
+        gap: 1rem;
     }
 
     .movie-poster-frame {
-        max-width: 340px;
+        max-width: 300px;
         margin: 0 auto;
     }
 
     .movie-info {
-        padding: 1rem;
+        padding: 0.9rem;
     }
 
     .movie-facts {
@@ -869,58 +877,51 @@ body.is-leaving .page-transition {
     }
 
     .player-chrome {
-        padding: 0.75rem;
+        padding: 0.6rem;
+        gap: 0.65rem;
     }
 
     .player-controls-top,
     .player-controls-bottom {
-        gap: 0.4rem;
-    }
-
-    .player-controls-top {
-        flex-wrap: wrap;
-    }
-
-    .player-controls-bottom {
-        flex-wrap: wrap;
+        gap: 0.45rem;
     }
 
     .player-control-button {
-        min-width: 44px;
-        min-height: 44px;
-        padding: 0 0.75rem;
+        min-width: 40px;
+        min-height: 40px;
+        padding: 0 0.6rem;
     }
 
     .player-overlay-button {
-        width: 4rem;
-        height: 4rem;
+        width: 3.6rem;
+        height: 3.6rem;
     }
 
     .player-quality {
-        width: 100%;
-        order: 3;
-        margin-top: 0.5rem;
+        width: auto;
+        order: initial;
     }
 
     .volume-control {
-        order: 2;
-        min-width: 100%;
+        order: initial;
+        min-width: min(100%, 220px);
         max-width: none;
     }
 
     .player-time {
-        order: 1;
+        order: initial;
+        flex: 1 1 auto;
     }
 
     .progress-bar {
-        order: 0;
+        order: initial;
         width: 100%;
-        margin: 0.25rem 0;
+        margin: 0;
     }
 
     .player-controls-top {
-        flex-direction: column;
-        align-items: stretch;
+        flex-wrap: wrap;
+        align-items: center;
     }
 
     .movie-loader-card {

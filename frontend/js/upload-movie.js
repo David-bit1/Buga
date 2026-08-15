@@ -442,7 +442,7 @@ const handleTableAction = async (event) => {
     const deleteButton = event.target.closest('[data-delete-movie]');
 
     if (editButton) {
-        const movie = moviesCache.find((item) => item.id === editButton.dataset.editMovie);
+        const movie = moviesCache.find((item) => String(item.id) === editButton.dataset.editMovie);
         if (!movie) {
             return;
         }
@@ -454,7 +454,7 @@ const handleTableAction = async (event) => {
 
     if (deleteButton) {
         const movieId = deleteButton.dataset.deleteMovie;
-        const movie = moviesCache.find((item) => item.id === movieId);
+        const movie = moviesCache.find((item) => String(item.id) === movieId);
         if (!movie) {
             return;
         }

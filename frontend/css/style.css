@@ -1544,6 +1544,7 @@ body.menu-open .site-header {
     left: 0;
     right: 0;
     bottom: 0;
+    z-index: 2;
     display: flex;
     justify-content: space-between;
     gap: 0.5rem;
@@ -1558,6 +1559,7 @@ body.menu-open .site-header {
     position: absolute;
     top: 0.8rem;
     right: 0.8rem;
+    z-index: 3;
     width: 2.15rem;
     height: 2.15rem;
     display: inline-flex;

@@ -201,7 +201,9 @@ const createMovie = async (req, res, next) => {
       featured: Boolean(req.body.featured),
       status: String(req.body.status || 'published'),
       created_by: req.user.id,
-      popularity: tmdbPayload?.popularity || 0,
+      popularity: Number.isFinite(Number(req.body.popularity))
+        ? Number(req.body.popularity)
+        : (tmdbPayload?.popularity || 0),
       content_type: String(req.body.content_type || 'independent').trim(),
       creator_name: String(req.body.creator_name || '').trim(),
       rights_holder: String(req.body.rights_holder || '').trim(),

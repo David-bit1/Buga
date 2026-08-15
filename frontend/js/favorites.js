@@ -7,6 +7,7 @@ const pageLoader = document.getElementById('pageLoader');
 const siteHeader = document.querySelector('.site-header');
 const menuToggle = document.querySelector('.menu-toggle');
 const primaryNav = document.getElementById('primaryNav');
+let favoritesLoadToken = 0;
 
 const formatYear = (releaseDate) => (releaseDate ? String(releaseDate).slice(0, 4) : 'N/A');
 
@@ -161,9 +162,13 @@ const toggleFavorite = (movieId) => {
 };
 
 const loadFavorites = async () => {
+    const loadToken = ++favoritesLoadToken;
     const favoriteIds = getFavoritesPageItems();
 
     if (favoriteIds.length === 0) {
+        if (loadToken === favoritesLoadToken) {
+            setFavoritesPageItems([]);
+        }
         renderEmptyState();
         hidePageLoader();
         return;
@@ -184,18 +189,28 @@ const loadFavorites = async () => {
             .filter((result) => result.status === 'fulfilled' && result.value)
             .map((result) => result.value);
 
+        if (loadToken !== favoritesLoadToken) {
+            return;
+        }
+
         if (movies.length === 0) {
             renderEmptyState();
+            setFavoritesPageItems([]);
             return;
         }
 
         renderMovies(movies);
         setFavoritesPageItems(movies.map((movie) => String(movie.id)));
     } catch (error) {
+        if (loadToken !== favoritesLoadToken) {
+            return;
+        }
         console.warn('Favorites load failed', error);
         renderEmptyState();
     } finally {
-        hidePageLoader();
+        if (loadToken === favoritesLoadToken) {
+            hidePageLoader();
+        }
     }
 };
 

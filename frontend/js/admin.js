@@ -627,12 +627,27 @@ const handleAutoFillFromTmdb = async () => {
 
     try {
         let movie = null;
-        const response = await adminAuthFetch(window.BugaShared?.resolveApiUrl?.(`/api/movies/tmdb/${encodeURIComponent(tmdbId)}`) || `/api/movies/tmdb/${encodeURIComponent(tmdbId)}`);
-        const data = await response.json().catch(() => ({}));
+        const tmdbEndpoints = [
+            window.BugaShared?.resolveApiUrl?.(`/api/admin/movies/tmdb/${encodeURIComponent(tmdbId)}`) || `/api/admin/movies/tmdb/${encodeURIComponent(tmdbId)}`,
+            window.BugaShared?.resolveApiUrl?.(`/api/movies/tmdb/${encodeURIComponent(tmdbId)}`) || `/api/movies/tmdb/${encodeURIComponent(tmdbId)}`
+        ];
 
-        if (response.ok) {
-            movie = data.movie || data;
-        } else {
+        let response = null;
+        let data = {};
+
+        for (const endpoint of tmdbEndpoints) {
+            response = await adminAuthFetch(endpoint);
+            data = await response.json().catch(() => ({}));
+
+            if (response.ok) {
+                movie = data.movie || data;
+                if (movie) {
+                    break;
+                }
+            }
+        }
+
+        if (!movie) {
             console.warn('Backend TMDb lookup failed, trying direct TMDb fallback', data.message || response.status);
         }
 
@@ -667,6 +682,8 @@ const handleAutoFillFromTmdb = async () => {
         if (moviePopularity) moviePopularity.value = movie.popularity || 0;
         if (moviePosterUrl) moviePosterUrl.value = movie.poster_url || '';
         if (movieBannerUrl) movieBannerUrl.value = movie.banner_url || '';
+        if (moviePosterSrcset) moviePosterSrcset.value = movie.poster_srcset || '';
+        if (movieBannerSrcset) movieBannerSrcset.value = movie.banner_srcset || '';
         console.log('[BUGA FORM VALUES AFTER AUTOFILL]', JSON.stringify({
             title: movieTitle?.value || '',
             director: movieDirector?.value || '',

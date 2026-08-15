@@ -1,5 +1,6 @@
 const express = require('express');
 const { protect, requireAdmin } = require('../middleware/authMiddleware');
+const { getMovieByTmdbId } = require('../controllers/movieController');
 const {
   getDashboard,
   listMovies,
@@ -22,6 +23,7 @@ const router = express.Router();
 router.use(protect, requireAdmin);
 
 router.get('/dashboard', getDashboard);
+router.get('/movies/tmdb/:tmdbId', getMovieByTmdbId);
 
 router.route('/movies')
   .get(listMovies)

@@ -803,7 +803,7 @@ const handleSeriesTableAction = async (event) => {
     const deleteButton = event.target.closest('[data-delete-series]');
 
     if (editButton) {
-        const selected = seriesTableState.series.find((item) => item.id === editButton.dataset.editSeries);
+        const selected = seriesTableState.series.find((item) => String(item.id) === editButton.dataset.editSeries);
         if (!selected) {
             return;
         }
@@ -815,7 +815,7 @@ const handleSeriesTableAction = async (event) => {
     }
 
     if (deleteButton) {
-        const selected = seriesTableState.series.find((item) => item.id === deleteButton.dataset.deleteSeries);
+        const selected = seriesTableState.series.find((item) => String(item.id) === deleteButton.dataset.deleteSeries);
         if (!selected) {
             return;
         }
@@ -839,7 +839,7 @@ const handleSeasonTableAction = async (event) => {
     const deleteButton = event.target.closest('[data-delete-season]');
 
     if (editButton) {
-        const selected = seriesTableState.seasons.find((item) => item.id === editButton.dataset.editSeason);
+        const selected = seriesTableState.seasons.find((item) => String(item.id) === editButton.dataset.editSeason);
         if (!selected) {
             return;
         }
@@ -851,7 +851,7 @@ const handleSeasonTableAction = async (event) => {
     }
 
     if (deleteButton) {
-        const selected = seriesTableState.seasons.find((item) => item.id === deleteButton.dataset.deleteSeason);
+        const selected = seriesTableState.seasons.find((item) => String(item.id) === deleteButton.dataset.deleteSeason);
         if (!selected) {
             return;
         }
@@ -876,7 +876,7 @@ const handleEpisodeTableAction = async (event) => {
     const deleteButton = event.target.closest('[data-delete-episode]');
 
     if (editButton) {
-        const selected = seriesTableState.episodes.find((item) => item.id === editButton.dataset.editEpisode);
+        const selected = seriesTableState.episodes.find((item) => String(item.id) === editButton.dataset.editEpisode);
         if (!selected) {
             return;
         }
@@ -888,7 +888,7 @@ const handleEpisodeTableAction = async (event) => {
     }
 
     if (deleteButton) {
-        const selected = seriesTableState.episodes.find((item) => item.id === deleteButton.dataset.deleteEpisode);
+        const selected = seriesTableState.episodes.find((item) => String(item.id) === deleteButton.dataset.deleteEpisode);
         if (!selected) {
             return;
         }
