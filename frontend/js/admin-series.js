@@ -405,16 +405,29 @@ const handleAutoFillSeriesFromTmdb = async () => {
     }
 
     try {
-        const data = await fetchJson(`${SERIES_API}/tmdb/${encodeURIComponent(tmdbId)}`).catch(async (error) => {
-            console.warn('Backend series TMDb lookup failed, trying direct TMDb fallback', error);
-            return window.BugaShared?.buildTmdbSeriesPayload
-                ? { series: await window.BugaShared.buildTmdbSeriesPayload(Number(tmdbId)) }
-                : { series: null };
-        });
-        const series = data.series || data;
+        let series = null;
+        let errorMessage = '';
+
+        if (window.BugaShared?.buildTmdbSeriesPayload) {
+            try {
+                series = await window.BugaShared.buildTmdbSeriesPayload(Number(tmdbId));
+            } catch (error) {
+                console.warn('Direct TMDb series lookup failed', error);
+                errorMessage = error.message || '';
+            }
+        }
+
+        if (!series) {
+            const data = await fetchJson(`${SERIES_API}/tmdb/${encodeURIComponent(tmdbId)}`).catch(async (error) => {
+                console.warn('Backend series TMDb lookup failed', error);
+                return { series: null, message: error.message || '' };
+            });
+            series = data.series || data;
+            errorMessage = data.message || errorMessage;
+        }
 
         if (!series || !(series.tmdb_id || series.id)) {
-            throw new Error(`No se encontró una serie con el ID ${tmdbId}`);
+            throw new Error(errorMessage || `No se encontró una serie con el ID ${tmdbId}`);
         }
 
         seriesTmdbId.value = series.tmdb_id || tmdbId;

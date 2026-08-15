@@ -293,21 +293,31 @@ const autoFillFromTmdb = async () => {
     notify({ type: 'info', title: 'Buscando película...', message: `Consultando TMDb para ID ${tmdbId}` });
 
     try {
-        // Usamos fetchJson para incluir las cabeceras de autenticación
-        const data = await fetchJson(window.BugaShared?.resolveApiUrl?.(`/api/admin/movies/tmdb/${encodeURIComponent(tmdbId)}`) || `/api/admin/movies/tmdb/${encodeURIComponent(tmdbId)}`).catch(async (error) => {
-            console.warn('Backend TMDb lookup failed, trying direct TMDb fallback', error);
-            return window.BugaShared?.buildTmdbMoviePayload
-                ? { movie: await window.BugaShared.buildTmdbMoviePayload(Number(tmdbId)) }
-                : { movie: null };
-        });
+        let movie = null;
+        let errorMessage = '';
 
-        // La API devuelve { movie: ... }
-        const movie = data.movie || data; // Handles both direct object and nested object
+        if (window.BugaShared?.buildTmdbMoviePayload) {
+            try {
+                movie = await window.BugaShared.buildTmdbMoviePayload(Number(tmdbId));
+            } catch (error) {
+                console.warn('Direct TMDb movie lookup failed', error);
+                errorMessage = error.message || '';
+            }
+        }
+
+        if (!movie) {
+            const data = await fetchJson(window.BugaShared?.resolveApiUrl?.(`/api/admin/movies/tmdb/${encodeURIComponent(tmdbId)}`) || `/api/admin/movies/tmdb/${encodeURIComponent(tmdbId)}`).catch(async (error) => {
+                console.warn('Backend TMDb lookup failed, trying public TMDb fallback', error);
+                return { movie: null, message: error.message || '' };
+            });
+            movie = data.movie || data;
+            errorMessage = data.message || errorMessage;
+        }
+
         console.log('[BUGA FORM DATA]', JSON.stringify(movie, null, 2));
 
         if (!movie || !(movie.tmdb_id || movie.id)) {
-            notify({ type: 'error', title: 'Película no encontrada', message: `No se encontró película con ID ${tmdbId} en TMDb.` });
-            return;
+            throw new Error(errorMessage || `No se encontró película con ID ${tmdbId} en TMDb.`);
         }
 
         // Sobrescribimos los campos con los datos de TMDb

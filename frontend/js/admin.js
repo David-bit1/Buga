@@ -627,36 +627,46 @@ const handleAutoFillFromTmdb = async () => {
 
     try {
         let movie = null;
-        const tmdbEndpoints = [
-            window.BugaShared?.resolveApiUrl?.(`/api/admin/movies/tmdb/${encodeURIComponent(tmdbId)}`) || `/api/admin/movies/tmdb/${encodeURIComponent(tmdbId)}`,
-            window.BugaShared?.resolveApiUrl?.(`/api/movies/tmdb/${encodeURIComponent(tmdbId)}`) || `/api/movies/tmdb/${encodeURIComponent(tmdbId)}`
-        ];
+        let errorMessage = '';
 
-        let response = null;
-        let data = {};
-
-        for (const endpoint of tmdbEndpoints) {
-            response = await adminAuthFetch(endpoint);
-            data = await response.json().catch(() => ({}));
-
-            if (response.ok) {
-                movie = data.movie || data;
-                if (movie) {
-                    break;
-                }
+        if (window.BugaShared?.buildTmdbMoviePayload) {
+            try {
+                movie = await window.BugaShared.buildTmdbMoviePayload(Number(tmdbId));
+            } catch (error) {
+                console.warn('Direct TMDb movie lookup failed', error);
+                errorMessage = error.message || '';
             }
         }
 
         if (!movie) {
-            console.warn('Backend TMDb lookup failed, trying direct TMDb fallback', data.message || response.status);
-        }
+            const tmdbEndpoints = [
+                window.BugaShared?.resolveApiUrl?.(`/api/admin/movies/tmdb/${encodeURIComponent(tmdbId)}`) || `/api/admin/movies/tmdb/${encodeURIComponent(tmdbId)}`,
+                window.BugaShared?.resolveApiUrl?.(`/api/movies/tmdb/${encodeURIComponent(tmdbId)}`) || `/api/movies/tmdb/${encodeURIComponent(tmdbId)}`
+            ];
 
-        if (!movie && window.BugaShared?.buildTmdbMoviePayload) {
-            movie = await window.BugaShared.buildTmdbMoviePayload(Number(tmdbId));
+            let response = null;
+            let data = {};
+
+            for (const endpoint of tmdbEndpoints) {
+                response = await adminAuthFetch(endpoint);
+                data = await response.json().catch(() => ({}));
+
+                if (response.ok) {
+                    movie = data.movie || data;
+                    if (movie) {
+                        break;
+                    }
+                }
+            }
+
+            if (!movie) {
+                console.warn('Backend TMDb lookup failed, trying direct TMDb fallback', data.message || response?.status);
+                errorMessage = data.message || errorMessage;
+            }
         }
 
         if (!movie) {
-            throw new Error(data.message || `No se encontró una película con el ID ${tmdbId}`);
+            throw new Error(errorMessage || `No se encontró una película con el ID ${tmdbId}`);
         }
 
         console.log('[BUGA FORM DATA]', JSON.stringify(movie, null, 2));
