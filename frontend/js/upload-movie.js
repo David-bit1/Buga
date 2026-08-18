@@ -8,8 +8,8 @@ const movieTmdbId = document.getElementById('movieTmdbId');
 const movieTitle = document.getElementById('movieTitle');
 const movieDescription = document.getElementById('movieDescription');
 const movieGenres = document.getElementById('movieGenres');
-const movieYear = document.getElementById('movieYear');
-const movieDuration = document.getElementById('movieDuration');
+const movieReleaseYear = document.getElementById('movieReleaseYear');
+const movieRuntime = document.getElementById('movieRuntime');
 const movieStatus = document.getElementById('movieStatus');
 const movieFeatured = document.getElementById('movieFeatured');
 const moviePosterUrl = document.getElementById('moviePosterUrl');
@@ -176,8 +176,8 @@ const fillForm = (movie) => {
     movieDescription.value = movie?.description || movie?.overview || '';
     movieOriginalTitle.value = movie?.original_title || '';
     movieGenres.value = Array.isArray(movie?.genres) ? normalizeListItems(movie.genres).join(', ') : '';
-    movieYear.value = movie?.release_year || movie?.year || '';
-    movieDuration.value = movie?.runtime || movie?.duration || '';
+    movieReleaseYear.value = movie?.release_year || movie?.year || '';
+    movieRuntime.value = movie?.runtime || movie?.duration || '';
     movieCountry.value = movie?.country || '';
     movieLanguage.value = movie?.language || '';
     movieRating.value = movie?.rating || '';
@@ -206,8 +206,8 @@ const fillForm = (movie) => {
         description: movieDescription.value,
         overview: movieOverview.value,
         release_date: movieReleaseDate.value,
-        release_year: movieYear.value,
-        runtime: movieDuration.value,
+        release_year: movieReleaseYear.value,
+        runtime: movieRuntime.value,
         country: movieCountry.value,
         language: movieLanguage.value,
         genres: movieGenres.value,
@@ -229,8 +229,8 @@ const clearForm = () => {
     movieDescription.value = '';
     movieOriginalTitle.value = '';
     movieGenres.value = '';
-    movieYear.value = '';
-    movieDuration.value = '';
+    movieReleaseYear.value = '';
+    movieRuntime.value = '';
     movieCountry.value = '';
     movieLanguage.value = '';
     movieRating.value = '';
@@ -333,8 +333,8 @@ const autoFillFromTmdb = async () => { // This function is now robust and matche
         if (movieOriginalTitle) movieOriginalTitle.value = movie.original_title || '';
         if (movieOverview) movieOverview.value = movie.overview || '';
         if (movieDescription) movieDescription.value = movie.description || movie.overview || '';
-        if (movieYear) movieYear.value = movie.release_year || ''; // Use pre-calculated value
-        if (movieDuration) movieDuration.value = movie.runtime || ''; // Use pre-calculated value
+        if (movieReleaseYear) movieReleaseYear.value = movie.release_year || ''; // Use pre-calculated value
+        if (movieRuntime) movieRuntime.value = movie.runtime || ''; // Use pre-calculated value
         if (movieReleaseDate) movieReleaseDate.value = movie.release_date || '';
         if (movieCountry) movieCountry.value = movie.country || '';
         if (movieLanguage) movieLanguage.value = movie.language || '';
@@ -391,8 +391,8 @@ const handleSubmit = async (event) => {
         banner_url: movieBannerUrl.value.trim(),
         poster_srcset: moviePosterSrcset.value.trim(),
         banner_srcset: movieBannerSrcset.value.trim(),
-        release_year: movieYear.value ? Number(movieYear.value) : 0,
-        runtime: movieDuration.value ? Number(movieDuration.value) : 0,
+        release_year: movieReleaseYear.value ? Number(movieReleaseYear.value) : 0,
+        runtime: movieRuntime.value ? Number(movieRuntime.value) : 0,
         country: movieCountry.value.trim(),
         language: movieLanguage.value.trim(),
         genres: movieGenres.value.trim().split(',').map(g => g.trim()).filter(g => g.length > 0),

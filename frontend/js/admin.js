@@ -393,7 +393,7 @@ const resetGenreForm = () => {
 
 const fillMovieForm = (movie) => {
     movieId.value = movie.id;
-    movieTmdbId.value = movie.tmdbId || '';
+    movieTmdbId.value = movie.tmdbId || movie.tmdb_id || '';
     movieTitle.value = movie.title || '';
     movieOriginalTitle.value = movie.original_title || '';
     movieDescription.value = movie.description || movie.overview || '';
