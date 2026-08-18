@@ -270,7 +270,11 @@ const renderGenresTable = () => {
 };
 
 const fetchJson = async (url, options = {}) => {
-    const response = await adminAuthFetch(url, options);
+    const response = await window.BugaShared.requestWithTimeout(
+        adminAuthFetch(url, options),
+        window.BugaShared.REQUEST_TIMEOUT_MS,
+        `admin ${options.method || 'GET'}`
+    );
 
     if (response.ok) {
         return response.json().catch(() => ({}));
