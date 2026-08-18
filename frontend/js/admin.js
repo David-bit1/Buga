@@ -531,7 +531,7 @@ const handleMovieSubmit = async (event) => {
         popularity: moviePopularity.value ? parseFloat(moviePopularity.value) : 0
     };
 
-    console.log('[BUGA SAVE PAYLOAD]', JSON.stringify(payload, null, 2));
+    console.log("===== PAYLOAD FINAL BUGA =====", JSON.stringify(payload, null, 2));
 
     if (!payload.title && !payload.tmdbId) {
         notify({ type: 'error', title: 'Campos obligatorios', message: 'TMDB ID y título son requeridos.' });
@@ -616,6 +616,7 @@ const handleSettingsSubmit = async (event) => {
 };
 
 const handleAutoFillFromTmdb = async () => {
+    console.log('[BUGA TRACE] handleAutoFillFromTmdb en admin.js INICIADO');
     const tmdbId = movieTmdbId.value.trim();
     if (!tmdbId) {
         notify({ type: 'info', title: 'ID Requerido', message: 'Por favor, introduce un ID de TMDb para buscar.' });
@@ -643,7 +644,7 @@ const handleAutoFillFromTmdb = async () => {
             throw new Error(errorMessage || `No se encontró una película con el ID ${tmdbId}`);
         }
 
-        console.log('[BUGA FORM DATA]', JSON.stringify(movie, null, 2));
+        console.log('===== TMDB PAYLOAD NORMALIZADO (desde shared.js) =====', JSON.stringify(movie, null, 2));
 
         if (movieTitle) movieTitle.value = movie.title || '';
         if (movieOriginalTitle) movieOriginalTitle.value = movie.original_title || '';
@@ -668,7 +669,7 @@ const handleAutoFillFromTmdb = async () => {
         if (movieBannerUrl) movieBannerUrl.value = movie.banner_url || '';
         if (moviePosterSrcset) moviePosterSrcset.value = movie.poster_srcset || '';
         if (movieBannerSrcset) movieBannerSrcset.value = movie.banner_srcset || '';
-        console.log('[BUGA FORM VALUES AFTER AUTOFILL]', JSON.stringify({
+        console.log('===== FORMULARIO DESPUÉS DE AUTOFILL (admin.js) =====', JSON.stringify({
             title: movieTitle?.value || '',
             director: movieDirector?.value || '',
             cast: movieCast?.value || '',
@@ -715,8 +716,20 @@ const handleTableActions = async (event) => {
 
     try {
         if (editMovie) {
-            const movie = moviesCache.find((item) => String(item.id) === editMovie.dataset.editMovie);
-            if (movie) fillMovieForm(movie);
+            const movieIdToEdit = editMovie.dataset.editMovie;
+            showLoader();
+            notify({ type: 'info', message: 'Cargando datos completos de la película...' });
+            // Se fuerza la carga de la película completa para evitar usar el caché incompleto.
+            const data = await fetchJson(`${ADMIN_API}/movies/${movieIdToEdit}`);
+            const movie = data.movie || data;
+            console.log("===== MOVIE RECIBIDA PARA EDITAR =====", JSON.stringify(movie, null, 2));
+            if (movie) {
+                fillMovieForm(movie);
+                movieForm.scrollIntoView({ behavior: 'smooth' });
+            } else {
+                notify({ type: 'error', title: 'Error', message: 'No se pudo cargar la película para editar.' });
+            }
+            hideLoader();
         }
 
         if (deleteMovie) {

@@ -282,6 +282,7 @@ const loadMovies = async () => {
 };
 
 const autoFillFromTmdb = async () => { // This function is now robust and matches the logic in admin.js
+    console.log('[BUGA TRACE] autoFillFromTmdb en upload-movie.js INICIADO');
     const tmdbId = movieTmdbId.value.trim();
     if (!tmdbId) {
         return;
@@ -308,7 +309,7 @@ const autoFillFromTmdb = async () => { // This function is now robust and matche
             throw new Error(errorMessage || `No se encontró película con ID ${tmdbId} en TMDb.`);
         }
 
-        console.log('[BUGA FORM DATA]', JSON.stringify(movie, null, 2));
+        console.log('===== TMDB PAYLOAD NORMALIZADO (desde shared.js) =====', JSON.stringify(movie, null, 2));
 
         // Sobrescribimos los campos con los datos de TMDb
         if (movieTitle) movieTitle.value = movie.title || '';
@@ -393,7 +394,7 @@ const handleSubmit = async (event) => {
         popularity: moviePopularity.value ? parseFloat(moviePopularity.value) : 0
     };
 
-    console.log('[BUGA SAVE PAYLOAD]', JSON.stringify(payload, null, 2));
+    console.log("===== PAYLOAD FINAL BUGA =====", JSON.stringify(payload, null, 2));
 
     if (!payload.title) {
         notify({ type: 'error', title: 'Título obligatorio', message: 'Ingresa un título o usa el ID de TMDb.' });
@@ -437,12 +438,21 @@ const handleTableAction = async (event) => {
     const deleteButton = event.target.closest('[data-delete-movie]');
 
     if (editButton) {
-        const movie = moviesCache.find((item) => String(item.id) === editButton.dataset.editMovie);
-        if (!movie) {
-            return;
-        }
+        const movieIdToEdit = editButton.dataset.editMovie;
+        showLoader();
+        notify({ type: 'info', message: 'Cargando datos completos de la película...' });
+        // Se fuerza la carga de la película completa para evitar usar el caché incompleto.
+        const data = await fetchJson(`${ADMIN_API}/${movieIdToEdit}`);
+        const movie = data.movie || data;
+        console.log("===== MOVIE RECIBIDA PARA EDITAR =====", JSON.stringify(movie, null, 2));
 
-        fillForm(movie);
+        if (movie) {
+            fillForm(movie);
+        } else {
+            notify({ type: 'error', title: 'Error', message: 'No se pudo cargar la película para editar.' });
+        }
+        hideLoader();
+
         window.scrollTo({ top: 0, behavior: 'smooth' });
         return;
     }

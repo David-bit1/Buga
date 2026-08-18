@@ -131,6 +131,7 @@
         }
 
         const movie = await tmdbFetch(`/movie/${tmdbId}?append_to_response=credits,videos`);
+        console.log('===== TMDB RAW =====', JSON.stringify(movie, null, 2));
         const credits = movie.credits || {};
         const videos = movie.videos || {};
         const productionCompanies = Array.isArray(movie.production_companies)
