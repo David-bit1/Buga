@@ -543,7 +543,7 @@ const handleMovieSubmit = async (event) => {
         creator_name: movieCreatorName.value.trim(),
         rights_holder: movieRightsHolder.value.trim(),
         license_info: movieLicenseInfo.value.trim(),
-        source_url: movieSourceUrl.value.trim()
+        source_url: movieSourceUrl.value.trim(),
         popularity: moviePopularity.value ? parseFloat(moviePopularity.value) : 0
     };
 
