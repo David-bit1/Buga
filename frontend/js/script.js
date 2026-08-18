@@ -512,7 +512,7 @@ const createCard = (movie) => {
             ${createCardOverlayLink(movie.id, mediaType, movie.title)}
             ${createMovieCardMedia(movie)}
             <div class="movie-card-body">
-                <p class="movie-card-kicker">${genreLabel} • ${movie.year}</p>
+                <p class="movie-card-kicker">${escapeText(genreLabel)} • ${escapeText(movie.year)}</p>
                 <h3>${movie.title}</h3>
                 <p>${shortenText(movie.description, 110)}</p>
                 <div class="movie-card-actions">
@@ -526,13 +526,13 @@ const createCard = (movie) => {
 };
 
 const createSeriesCard = (series) => {
-    const genreLabel = series.genres?.[0]?.name || 'Serie';
+    const genreLabel = series.genres?.[0]?.name || 'Serie'; // Keep
     const favorite = isHomeFavoriteMovie(series.id);
 
     return `
         <article class="movie-card series-card" data-movie-id="${series.id}" data-media-type="tv" tabindex="0" role="link" aria-label="Abrir ${series.title}">
             ${createCardOverlayLink(series.id, 'tv', series.title)}
-            ${createMovieCardMedia(series, 'Serie')}
+            ${createMovieCardMedia(series, 'Serie')} 
             <div class="movie-card-body">
                 <p class="movie-card-kicker">${genreLabel} • ${series.year}</p>
                 <h3>${series.title}</h3>
@@ -694,7 +694,7 @@ const openTrailerPreview = async (card) => {
         return;
     }
 
-    const movieId = Number(card.dataset.movieId);
+    const movieId = Number(card.dataset.tmdbId || card.dataset.movieId);
     const mediaType = card.dataset.mediaType || 'movie';
     if (Number.isNaN(movieId)) {
         return;
@@ -1425,6 +1425,9 @@ const loadFeaturedMovies = async (options = {}) => {
         const movies = (Array.isArray(data.movies) ? data.movies : []).map(mapMovie);
 
         if (movies.length === 0 && !append) {
+            if (moviesGrid) {
+                moviesGrid.innerHTML = '<p class="movie-error">No se pudieron cargar las películas.</p>';
+            }
             moviesGrid.innerHTML = '<p class="movie-error">No se pudieron cargar las películas.</p>';
             featuredMoviesHasMore = false;
             return;
@@ -1432,7 +1435,9 @@ const loadFeaturedMovies = async (options = {}) => {
 
         if (!append) {
             featuredMoviesCache = movies;
-            moviesGrid.innerHTML = movies.map(createCard).join('');
+            if (moviesGrid) {
+                moviesGrid.innerHTML = movies.map(createCard).join('');
+            }
         } else {
             featuredMoviesCache = [...featuredMoviesCache, ...movies];
             moviesGrid.innerHTML += movies.map(createCard).join('');

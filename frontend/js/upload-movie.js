@@ -382,14 +382,14 @@ const handleSubmit = async (event) => {
 
 
     const payload = {
-        tmdbId: movieTmdbId.value.trim() ? Number(movieTmdbId.value) : null,
+        tmdbId: Number.isNaN(parseInt(movieTmdbId.value, 10)) ? null : parseInt(movieTmdbId.value, 10),
         title: movieTitle.value.trim(),
         original_title: movieOriginalTitle.value.trim(),
         description: movieDescription.value.trim(),
         overview: movieOverview.value.trim(),
         poster_url: moviePosterUrl.value.trim(),
         banner_url: movieBannerUrl.value.trim(),
-        poster_srcset: moviePosterSrcset.value.trim(),
+        poster_srcset: moviePosterSrcset.value.trim(), // Keep
         banner_srcset: movieBannerSrcset.value.trim(),
         release_year: movieReleaseYear.value ? Number(movieReleaseYear.value) : 0,
         runtime: movieRuntime.value ? Number(movieRuntime.value) : 0,

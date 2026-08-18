@@ -518,13 +518,13 @@ const handleMovieSubmit = async (event) => {
     });
 
     const payload = {
-        tmdbId: movieTmdbId.value ? Number(movieTmdbId.value) : null,
+        tmdbId: Number.isNaN(parseInt(movieTmdbId.value, 10)) ? null : parseInt(movieTmdbId.value, 10),
         title: movieTitle.value.trim(),
         original_title: movieOriginalTitle.value.trim(),
         description: movieDescription.value.trim(),
         overview: movieOverview.value.trim(),
         release_date: movieReleaseDate.value || '',
-        poster_url: moviePosterUrl.value.trim(),
+        poster_url: moviePosterUrl.value.trim(), // Keep
         banner_url: movieBannerUrl.value.trim(),
         poster_srcset: moviePosterSrcset.value.trim(),
         banner_srcset: movieBannerSrcset.value.trim(),
@@ -543,7 +543,7 @@ const handleMovieSubmit = async (event) => {
         creator_name: movieCreatorName.value.trim(),
         rights_holder: movieRightsHolder.value.trim(),
         license_info: movieLicenseInfo.value.trim(),
-        source_url: movieSourceUrl.value.trim(),
+        source_url: movieSourceUrl.value.trim()
         popularity: moviePopularity.value ? parseFloat(moviePopularity.value) : 0
     };
 

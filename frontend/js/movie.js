@@ -10,6 +10,13 @@ const movieDescription = document.getElementById('movieDescription');
 const movieGenre = document.getElementById('movieGenre');
 const movieYear = document.getElementById('movieYear');
 const movieRuntime = document.getElementById('movieRuntime');
+const movieDirector = document.getElementById('movieDirector');
+const movieCast = document.getElementById('movieCast');
+const movieCountry = document.getElementById('movieCountry');
+const movieLanguage = document.getElementById('movieLanguage');
+const movieRating = document.getElementById('movieRating');
+const movieOriginalTitle = document.getElementById('movieOriginalTitle');
+const moviePopularity = document.getElementById('moviePopularity');
 const favoriteButton = document.getElementById('favoriteButton');
 const playButton = document.getElementById('playButton');
 const backLink = document.querySelector('.movie-back-link');
@@ -764,6 +771,14 @@ const applyMovie = (movie) => {
     movieYear.textContent = year;
     movieRuntime.textContent = runtimeLabel;
     movieGenre.textContent = genres;
+    if (movieDirector) movieDirector.textContent = movie.director || 'No disponible';
+    if (movieCast) movieCast.textContent = Array.isArray(movie.cast) && movie.cast.length > 0 ? movie.cast.join(', ') : 'No disponible';
+    if (movieCountry) movieCountry.textContent = movie.country || 'No disponible';
+    if (movieLanguage) movieLanguage.textContent = movie.language || 'No disponible';
+    if (movieRating) movieRating.textContent = movie.rating ? `★ ${movie.rating}` : 'N/A';
+    if (moviePopularity) moviePopularity.textContent = movie.popularity || 'N/A';
+    if (movieOriginalTitle) movieOriginalTitle.textContent = movie.original_title || movie.title;
+
 
     updateMeta([year, runtimeLabel, genres.split(' • ')[0] || 'Cine']);
     updateFavoriteState();
