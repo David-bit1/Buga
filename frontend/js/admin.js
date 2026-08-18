@@ -628,41 +628,15 @@ const handleAutoFillFromTmdb = async () => {
     try {
         let movie = null;
         let errorMessage = '';
-
-        if (window.BugaShared?.buildTmdbMoviePayload) {
-            try {
-                movie = await window.BugaShared.buildTmdbMoviePayload(Number(tmdbId));
-            } catch (error) {
-                console.warn('Direct TMDb movie lookup failed', error);
-                errorMessage = error.message || '';
-            }
-        }
-
-        if (!movie) {
-            const tmdbEndpoints = [
-                window.BugaShared?.resolveApiUrl?.(`/api/admin/movies/tmdb/${encodeURIComponent(tmdbId)}`) || `/api/admin/movies/tmdb/${encodeURIComponent(tmdbId)}`,
-                window.BugaShared?.resolveApiUrl?.(`/api/movies/tmdb/${encodeURIComponent(tmdbId)}`) || `/api/movies/tmdb/${encodeURIComponent(tmdbId)}`
-            ];
-
-            let response = null;
-            let data = {};
-
-            for (const endpoint of tmdbEndpoints) {
-                response = await adminAuthFetch(endpoint);
-                data = await response.json().catch(() => ({}));
-
-                if (response.ok) {
-                    movie = data.movie || data;
-                    if (movie) {
-                        break;
-                    }
-                }
-            }
-
-            if (!movie) {
-                console.warn('Backend TMDb lookup failed, trying direct TMDb fallback', data.message || response?.status);
-                errorMessage = data.message || errorMessage;
-            }
+ 
+        // Forzamos el uso del constructor de payload del cliente, que es más completo
+        // y evitamos los endpoints del backend que devuelven datos parciales.
+        try {
+            movie = await window.BugaShared.buildTmdbMoviePayload(Number(tmdbId));
+        } catch (error) {
+            console.error('Error fetching directly from TMDb via buildTmdbMoviePayload', error);
+            errorMessage = error.message || 'No se pudo contactar con TMDb.';
+            // No continuamos si la fuente principal de datos falla.
         }
 
         if (!movie) {
@@ -675,7 +649,7 @@ const handleAutoFillFromTmdb = async () => {
         if (movieOriginalTitle) movieOriginalTitle.value = movie.original_title || '';
         if (movieOverview) movieOverview.value = movie.overview || '';
         if (movieDescription) movieDescription.value = movie.description || movie.overview || '';
-        if (movieReleaseYear) movieReleaseYear.value = movie.release_date ? movie.release_date.substring(0, 4) : '';
+        if (movieReleaseYear) movieReleaseYear.value = movie.release_year || '';
         if (movieReleaseDate) movieReleaseDate.value = movie.release_date || '';
         if (movieRuntime) movieRuntime.value = movie.runtime || '';
         if (movieCountry) movieCountry.value = movie.country || '';

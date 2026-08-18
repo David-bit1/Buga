@@ -281,7 +281,7 @@ const loadMovies = async () => {
     }
 };
 
-const autoFillFromTmdb = async () => {
+const autoFillFromTmdb = async () => { // This function is now robust and matches the logic in admin.js
     const tmdbId = movieTmdbId.value.trim();
     if (!tmdbId) {
         return;
@@ -289,44 +289,34 @@ const autoFillFromTmdb = async () => {
 
     movieSubmit.disabled = true;
     movieSubmit.textContent = 'Buscando...';
-
     notify({ type: 'info', title: 'Buscando película...', message: `Consultando TMDb para ID ${tmdbId}` });
 
     try {
         let movie = null;
         let errorMessage = '';
 
-        if (window.BugaShared?.buildTmdbMoviePayload) {
-            try {
-                movie = await window.BugaShared.buildTmdbMoviePayload(Number(tmdbId));
-            } catch (error) {
-                console.warn('Direct TMDb movie lookup failed', error);
-                errorMessage = error.message || '';
-            }
+        // Forzamos el uso del constructor de payload del cliente, que es más completo
+        // y evitamos los endpoints del backend que devuelven datos parciales.
+        try {
+            movie = await window.BugaShared.buildTmdbMoviePayload(Number(tmdbId));
+        } catch (error) {
+            console.error('Error fetching directly from TMDb via buildTmdbMoviePayload', error);
+            errorMessage = error.message || 'No se pudo contactar con TMDb.';
         }
 
         if (!movie) {
-            const data = await fetchJson(window.BugaShared?.resolveApiUrl?.(`/api/admin/movies/tmdb/${encodeURIComponent(tmdbId)}`) || `/api/admin/movies/tmdb/${encodeURIComponent(tmdbId)}`).catch(async (error) => {
-                console.warn('Backend TMDb lookup failed, trying public TMDb fallback', error);
-                return { movie: null, message: error.message || '' };
-            });
-            movie = data.movie || data;
-            errorMessage = data.message || errorMessage;
+            throw new Error(errorMessage || `No se encontró película con ID ${tmdbId} en TMDb.`);
         }
 
         console.log('[BUGA FORM DATA]', JSON.stringify(movie, null, 2));
-
-        if (!movie || !(movie.tmdb_id || movie.id)) {
-            throw new Error(errorMessage || `No se encontró película con ID ${tmdbId} en TMDb.`);
-        }
 
         // Sobrescribimos los campos con los datos de TMDb
         if (movieTitle) movieTitle.value = movie.title || '';
         if (movieOriginalTitle) movieOriginalTitle.value = movie.original_title || '';
         if (movieOverview) movieOverview.value = movie.overview || '';
         if (movieDescription) movieDescription.value = movie.description || movie.overview || '';
-        if (movieYear) movieYear.value = movie.release_year || '';
-        if (movieDuration) movieDuration.value = movie.runtime || '';
+        if (movieYear) movieYear.value = movie.release_year || ''; // Use pre-calculated value
+        if (movieDuration) movieDuration.value = movie.runtime || ''; // Use pre-calculated value
         if (movieReleaseDate) movieReleaseDate.value = movie.release_date || '';
         if (movieCountry) movieCountry.value = movie.country || '';
         if (movieLanguage) movieLanguage.value = movie.language || '';
@@ -334,20 +324,15 @@ const autoFillFromTmdb = async () => {
         if (movieCast) movieCast.value = Array.isArray(movie.cast) ? normalizeListItems(movie.cast).join(', ') : '';
         if (movieDirector) movieDirector.value = movie.director || '';
         if (movieTrailer) movieTrailer.value = movie.trailer || '';
-        if (moviePopularity) moviePopularity.value = movie.popularity || '';
+        if (moviePopularity) moviePopularity.value = movie.popularity || 0;
         if (moviePosterUrl) moviePosterUrl.value = movie.poster_url || '';
         if (movieBannerUrl) movieBannerUrl.value = movie.banner_url || '';
         if (moviePosterSrcset) moviePosterSrcset.value = movie.poster_srcset || '';
         if (movieBannerSrcset) movieBannerSrcset.value = movie.banner_srcset || '';
-        if (movieContentType) movieContentType.value = movie.content_type || 'independent';
-        if (movieCreatorName) movieCreatorName.value = movie.creator_name || '';
-        if (movieRightsHolder) movieRightsHolder.value = movie.rights_holder || '';
-        if (movieLicenseInfo) movieLicenseInfo.value = movie.license_info || '';
-        if (movieSourceUrl) movieSourceUrl.value = movie.source_url || '';
         if (movieGenres && Array.isArray(movie.genres)) movieGenres.value = normalizeListItems(movie.genres).join(', ');
 
         notify({
-            type: 'info',
+            type: 'success',
             title: 'Película encontrada',
             message: movie.title || 'La información se completó automáticamente.'
         });
