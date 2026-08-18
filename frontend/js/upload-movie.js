@@ -462,20 +462,23 @@ const handleTableAction = async (event) => {
     if (editButton) {
         const movieIdToEdit = editButton.dataset.editMovie;
         showLoader();
-        notify({ type: 'info', message: 'Cargando datos completos de la película...' });
-        // Se fuerza la carga de la película completa para evitar usar el caché incompleto.
-        const data = await fetchJson(`${ADMIN_API}/${movieIdToEdit}`);
-        const movie = data.movie || data;
-        console.log("===== MOVIE RECIBIDA PARA EDITAR =====", JSON.stringify(movie, null, 2));
+        try {
+            notify({ type: 'info', message: 'Cargando datos completos de la película...' });
+            const data = await fetchJson(`${ADMIN_API}/${movieIdToEdit}`);
+            const movie = data.movie || data;
+            console.log("===== MOVIE RECIBIDA PARA EDITAR =====", JSON.stringify(movie, null, 2));
 
-        if (movie) {
-            fillForm(movie);
-        } else {
-            notify({ type: 'error', title: 'Error', message: 'No se pudo cargar la película para editar.' });
+            if (movie) {
+                fillForm(movie);
+            } else {
+                notify({ type: 'error', title: 'Error', message: 'No se pudo cargar la película para editar.' });
+            }
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        } catch (error) {
+            notify({ type: 'error', title: 'No se pudo cargar', message: error.message || 'Intenta nuevamente.' });
+        } finally {
+            hideLoader();
         }
-        hideLoader();
-
-        window.scrollTo({ top: 0, behavior: 'smooth' });
         return;
     }
 
@@ -490,12 +493,15 @@ const handleTableAction = async (event) => {
             return;
         }
 
+        showLoader();
         try {
             await fetchJson(`${ADMIN_API}/${movieId}`, { method: 'DELETE' });
             notify({ type: 'success', title: 'Película eliminada', message: movie.title });
             await loadMovies();
         } catch (error) {
             notify({ type: 'error', title: 'No se pudo eliminar', message: error.message || 'Intenta nuevamente.' });
+        } finally {
+            hideLoader();
         }
     }
 };

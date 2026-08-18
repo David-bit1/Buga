@@ -735,13 +735,12 @@ const handleTableActions = async (event) => {
     const deleteUser = event.target.closest('[data-delete-user]');
     const editGenre = event.target.closest('[data-edit-genre]');
     const deleteGenre = event.target.closest('[data-delete-genre]');
-
-    try {
-        if (editMovie) {
-            const movieIdToEdit = editMovie.dataset.editMovie;
-            showLoader();
+    
+    if (editMovie) {
+        const movieIdToEdit = editMovie.dataset.editMovie;
+        showLoader();
+        try {
             notify({ type: 'info', message: 'Cargando datos completos de la película...' });
-            // Se fuerza la carga de la película completa para evitar usar el caché incompleto.
             const data = await fetchJson(`${ADMIN_API}/movies/${movieIdToEdit}`);
             const movie = data.movie || data;
             console.log("===== MOVIE RECIBIDA PARA EDITAR =====", JSON.stringify(movie, null, 2));
@@ -751,17 +750,30 @@ const handleTableActions = async (event) => {
             } else {
                 notify({ type: 'error', title: 'Error', message: 'No se pudo cargar la película para editar.' });
             }
+        } catch (error) {
+            notify({ type: 'error', title: 'No se pudo cargar', message: error.message || 'Intenta nuevamente.' });
+        } finally {
             hideLoader();
         }
+    }
 
-        if (deleteMovie) {
+    if (deleteMovie) {
+        showLoader();
+        try {
             await fetchJson(`${ADMIN_API}/movies/${deleteMovie.dataset.deleteMovie}`, { method: 'DELETE' });
             notify({ type: 'success', title: 'Película eliminada', message: 'Se quitó del catálogo.' });
             await loadMovies();
             await loadDashboard();
+        } catch (error) {
+            notify({ type: 'error', title: 'Operación fallida', message: error.message || 'Revisa tu conexión.' });
+        } finally {
+            hideLoader();
         }
+    }
 
-        if (saveUser) {
+    if (saveUser) {
+        showLoader();
+        try {
             const userId = saveUser.dataset.saveUser;
             const roleSelect = document.querySelector(`[data-user-role="${userId}"]`);
             const role = roleSelect?.value || 'user';
@@ -772,31 +784,48 @@ const handleTableActions = async (event) => {
             notify({ type: 'success', title: 'Usuario actualizado', message: 'El rol se guardó correctamente.' });
             await loadUsers();
             await loadDashboard();
+        } catch (error) {
+            notify({ type: 'error', title: 'Operación fallida', message: error.message || 'Revisa tu conexión.' });
+        } finally {
+            hideLoader();
         }
+    }
 
-        if (deleteUser) {
+    if (deleteUser) {
+        showLoader();
+        try {
             if (!window.confirm('¿Eliminar este usuario?')) {
+                hideLoader();
                 return;
             }
             await fetchJson(`${ADMIN_API}/users/${deleteUser.dataset.deleteUser}`, { method: 'DELETE' });
             notify({ type: 'success', title: 'Usuario eliminado', message: 'Se retiró del sistema.' });
             await loadUsers();
             await loadDashboard();
+        } catch (error) {
+            notify({ type: 'error', title: 'Operación fallida', message: error.message || 'Revisa tu conexión.' });
+        } finally {
+            hideLoader();
         }
+    }
 
-        if (editGenre) {
-            const genre = genresCache.find((item) => String(item.id) === editGenre.dataset.editGenre);
-            if (genre) fillGenreForm(genre);
-        }
+    if (editGenre) {
+        const genre = genresCache.find((item) => String(item.id) === editGenre.dataset.editGenre);
+        if (genre) fillGenreForm(genre);
+    }
 
-        if (deleteGenre) {
+    if (deleteGenre) {
+        showLoader();
+        try {
             await fetchJson(`${ADMIN_API}/genres/${deleteGenre.dataset.deleteGenre}`, { method: 'DELETE' });
             notify({ type: 'success', title: 'Género eliminado', message: 'Se retiró del catálogo.' });
             await loadGenres();
             await loadDashboard();
+        } catch (error) {
+            notify({ type: 'error', title: 'Operación fallida', message: error.message || 'Revisa tu conexión.' });
+        } finally {
+            hideLoader();
         }
-    } catch (error) {
-        notify({ type: 'error', title: 'Operación fallida', message: error.message || 'Revisa tu conexión.' });
     }
 };
 
