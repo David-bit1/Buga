@@ -271,13 +271,29 @@ const renderGenresTable = () => {
 
 const fetchJson = async (url, options = {}) => {
     const response = await adminAuthFetch(url, options);
-    const data = await response.json().catch(() => ({}));
-    if (!response.ok) {
-        const error = new Error(data.message || 'La operación no pudo completarse');
-        error.status = response.status;
-        throw error;
+
+    if (response.ok) {
+        return response.json().catch(() => ({}));
     }
-    return data;
+
+    const responseText = await response.text().catch(() => 'No se pudo leer el cuerpo de la respuesta.');
+    console.error("===== ERROR DE API BUGA =====", {
+        status: response.status,
+        statusText: response.statusText,
+        url: response.url,
+        body: responseText,
+    });
+
+    let errorData = {};
+    try {
+        errorData = JSON.parse(responseText);
+    } catch (e) {
+        errorData.message = responseText.trim() || 'Error sin mensaje detallado.';
+    }
+
+    const error = new Error(errorData.message || 'La operación no pudo completarse');
+    error.status = response.status;
+    throw error;
 };
 
 const loadDashboard = async () => {
@@ -533,19 +549,21 @@ const handleMovieSubmit = async (event) => {
 
     console.log("===== PAYLOAD FINAL BUGA =====", JSON.stringify(payload, null, 2));
 
-    if (!payload.title && !payload.tmdbId) {
-        notify({ type: 'error', title: 'Campos obligatorios', message: 'TMDB ID y título son requeridos.' });
-        return;
-    }
-
-    if (servers.length === 0) {
-        notify({ type: 'error', title: 'Sin servidores', message: 'Agrega al menos un servidor de reproducción.' });
-        return;
-    }
-
     try {
         const isEditing = Boolean(movieId.value);
-        await fetchJson(`${ADMIN_API}/movies${isEditing ? `/${movieId.value}` : ''}`, {
+        const endpoint = `${ADMIN_API}/movies${isEditing ? `/${movieId.value}` : ''}`;
+        const method = isEditing ? 'PUT' : 'POST';
+
+        console.log("===== SAVE MOVIE =====");
+        console.log("METHOD:", method);
+        console.log("URL:", endpoint);
+
+        if (!payload.title && !payload.tmdbId) {
+            notify({ type: 'error', title: 'Campos obligatorios', message: 'TMDB ID y título son requeridos.' });
+            return;
+        }
+
+        await fetchJson(endpoint, {
             method: isEditing ? 'PUT' : 'POST',
             body: JSON.stringify(payload)
         });

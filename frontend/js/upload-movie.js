@@ -100,11 +100,28 @@ const fetchJson = async (url, options = {}) => {
         }
     }), UPLOAD_SHARED.REQUEST_TIMEOUT_MS, `upload movies ${options.method || 'GET'}`);
 
-    const data = await response.json().catch(() => ({}));
-    if (!response.ok) {
-        throw new Error(data.message || 'La operación no pudo completarse');
+    if (response.ok) {
+        return response.json().catch(() => ({}));
     }
-    return data;
+
+    const responseText = await response.text().catch(() => 'No se pudo leer el cuerpo de la respuesta.');
+    console.error("===== ERROR DE API BUGA (UPLOAD) =====", {
+        status: response.status,
+        statusText: response.statusText,
+        url: response.url,
+        body: responseText,
+    });
+
+    let errorData = {};
+    try {
+        errorData = JSON.parse(responseText);
+    } catch (e) {
+        errorData.message = responseText.trim() || 'Error sin mensaje detallado.';
+    }
+
+    const error = new Error(errorData.message || 'La operación no pudo completarse');
+    error.status = response.status;
+    throw error;
 };
 
 const createServerRowHTML = (server = {}) => {
@@ -413,6 +430,11 @@ const handleSubmit = async (event) => {
         const isEditing = Boolean(movieIdInput.value);
         const endpoint = isEditing ? `${ADMIN_API}/${movieIdInput.value}` : ADMIN_API;
         const method = isEditing ? 'PUT' : 'POST';
+
+        console.log("===== SAVE MOVIE (UPLOAD) =====");
+        console.log("METHOD:", method);
+        console.log("URL:", endpoint);
+
         await fetchJson(endpoint, {
             method,
             body: JSON.stringify(payload)
