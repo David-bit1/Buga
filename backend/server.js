@@ -52,10 +52,25 @@ app.use('/api/recommendations', protect, recommendationRoutes);
 const frontendPath = path.join(__dirname, '../frontend');
 app.use(express.static(frontendPath));
 
-// Error Handling Middleware (simple version)
+// Error Handling Middleware
 app.use((err, req, res, next) => {
-  console.error(err.stack);
-  res.status(500).send('Something broke!');
+  console.error('❌ Server Error:', {
+    message: err.message,
+    code: err.code,
+    details: err.details,
+    hint: err.hint,
+    stack: process.env.NODE_ENV === 'production' ? undefined : err.stack
+  });
+  
+  const status = err.status || err.statusCode || 500;
+  const message = process.env.NODE_ENV === 'production' 
+    ? 'Error interno del servidor' 
+    : (err.message || 'Something broke!');
+    
+  res.status(status).json({ 
+    message,
+    ...(process.env.NODE_ENV !== 'production' && { code: err.code, details: err.details })
+  });
 });
 
 app.listen(PORT, () => {

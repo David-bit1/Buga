@@ -22,9 +22,14 @@ const applyFilters = (query, filters = []) => {
   return nextQuery;
 };
 
-const throwIfError = (error) => {
+const throwIfError = (error, context = '') => {
   if (error) {
-    throw error;
+    const message = error.message || error.details || error.hint || JSON.stringify(error);
+    const err = new Error(`Supabase error${context ? ` (${context})` : ''}: ${message}`);
+    err.code = error.code;
+    err.details = error.details;
+    err.hint = error.hint;
+    throw err;
   }
 };
 
@@ -50,7 +55,7 @@ const selectMany = async (table, {
   }
 
   const { data, error } = await query;
-  throwIfError(error);
+  throwIfError(error, `selectMany ${table}`);
   if (process.env.NODE_ENV !== 'production') {
     console.log(`AUDIT selectMany [${table}] returned ${data?.length || 0} rows`, JSON.stringify(data, null, 2));
   }
@@ -65,14 +70,14 @@ const selectOne = async (table, options = {}) => {
 const countRows = async (table, filters = []) => {
   let query = applyFilters(supabase.from(table).select('*', { count: 'exact', head: true }), filters);
   const { count, error } = await query;
-  throwIfError(error);
+  throwIfError(error, `countRows ${table}`);
   return Number(count || 0);
 };
 
 const insertOne = async (table, payload, select = '*') => {
   console.log(`AUDIT insertOne [${table}] payload:`, JSON.stringify(payload, null, 2));
   const { data, error } = await supabase.from(table).insert(payload).select(select).single();
-  throwIfError(error);
+  throwIfError(error, `insertOne ${table}`);
   console.log(`AUDIT insertOne [${table}] result:`, JSON.stringify(data, null, 2));
   return data;
 };
@@ -80,20 +85,20 @@ const insertOne = async (table, payload, select = '*') => {
 const updateRows = async (table, filters, payload, select = '*') => {
   let query = applyFilters(supabase.from(table).update(payload).select(select), filters);
   const { data, error } = await query;
-  throwIfError(error);
+  throwIfError(error, `updateRows ${table}`);
   return data || [];
 };
 
 const deleteRows = async (table, filters, select = '*') => {
   let query = applyFilters(supabase.from(table).delete().select(select), filters);
   const { data, error } = await query;
-  throwIfError(error);
+  throwIfError(error, `deleteRows ${table}`);
   return data || [];
 };
 
 const upsertOne = async (table, payload, options = {}, select = '*') => {
   const { data, error } = await supabase.from(table).upsert(payload, options).select(select).single();
-  throwIfError(error);
+  throwIfError(error, `upsertOne ${table}`);
   return data;
 };
 
