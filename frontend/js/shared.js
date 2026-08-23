@@ -15,7 +15,7 @@
         REQUEST_TIMEOUT_MS: 9000,
         TOAST_DURATION: 4200,
         TOAST_STACK_LIMIT: 4,
-        STORAGE_KEYS: { // Renamed from 'ultrapelis' to 'Buga'
+        STORAGE_KEYS: { // Nombre actualizado de 'ultrapelis' a 'Buga'
             AUTH: 'Buga-auth',
             ACTIVE_PROFILE: 'Buga-active-profile',
             TOAST_FLASH: 'Buga-toast-flash',

@@ -93,7 +93,8 @@ const syncToastStack = () => {
     }
 };
 
-const showBugaToast = (options = {}) => { // Renamed from showToast to avoid conflict
+    const showBugaToast = (options = {}) => { // Actualizado desde showToast para evitar conflictos
+
     const type = ['success', 'error', 'info'].includes(options.type) ? options.type : 'info';
     const title = options.title || toastTitles[type];
     const message = options.message || '';
