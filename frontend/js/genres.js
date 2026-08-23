@@ -60,7 +60,7 @@ const hidePageLoader = () => {
 };
 
 const fetchMoviesFromApi = async () => {
-    const response = await fetch('/api/movies');
+    const response = await fetch(GENRES_SHARED.resolveApiUrl('/api/movies'));
     if (!response.ok) {
         throw new Error(`API responded with ${response.status}`);
     }

@@ -307,7 +307,7 @@ const createCardOverlayLink = (movieId, mediaType = 'movie', title = '') => `
 
 const getMediaDetails = async (mediaType, mediaId) => {
     const type = mediaType === 'tv' ? 'tv' : 'movie';
-    const response = await HOME_SHARED.requestWithTimeout(fetch(`/api/movies/tmdb/${mediaId}?type=${type}`), HOME_SHARED.REQUEST_TIMEOUT_MS, `tmdb ${type} ${mediaId}`);
+    const response = await HOME_SHARED.requestWithTimeout(fetch(HOME_SHARED.resolveApiUrl(`/api/movies/tmdb/${mediaId}?type=${type}`)), HOME_SHARED.REQUEST_TIMEOUT_MS, `tmdb ${type} ${mediaId}`);
 
     if (!response.ok) {
         const data = await response.json().catch(() => ({}));
@@ -364,7 +364,7 @@ const getTrailerVideoKey = async (mediaId, mediaType = 'movie') => {
 
     const requestTrailerList = async (language = '') => {
         const languageQuery = language ? `&language=${language}` : '';
-        const response = await HOME_SHARED.requestWithTimeout(fetch(`/api/tmdb/${mediaType === 'tv' ? 'tv' : 'movie'}/${mediaId}/videos?${languageQuery}`), HOME_REQUEST_TIMEOUT_MS, `tmdb trailer ${mediaType}:${mediaId}`);
+        const response = await HOME_SHARED.requestWithTimeout(fetch(HOME_SHARED.resolveApiUrl(`/api/tmdb/${mediaType === 'tv' ? 'tv' : 'movie'}/${mediaId}/videos?${languageQuery}`)), HOME_REQUEST_TIMEOUT_MS, `tmdb trailer ${mediaType}:${mediaId}`);
 
         if (!response.ok) {
             throw new Error(`TMDB responded with ${response.status}`);
@@ -1414,7 +1414,7 @@ const loadFeaturedMovies = async (options = {}) => {
 
     try {
         const response = await HOME_SHARED.requestWithTimeout(
-            fetch(`/api/movies?page=${featuredMoviesPage}&limit=${featuredMoviesLimit}`), 
+            fetch(HOME_SHARED.resolveApiUrl(`/api/movies?page=${featuredMoviesPage}&limit=${featuredMoviesLimit}`)), 
             HOME_REQUEST_TIMEOUT_MS, 
             'catalog movies'
         );
@@ -1428,7 +1428,6 @@ const loadFeaturedMovies = async (options = {}) => {
             if (moviesGrid) {
                 moviesGrid.innerHTML = '<p class="movie-error">No se pudieron cargar las películas.</p>';
             }
-            moviesGrid.innerHTML = '<p class="movie-error">No se pudieron cargar las películas.</p>';
             featuredMoviesHasMore = false;
             return;
         }
