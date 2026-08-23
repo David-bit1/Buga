@@ -2,9 +2,18 @@
     const shared = window.BugaShared || {};
     
     const sharedConfig = {
-        API_ORIGIN: (window.location.hostname === '127.0.0.1' || window.location.hostname === 'localhost')
-            ? 'http://127.0.0.1:3100'
-            : 'https://buga.onrender.com',
+        API_ORIGIN: (() => {
+            const hostname = window.location.hostname;
+            const isLocal = hostname === '127.0.0.1' || hostname === 'localhost';
+            const isVercelPreview = hostname.includes('.vercel.app');
+            
+            const origin = (isLocal || isVercelPreview)
+                ? 'http://127.0.0.1:3100'
+                : 'https://buga.onrender.com';
+            
+            console.log('[BUGA CONFIG] API_ORIGIN:', origin, '| hostname:', hostname);
+            return origin;
+        })(),
         API_KEY: 'b24af203b14e23f8c91844baae37cfab',
         TMDB_BASE_URL: 'https://api.themoviedb.org/3',
         IMAGE_BASE_URL: 'https://image.tmdb.org/t/p/w500',
