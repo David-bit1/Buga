@@ -77,9 +77,6 @@ const serializeEpisode = (episode) => ({
   updated_at: episode.updated_at
 });
 
-const TMDB_IMAGE_BASE = 'https://image.tmdb.org/t/p/w500';
-const TMDB_IMAGE_BASE_W780 = 'https://image.tmdb.org/t/p/w780';
-
 // SERIES
 const listSeries = async (_req, res, next) => {
   try {
