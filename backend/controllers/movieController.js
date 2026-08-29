@@ -78,6 +78,9 @@ const hasMeaningfulValue = (value) => {
 
 const preferFallbackValue = (primary, fallback) => (hasMeaningfulValue(primary) ? primary : fallback);
 
+const toBoolean = (value) =>
+  value === true || value === 'true' || value === 1 || value === '1' || value === 'on';
+
 const serializeMovie = (movie) => {
   const releaseYear = movie.release_year || (movie.release_date ? String(movie.release_date).slice(0, 4) : 0);
   const parsedYear = toInteger(String(releaseYear), 0);
