@@ -9,6 +9,9 @@ const toInteger = (value, fallback = 0) => {
   return Number.isInteger(parsed) ? parsed : fallback;
 };
 
+const toBoolean = (value) =>
+  value === true || value === 'true' || value === 1 || value === '1' || value === 'on';
+
 const tmdbFetch = async (path) => {
   if (!TMDB_API_KEY) {
     throw new Error('TMDB_API_KEY no está configurada');
@@ -170,6 +173,7 @@ module.exports = {
   buildTmdbMoviePayload,
   buildTmdbSeriesPayload,
   toInteger,
+  toBoolean,
   TMDB_API_KEY,
   TMDB_BASE_URL,
   TMDB_LANGUAGE,
