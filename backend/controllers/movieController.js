@@ -6,7 +6,12 @@ const {
   buildTmdbSeriesPayload,
   toInteger,
   TMDB_IMAGE_BASE,
-  TMDB_IMAGE_BASE_W780
+  TMDB_IMAGE_BASE_W780,
+  TMDB_REQUEST_TIMEOUT_MS,
+  TMDB_LANGUAGE,
+  TMDB_API_KEY,
+  TMDB_BASE_URL,
+  requestWithTimeout
 } = require('../utils/tmdb');
 
 const normalizeGenres = (value) => {
@@ -73,28 +78,6 @@ const hasMeaningfulValue = (value) => {
 
 const preferFallbackValue = (primary, fallback) => (hasMeaningfulValue(primary) ? primary : fallback);
 
-const toInteger = (value, fallback = 0) => {
-  const parsed = Number(value);
-  return Number.isInteger(parsed) ? parsed : fallback;
-};
-
-const toBoolean = (value) =>
-  value === true || value === 'true' || value === 1 || value === '1' || value === 'on';
-
-const requestWithTimeout = async (url, options = {}, timeoutMs = TMDB_REQUEST_TIMEOUT_MS) => {
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
-
-  try {
-    return await fetch(url, {
-      ...options,
-      signal: controller.signal
-    });
-  } finally {
-    clearTimeout(timeoutId);
-  }
-};
-
 const serializeMovie = (movie) => {
   const releaseYear = movie.release_year || (movie.release_date ? String(movie.release_date).slice(0, 4) : 0);
   const parsedYear = toInteger(String(releaseYear), 0);
@@ -153,32 +136,6 @@ const serializeMovie = (movie) => {
   }
 
   return result;
-};
-
-const tmdbFetch = async (path) => {
-  const url = new URL(`${TMDB_BASE_URL}${path}`);
-  url.searchParams.set('api_key', TMDB_API_KEY);
-  url.searchParams.set('language', TMDB_LANGUAGE);
-
-  try {
-    const response = await requestWithTimeout(url, {}, TMDB_REQUEST_TIMEOUT_MS);
-
-    if (!response.ok) {
-      const errorBody = await response.text().catch(() => 'Could not read error body');
-      const partialUrl = `${url.origin}${url.pathname}?api_key=...&language=${TMDB_LANGUAGE}`;
-      console.error(`TMDb API Error:
-  - Status: ${response.status} ${response.statusText}
-  - URL: ${partialUrl}
-  - Body: ${errorBody}`);
-      throw new Error(`TMDb responded with status ${response.status}`);
-    }
-
-    return await response.json();
-  } catch (error) {
-    console.error(`Network or fetch error when calling TMDb: ${error.message}`, error);
-    // Re-throw the error to be handled by the calling function
-    throw error;
-  }
 };
 
 const getPopular = async (req, res, next) => {

@@ -1,6 +1,6 @@
 const { insertOne, selectMany, selectOne, updateRows, deleteRows, upsertOne } = require('../services/supabaseRepository');
 const { parseServers } = require('../services/serverNormalizer');
-const { buildTmdbMoviePayload, toInteger, normalizeGenres, normalizeCast } = require('../controllers/movieController');
+const { buildTmdbMoviePayload, toInteger, normalizeGenres, normalizeCast } = require('../utils/tmdb');
 
 const toNullableTmdbId = (value) => {
   const parsed = Number(value);
