@@ -5,13 +5,13 @@
         API_ORIGIN: (() => {
             const hostname = window.location.hostname;
             const isLocal = hostname === '127.0.0.1' || hostname === 'localhost';
-            const isVercelPreview = hostname.includes('.vercel.app');
+            const isVercel = hostname.includes('.vercel.app');
             
-            const origin = (isLocal || isVercelPreview)
+            const origin = isLocal
                 ? 'http://127.0.0.1:3100'
                 : 'https://buga.onrender.com';
             
-            console.log('[BUGA CONFIG] API_ORIGIN:', origin, '| hostname:', hostname);
+            console.log('[BUGA CONFIG] API_ORIGIN:', origin, '| hostname:', hostname, '| isLocal:', isLocal, '| isVercel:', isVercel);
             return origin;
         })(),
         API_KEY: 'b24af203b14e23f8c91844baae37cfab',
