@@ -1,6 +1,6 @@
 const { insertOne, selectMany, selectOne, updateRows, deleteRows } = require('../services/supabaseRepository');
 const { parseServers } = require('../services/serverNormalizer');
-const { tmdbFetch, toInteger, normalizeGenres, normalizeCast } = require('./movieController');
+const { tmdbFetch, toInteger, normalizeGenres, normalizeCast, buildTmdbSeriesPayload, TMDB_IMAGE_BASE, TMDB_IMAGE_BASE_W780 } = require('../utils/tmdb');
 
 const slugify = (value) =>
   String(value || '')
@@ -79,58 +79,6 @@ const serializeEpisode = (episode) => ({
 
 const TMDB_IMAGE_BASE = 'https://image.tmdb.org/t/p/w500';
 const TMDB_IMAGE_BASE_W780 = 'https://image.tmdb.org/t/p/w780';
-
-const buildTmdbSeriesPayload = async (tmdbId) => {
-  if (!tmdbId) {
-    return null;
-  }
-
-  const series = await tmdbFetch(`/tv/${tmdbId}?append_to_response=credits,videos,content_ratings`);
-  console.log('[BUGA TMDB SERIES RAW]', JSON.stringify(series, null, 2));
-
-  const credits = series.credits || {};
-  const videos = series.videos || {};
-  const contentRatings = series.content_ratings || {};
-  const firstAirDate = String(series.first_air_date || '').trim();
-
-  const trailer = (Array.isArray(videos.results) ? videos.results : [])
-    .find((video) => video.site === 'YouTube' && (video.type === 'Trailer' || video.type === 'Teaser'))?.key || '';
-
-  const cast = Array.isArray(credits.cast) ? credits.cast.slice(0, 10).map((person) => person.name).filter(Boolean) : [];
-  const creator = Array.isArray(series.created_by) && series.created_by.length > 0
-    ? String(series.created_by[0]?.name || '').trim()
-    : '';
-  const rating = (Array.isArray(contentRatings.results) ? contentRatings.results : [])
-    .find((item) => item.iso_3166_1 === 'US')?.rating
-    || (Array.isArray(contentRatings.results) ? contentRatings.results[0]?.rating : '')
-    || '';
-  const genres = Array.isArray(series.genres) ? series.genres.map((genre) => genre.name).filter(Boolean) : [];
-
-  return {
-    tmdb_id: Number(series.id),
-    title: String(series.name || series.original_name || '').trim(),
-    original_title: String(series.original_name || series.name || '').trim(),
-    description: String(series.overview || '').trim(),
-    overview: String(series.overview || '').trim(),
-    poster_url: series.poster_path ? `${TMDB_IMAGE_BASE}${series.poster_path}` : '',
-    poster_srcset: series.poster_path
-      ? `https://image.tmdb.org/t/p/w185${series.poster_path} 185w, https://image.tmdb.org/t/p/w342${series.poster_path} 342w, https://image.tmdb.org/t/p/w500${series.poster_path} 500w`
-      : '',
-    banner_url: series.backdrop_path ? `${TMDB_IMAGE_BASE_W780}${series.backdrop_path}` : '',
-    banner_srcset: series.backdrop_path
-      ? `https://image.tmdb.org/t/p/w300${series.backdrop_path} 300w, https://image.tmdb.org/t/p/w780${series.backdrop_path} 780w, https://image.tmdb.org/t/p/w1280${series.backdrop_path} 1280w`
-      : '',
-    release_year: toInteger(firstAirDate.slice(0, 4), 0),
-    first_air_date: firstAirDate,
-    genres,
-    rating,
-    cast,
-    creator,
-    trailer,
-    popularity: Number(series.popularity || 0),
-    status: 'published'
-  };
-};
 
 // SERIES
 const listSeries = async (_req, res, next) => {
