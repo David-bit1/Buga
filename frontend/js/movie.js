@@ -756,6 +756,13 @@ const applyMovie = (movie) => {
         : 'Un clásico con una estética oscura y elegante.');
     moviePoster.src = movie.poster || MOVIE_SHARED.FALLBACK_POSTER;
     moviePoster.alt = `${mediaLabel} de ${movie.title}`;
+    
+    if (movie.poster_srcset) {
+        moviePoster.srcset = movie.poster_srcset;
+    }
+    if (movie.banner_srcset && movieBackdrop) {
+        movieBackdrop.style.backgroundImage = `linear-gradient(180deg, rgba(2, 1, 5, 0.1), rgba(2, 1, 5, 0.82)), image-set(${movie.banner_srcset})`;
+    }
 
     const backdropUrl = movie.backdrop || movie.poster;
     if (movieBackdrop) {
@@ -778,7 +785,16 @@ const applyMovie = (movie) => {
     if (movieRating) movieRating.textContent = movie.rating ? `★ ${movie.rating}` : 'N/A';
     if (moviePopularity) moviePopularity.textContent = movie.popularity || 'N/A';
     if (movieOriginalTitle) movieOriginalTitle.textContent = movie.original_title || movie.title;
-
+    if (movieContentType) movieContentType.textContent = movie.content_type || 'No disponible';
+    if (movieCreatorName) movieCreatorName.textContent = movie.creator_name || 'No disponible';
+    if (movieRightsHolder) movieRightsHolder.textContent = movie.rights_holder || 'No disponible';
+    if (movieLicenseInfo) movieLicenseInfo.textContent = movie.license_info || 'No disponible';
+    if (movieSourceUrl) movieSourceUrl.textContent = movie.source_url || 'No disponible';
+    if (movieReleaseDate) movieReleaseDate.textContent = movie.release_date || 'No disponible';
+    if (movieOverview) {
+        movieOverview.textContent = movie.overview || movie.description || 'Sin sinopsis disponible.';
+        movieOverview.closest('.movie-overview')?.removeAttribute('hidden');
+    }
 
     updateMeta([year, runtimeLabel, genres.split(' • ')[0] || 'Cine']);
     updateFavoriteState();

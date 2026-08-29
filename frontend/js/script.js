@@ -507,8 +507,9 @@ const createCard = (movie) => {
     const genreLabel = movie.genres?.[0]?.name || 'Cine';
     const favorite = isHomeFavoriteMovie(movie.id);
     const mediaType = movie.mediaType || 'movie';
+    const tmdbId = movie.tmdb_id || movie.id;
 
-    return `<article class="movie-card" data-movie-id="${movie.id}" data-media-type="${mediaType}" tabindex="0" role="link" aria-label="Abrir ${movie.title}">
+    return `<article class="movie-card" data-movie-id="${movie.id}" data-tmdb-id="${tmdbId}" data-media-type="${mediaType}" tabindex="0" role="link" aria-label="Abrir ${movie.title}">
             ${createCardOverlayLink(movie.id, mediaType, movie.title)}
             ${createMovieCardMedia(movie)}
             <div class="movie-card-body">
@@ -528,9 +529,10 @@ const createCard = (movie) => {
 const createSeriesCard = (series) => {
     const genreLabel = series.genres?.[0]?.name || 'Serie'; // Keep
     const favorite = isHomeFavoriteMovie(series.id);
+    const tmdbId = series.tmdb_id || series.id;
 
     return `
-        <article class="movie-card series-card" data-movie-id="${series.id}" data-media-type="tv" tabindex="0" role="link" aria-label="Abrir ${series.title}">
+        <article class="movie-card series-card" data-movie-id="${series.id}" data-tmdb-id="${tmdbId}" data-media-type="tv" tabindex="0" role="link" aria-label="Abrir ${series.title}">
             ${createCardOverlayLink(series.id, 'tv', series.title)}
             ${createMovieCardMedia(series, 'Serie')} 
             <div class="movie-card-body">
@@ -623,8 +625,10 @@ const getContinueWatchingItems = () => {
         .sort((left, right) => new Date(right.lastViewed) - new Date(left.lastViewed));
 };
 
-const createContinueWatchingCard = (entry) => `
-    <article class="movie-card continue-card" data-movie-id="${entry.id}" data-media-type="movie" tabindex="0" role="link" aria-label="Continuar ${entry.title}">
+const createContinueWatchingCard = (entry) => {
+    const tmdbId = entry.tmdb_id || entry.id;
+    return `
+    <article class="movie-card continue-card" data-movie-id="${entry.id}" data-tmdb-id="${tmdbId}" data-media-type="movie" tabindex="0" role="link" aria-label="Continuar ${entry.title}">
         ${createCardOverlayLink(entry.id, 'movie', entry.title)}
         <div class="continue-card-media">
             ${createMovieCardMedia(entry)}
@@ -653,6 +657,7 @@ const createContinueWatchingCard = (entry) => `
         </div>
     </article>
 `;
+}
 
 const renderContinueWatching = () => {
     if (!continueWatchingGrid || !continueWatchingSection) {
@@ -1094,8 +1099,10 @@ const getTrendingWindow = () => {
     });
 };
 
-const renderTrendingCard = (movie, index) => `
-    <article class="movie-card trending-card" data-movie-id="${movie.id}" data-media-type="movie" tabindex="0" role="link" aria-label="Abrir ${movie.title}">
+const renderTrendingCard = (movie, index) => {
+    const tmdbId = movie.tmdb_id || movie.id;
+    return `
+    <article class="movie-card trending-card" data-movie-id="${movie.id}" data-tmdb-id="${tmdbId}" data-media-type="movie" tabindex="0" role="link" aria-label="Abrir ${movie.title}">
         ${createCardOverlayLink(movie.id, 'movie', movie.title)}
         ${createMovieCardMedia(movie, movie.badge || ['Trending', 'Hot', 'Popular'][index % 3])}
         <div class="movie-card-body">
@@ -1111,6 +1118,7 @@ const renderTrendingCard = (movie, index) => `
         </div>
     </article>
 `;
+}
 
 const renderTrendingMovies = (options = {}) => {
     if (!trendingGrid) {

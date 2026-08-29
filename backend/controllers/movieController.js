@@ -1,17 +1,13 @@
 const { insertOne, selectMany, selectOne, updateRows, deleteRows } = require('../services/supabaseRepository');
 const { parseServers } = require('../services/serverNormalizer');
-
-const TMDB_API_KEY = process.env.TMDB_API_KEY || 'b24af203b14e23f8c91844baae37cfab';
-const TMDB_BASE_URL = 'https://api.themoviedb.org/3';
-const TMDB_REQUEST_TIMEOUT_MS = 9000;
-
-if (!TMDB_API_KEY || TMDB_API_KEY === 'b24af203b14e23f8c91844baae37cfab') {
-  console.error('CRITICAL: TMDB_API_KEY is not configured or is using the default placeholder. TMDb requests will fail.');
-}
-
-const TMDB_LANGUAGE = 'es-ES';
-const TMDB_IMAGE_BASE = 'https://image.tmdb.org/t/p/w500';
-const TMDB_IMAGE_BASE_W780 = 'https://image.tmdb.org/t/p/w780';
+const {
+  tmdbFetch,
+  buildTmdbMoviePayload,
+  buildTmdbSeriesPayload,
+  toInteger,
+  TMDB_IMAGE_BASE,
+  TMDB_IMAGE_BASE_W780
+} = require('../utils/tmdb');
 
 const normalizeGenres = (value) => {
   if (Array.isArray(value)) {
